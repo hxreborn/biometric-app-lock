@@ -40,7 +40,7 @@ jobs:
       - name: Rename APK
         run: |
           mv app/build/outputs/apk/release/app-release.apk \
-             app/build/outputs/apk/release/biometric-app-lock-v0.1.0-release-dynamic-scope.apk
+             app/build/outputs/apk/release/biometric-app-lock-${{ github.ref_name }}.apk
 
       - name: Generate changelog
         id: cliff
@@ -54,5 +54,5 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          files: app/build/outputs/apk/release/biometric-app-lock-v0.1.0-release-dynamic-scope.apk
+          files: app/build/outputs/apk/release/biometric-app-lock-${{ github.ref_name }}.apk
           body: ${{ steps.cliff.outputs.content }}
