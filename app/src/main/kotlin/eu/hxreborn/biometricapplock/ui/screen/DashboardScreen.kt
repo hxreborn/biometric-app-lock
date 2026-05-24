@@ -33,7 +33,7 @@ fun DashboardScreen(
     onNavigateToApps: () -> Unit,
     contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
-    val framework by viewModel.framework.collectAsStateWithLifecycle()
+    val moduleStatus by viewModel.moduleStatus.collectAsStateWithLifecycle()
     val scope by viewModel.scope.collectAsStateWithLifecycle()
     val launchablePackageNames = rememberLaunchablePackageNames()
     val lockedApps =
@@ -62,7 +62,7 @@ fun DashboardScreen(
         ) {
             item {
                 StatusCard(
-                    isActive = framework != null,
+                    status = moduleStatus,
                     lockedAppCount = lockedApps.size,
                 )
             }

@@ -14,9 +14,11 @@
     <string name="dashboard_locked_apps_empty">Add apps to lock</string>
     <string name="env_footer_unbound">Xposed not bound</string>
 
-    <string name="status_active">Module active</string>
-    <string name="status_inactive">Module not active</string>
-    <string name="status_inactive_action">Tap to restart the app</string>
+    <string name="status_active">Enabled</string>
+    <string name="status_inactive">Not enabled</string>
+    <string name="status_inactive_action">Enable the module in your Xposed manager, then reopen this app</string>
+    <string name="status_reboot_required">Reboot required</string>
+    <string name="status_reboot_required_reason">Reboot to load the latest system_server hooks</string>
     <string name="status_restart_label">Restart app</string>
     <string name="status_locked_empty">No apps locked</string>
     <plurals name="status_locked_count">
