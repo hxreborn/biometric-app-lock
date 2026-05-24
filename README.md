@@ -13,27 +13,11 @@ Xposed module to put any app behind a biometric lock. WIP
 
 ## Install
 
-- Grab the APK from [Releases](../../releases)
-- Enable the module in your Xposed manager
-- Pick apps in the Apps tab
-- Force-stop each app you added, then launch it again
-
-## What it does
-
-- Gates any app behind a biometric prompt on launch.
-- Blocks screenshots and recents until you authenticate.
-- Stays unlocked until you leave the app.
-- Configurable grace period before relocking, globally and per-app.
-
-## What it doesn't
-
-- Lock state is in-memory only, so root and ADB still reach app files and databases.
-- Hooks the main process only, so apps with multiple processes get only partial coverage.
-- Multi-window and PiP not covered.
-- Apps with root or Xposed detection (banking apps, etc.) may crash or refuse to open.
+1. Install APK from [Releases](../../releases)
+2. Enable module in your Xposed manager with System Framework scope
+3. Reboot
+4. Select apps to lock in the Apps tab
 
 ## License
 
 [![GPLv3](https://img.shields.io/badge/License-GPLv3-blue?style=flat-square)](LICENSE)
-
-GPLv3, see [LICENSE](LICENSE)
