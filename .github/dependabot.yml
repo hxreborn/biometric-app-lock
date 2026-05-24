@@ -1,0 +1,47 @@
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      agp:
+        patterns:
+          - "com.android.*"
+          - "com.android.application"
+      kotlin:
+        patterns:
+          - "org.jetbrains.kotlin*"
+          - "org.jetbrains.kotlin.plugin.*"
+      kotlinx:
+        patterns:
+          - "org.jetbrains.kotlinx:*"
+      compose:
+        patterns:
+          - "androidx.compose:*"
+          - "androidx.compose.*"
+      androidx:
+        patterns:
+          - "androidx.activity:*"
+          - "androidx.lifecycle:*"
+          - "androidx.navigation3:*"
+      libxposed:
+        patterns:
+          - "io.github.libxposed:*"
+      ktlint:
+        patterns:
+          - "com.pinterest.ktlint:*"
+      third-party:
+        patterns:
+          - "io.github.fornewid:*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns:
+          - "*"
