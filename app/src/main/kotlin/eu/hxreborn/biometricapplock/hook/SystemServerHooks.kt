@@ -6,128 +6,166 @@ import android.content.pm.ActivityInfo
 import android.util.Log
 import eu.hxreborn.biometricapplock.util.Logger
 import io.github.libxposed.api.XposedModule
-import java.util.concurrent.ConcurrentHashMap
 
-private val WATCH_PKGS =
-    setOf(
-        "com.google.android.calculator",
-        "com.alibaba.aliexpresshd",
-    )
+internal fun XposedModule.registerSystemServerHooks(
+    classLoader: ClassLoader,
+    locked: Set<String>,
+) {
+    lockedPackages = locked
+    reflection =
+        runCatching { SystemServerReflection(classLoader) }
+            .onFailure { Logger.log(Log.ERROR, "reflection init failed: ${it.message}", it) }
+            .getOrNull()
 
-private val watchedTaskIds = ConcurrentHashMap<Int, String>()
-
-internal fun XposedModule.registerSystemServerHooks(cl: ClassLoader) {
-    hookActivityStartIntercept(cl)
-    hookOnActivityLaunched(cl)
-    hookStartActivityFromRecents(cl)
-    hookMoveTaskToFrontLocked(cl)
+    hookLaunchIntercept(classLoader)
+    hookActivityLaunched(classLoader)
+    hookRecents(classLoader)
+    hookScreenAwake(classLoader)
+    hookSnapshotProtection(classLoader)
 }
 
-private fun XposedModule.hookActivityStartIntercept(cl: ClassLoader) {
+private fun XposedModule.hookLaunchIntercept(classLoader: ClassLoader) {
     runCatching {
-        val klass = cl.loadClass("com.android.server.wm.ActivityStartInterceptor")
         val method =
-            klass.declaredMethods.firstOrNull { it.name == "intercept" && it.parameterCount == 11 }
-                ?: error("ActivityStartInterceptor.intercept(11-args) not found")
+            classLoader.findMethod(
+                "com.android.server.wm.ActivityStartInterceptor",
+                "intercept",
+                11,
+            )
         hook(method).intercept { chain ->
-            val args = chain.args
-            val info = args.getOrNull(2) as? ActivityInfo
-            val pkg = info?.packageName
-            if (pkg in WATCH_PKGS) {
-                val intent = args.getOrNull(0) as? Intent
-                val flagsHex = intent?.flags?.toString(16) ?: "?"
-                Logger.log(
-                    Log.INFO,
-                    "intercept enter pkg=$pkg comp=${info?.name} " +
-                        "action=${intent?.action} flags=0x$flagsHex",
-                )
-            }
+            val intent = chain.args[0] as? Intent
+            val activityInfo = chain.args[2] as? ActivityInfo
+            val packageName = activityInfo?.packageName
+
+            if (isValidAuthToken(intent, packageName)) return@intercept chain.proceed()
+
+            relockOtherPackages(packageName)
+
             val result = chain.proceed()
-            if (pkg in WATCH_PKGS) {
-                Logger.log(Log.INFO, "intercept exit pkg=$pkg replaced=$result")
+            if (result == true) return@intercept true
+            if (packageName == null || packageName !in lockedPackages) return@intercept false
+            if (packageName in unlockedPackages) {
+                Logger.debug { "intercept pass pkg=$packageName comp=${activityInfo.name}" }
+                return@intercept false
             }
-            result
+
+            Logger.debug {
+                "intercept gating pkg=$packageName comp=${activityInfo.name} action=${intent?.action}"
+            }
+            tryRedirect(chain.thisObject, packageName, activityInfo.name)
         }
-        Logger.log(Log.INFO, "hooked ActivityStartInterceptor.intercept watching=$WATCH_PKGS")
-    }.onFailure {
-        Logger.log(Log.ERROR, "hookActivityStartIntercept failed: ${it.message}", it)
-    }
+        Logger.log(Log.INFO, "hooked intercept locked=$lockedPackages")
+    }.onFailure { Logger.log(Log.ERROR, "hookLaunchIntercept failed: ${it.message}", it) }
 }
 
-private fun XposedModule.hookOnActivityLaunched(cl: ClassLoader) {
+private fun XposedModule.hookActivityLaunched(classLoader: ClassLoader) {
     runCatching {
-        val klass = cl.loadClass("com.android.server.wm.ActivityStartInterceptor")
         val method =
-            klass.declaredMethods.firstOrNull {
-                it.name == "onActivityLaunched" && it.parameterCount == 2
-            } ?: error("ActivityStartInterceptor.onActivityLaunched(2-args) not found")
+            classLoader.findMethod(
+                "com.android.server.wm.ActivityStartInterceptor",
+                "onActivityLaunched",
+                2,
+            )
         hook(method).intercept { chain ->
-            val taskInfo = chain.args.getOrNull(0) as? TaskInfo
-            val pkg = taskInfo?.topActivity?.packageName
-            if (pkg in WATCH_PKGS) {
-                val tid = taskInfo?.taskId ?: -1
-                if (tid >= 0) watchedTaskIds[tid] = pkg!!
+            val taskInfo = chain.args[0] as? TaskInfo
+            val topActivity = taskInfo?.topActivity
+            val packageName = topActivity?.packageName
+            if (packageName in lockedPackages && taskInfo != null && topActivity != null) {
+                taskCache[taskInfo.taskId] = TaskEntry(packageName!!, topActivity.className)
                 Logger.log(
                     Log.INFO,
-                    "onActivityLaunched pkg=$pkg taskId=$tid " +
-                        "top=${taskInfo?.topActivity?.shortClassName}",
+                    "launched pkg=$packageName taskId=${taskInfo.taskId} top=${topActivity.shortClassName}",
                 )
             }
             chain.proceed()
         }
-        Logger.log(Log.INFO, "hooked ActivityStartInterceptor.onActivityLaunched")
-    }.onFailure {
-        Logger.log(Log.ERROR, "hookOnActivityLaunched failed: ${it.message}", it)
-    }
+        Logger.log(Log.INFO, "hooked onActivityLaunched")
+    }.onFailure { Logger.log(Log.ERROR, "hookActivityLaunched failed: ${it.message}", it) }
 }
 
-private fun XposedModule.hookStartActivityFromRecents(cl: ClassLoader) {
+private fun XposedModule.hookRecents(classLoader: ClassLoader) {
     runCatching {
-        val klass = cl.loadClass("com.android.server.wm.ActivityTaskSupervisor")
         val method =
-            klass.declaredMethods.firstOrNull {
-                it.name == "startActivityFromRecents" && it.parameterCount == 4
-            } ?: error("ActivityTaskSupervisor.startActivityFromRecents(4-args) not found")
+            classLoader.findMethod(
+                "com.android.server.wm.ActivityTaskSupervisor",
+                "startActivityFromRecents",
+                4,
+            )
         hook(method).intercept { chain ->
-            val pid = chain.args.getOrNull(0)
-            val uid = chain.args.getOrNull(1)
-            val taskId = chain.args.getOrNull(2) as? Int
-            val pkg = taskId?.let { watchedTaskIds[it] }
-            if (pkg != null) {
+            val taskId = chain.args[2] as? Int
+            val entry = taskId?.let { taskCache[it] }
+
+            relockOtherPackages(entry?.packageName)
+
+            if (entry != null && entry.packageName !in unlockedPackages) {
                 Logger.log(
                     Log.INFO,
-                    "startActivityFromRecents pkg=$pkg taskId=$taskId pid=$pid uid=$uid",
+                    "gating recents pkg=${entry.packageName} taskId=$taskId unlocked=$unlockedPackages",
                 )
+                val result = chain.proceed()
+                Logger.debug { "recents proceed result=$result taskId=$taskId" }
+                runCatching { postAuthLaunch(chain.thisObject, entry) }
+                    .onFailure { Logger.log(Log.ERROR, "recents auth failed: ${it.message}", it) }
+                return@intercept result
+            }
+            Logger.debug {
+                val unlocked = entry?.packageName?.let { it in unlockedPackages }
+                "recents pass-through taskId=$taskId pkg=${entry?.packageName} unlocked=$unlocked"
             }
             chain.proceed()
         }
-        Logger.log(Log.INFO, "hooked ActivityTaskSupervisor.startActivityFromRecents")
-    }.onFailure {
-        Logger.log(Log.ERROR, "hookStartActivityFromRecents failed: ${it.message}", it)
-    }
+        Logger.log(Log.INFO, "hooked startActivityFromRecents")
+    }.onFailure { Logger.log(Log.ERROR, "hookRecents failed: ${it.message}", it) }
 }
 
-private fun XposedModule.hookMoveTaskToFrontLocked(cl: ClassLoader) {
+private fun XposedModule.hookScreenAwake(classLoader: ClassLoader) {
     runCatching {
-        val klass = cl.loadClass("com.android.server.wm.ActivityTaskManagerService")
         val method =
-            klass.declaredMethods.firstOrNull {
-                it.name == "moveTaskToFrontLocked" && it.parameterCount == 5
-            } ?: error("ActivityTaskManagerService.moveTaskToFrontLocked(5-args) not found")
+            classLoader.findMethod(
+                "com.android.server.wm.ActivityTaskManagerService",
+                "onScreenAwakeChanged",
+                1,
+            )
         hook(method).intercept { chain ->
-            val callingPkg = chain.args.getOrNull(1) as? String
-            val taskId = chain.args.getOrNull(2) as? Int
-            val targetPkg = taskId?.let { watchedTaskIds[it] }
-            if (targetPkg != null) {
-                Logger.log(
-                    Log.INFO,
-                    "moveTaskToFrontLocked targetPkg=$targetPkg taskId=$taskId callingPkg=$callingPkg",
-                )
+            val awake = chain.args[0] as? Boolean
+            if (awake == true && unlockedPackages.isNotEmpty()) {
+                unlockedPackages.clear()
+                val topPackageName =
+                    runCatching {
+                        reflection?.findTopResumedPackageName(
+                            chain.thisObject,
+                        )
+                    }.getOrNull()
+                Logger.log(Log.INFO, "screen on, re-locked all topPkg=$topPackageName")
             }
             chain.proceed()
         }
-        Logger.log(Log.INFO, "hooked ActivityTaskManagerService.moveTaskToFrontLocked")
+        Logger.log(Log.INFO, "hooked onScreenAwakeChanged")
+    }.onFailure { Logger.log(Log.ERROR, "hookScreenAwake failed: ${it.message}", it) }
+}
+
+private fun XposedModule.hookSnapshotProtection(classLoader: ClassLoader) {
+    runCatching {
+        val method =
+            classLoader.findMethod(
+                "com.android.server.wm.ActivityRecord",
+                "shouldUseAppThemeSnapshot",
+                0,
+            )
+        val packageNameField =
+            classLoader
+                .loadClass("com.android.server.wm.ActivityRecord")
+                .getField("packageName")
+
+        hook(method).intercept { chain ->
+            val packageName = packageNameField.get(chain.thisObject) as? String
+            if (packageName in lockedPackages && packageName !in unlockedPackages) {
+                return@intercept true
+            }
+            chain.proceed()
+        }
+        Logger.log(Log.INFO, "hooked shouldUseAppThemeSnapshot")
     }.onFailure {
-        Logger.log(Log.ERROR, "hookMoveTaskToFrontLocked failed: ${it.message}", it)
+        Logger.log(Log.ERROR, "hookSnapshotProtection failed: ${it.message}", it)
     }
 }

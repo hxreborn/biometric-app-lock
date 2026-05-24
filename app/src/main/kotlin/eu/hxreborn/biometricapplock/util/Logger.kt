@@ -19,7 +19,6 @@ object Logger {
         if (debugEnabled()) module.log(Log.DEBUG, TAG, msg())
     }
 
-    // Poll on each call to pick up updates because remote prefs don't fire change listeners
     @PublishedApi
     internal fun debugEnabled(): Boolean =
         BuildConfig.DEBUG ||
@@ -28,8 +27,13 @@ object Logger {
     @Volatile
     private var prefs: SharedPreferences? = null
 
-    private fun cachedPrefs(): SharedPreferences? =
-        prefs ?: runCatching { module.getRemotePreferences(Prefs.GROUP) }
+    private fun cachedPrefs(): SharedPreferences? {
+        if (inSystemServer) return null
+        return prefs ?: runCatching { module.getRemotePreferences(Prefs.GROUP) }
             .getOrNull()
             ?.also { prefs = it }
+    }
+
+    @Volatile
+    internal var inSystemServer = false
 }

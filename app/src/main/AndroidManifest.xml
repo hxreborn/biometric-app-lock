@@ -41,14 +41,16 @@
             android:exported="true"
             android:excludeFromRecents="true"
             android:noHistory="true"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+            android:taskAffinity=""
+            android:theme="@style/Theme.BiometricAuth" />
 
         <receiver
-            android:name=".TrampolineReceiver"
-            android:exported="true">
+            android:name=".receiver.PackageReplacedReceiver"
+            android:exported="false">
             <intent-filter>
-                <action android:name="eu.hxreborn.biometricapplock.TRAMPOLINE" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+
     </application>
 </manifest>
