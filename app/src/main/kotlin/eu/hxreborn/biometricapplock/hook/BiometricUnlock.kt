@@ -20,7 +20,7 @@ internal fun isValidAuthToken(
     if (packageName !in lockedPackages || !pendingTokens.remove(token)) return false
     intent.removeExtra(BiometricAuthActivity.EXTRA_AUTH_TOKEN)
     unlockedPackages.add(packageName!!)
-    Logger.log(Log.INFO, "token accepted pkg=$packageName")
+    Logger.log(Log.INFO, "unlocked pkg=$packageName")
     return true
 }
 

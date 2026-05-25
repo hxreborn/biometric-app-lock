@@ -72,10 +72,9 @@ private fun XposedModule.hookActivityLaunched(classLoader: ClassLoader) {
             val packageName = topActivity?.packageName
             if (packageName in lockedPackages && taskInfo != null && topActivity != null) {
                 taskCache[taskInfo.taskId] = TaskEntry(packageName!!, topActivity.className)
-                Logger.log(
-                    Log.INFO,
-                    "launched pkg=$packageName taskId=${taskInfo.taskId} top=${topActivity.shortClassName}",
-                )
+                Logger.debug {
+                    "launched pkg=$packageName taskId=${taskInfo.taskId} top=${topActivity.shortClassName}"
+                }
             }
             chain.proceed()
         }
@@ -98,19 +97,15 @@ private fun XposedModule.hookRecents(classLoader: ClassLoader) {
             relockOtherPackages(entry?.packageName)
 
             if (entry != null && entry.packageName !in unlockedPackages) {
-                Logger.log(
-                    Log.INFO,
-                    "gating recents pkg=${entry.packageName} taskId=$taskId unlocked=$unlockedPackages",
-                )
+                Logger.debug { "gating recents pkg=${entry.packageName} taskId=$taskId" }
                 val result = chain.proceed()
                 Logger.debug { "recents proceed result=$result taskId=$taskId" }
                 runCatching { postAuthLaunch(chain.thisObject, entry) }
                     .onFailure { Logger.log(Log.ERROR, "recents auth failed: ${it.message}", it) }
                 return@intercept result
             }
-            Logger.debug {
-                val unlocked = entry?.packageName?.let { it in unlockedPackages }
-                "recents pass-through taskId=$taskId pkg=${entry?.packageName} unlocked=$unlocked"
+            if (entry != null) {
+                Logger.debug { "recents pass-through taskId=$taskId pkg=${entry.packageName}" }
             }
             chain.proceed()
         }
@@ -136,7 +131,7 @@ private fun XposedModule.hookScreenAwake(classLoader: ClassLoader) {
                             chain.thisObject,
                         )
                     }.getOrNull()
-                Logger.log(Log.INFO, "screen on, re-locked all topPkg=$topPackageName")
+                Logger.debug { "screen on, re-locked all topPkg=$topPackageName" }
             }
             chain.proceed()
         }
