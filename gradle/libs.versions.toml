@@ -11,7 +11,7 @@ material3 = "1.5.0-alpha20"
 materialMotionComposeCore = "2.0.1"
 navigation3 = "1.1.2"
 ktlint = "1.8.0"
-kotlinxSerializationJson = "1.8.1"
+kotlinxSerializationJson = "1.11.0"
 
 [libraries]
 libxposed-api = { module = "io.github.libxposed:api", version.ref = "libxposedApi" }
