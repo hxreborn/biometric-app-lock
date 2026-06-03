@@ -70,7 +70,7 @@ jobs:
           body: ${{ steps.cliff.outputs.content }}
 
       - name: Upload APK artifacts for mirror job
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-apk
           path: |
@@ -89,7 +89,7 @@ jobs:
 
     steps:
       - name: Download APK artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release-apk
           path: ./artifacts
