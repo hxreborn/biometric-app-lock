@@ -380,7 +380,11 @@ fun AllowedActivitiesScreen(
                     }
                 }
             } else {
-                itemsIndexed(filtered, key = { _, name -> name }) { index, name ->
+                itemsIndexed(
+                    filtered,
+                    key = { _, name -> name },
+                    contentType = { _, _ -> "activity_row" },
+                ) { index, name ->
                     ActivityToggleRow(
                         className = name,
                         checked = name in allowed,

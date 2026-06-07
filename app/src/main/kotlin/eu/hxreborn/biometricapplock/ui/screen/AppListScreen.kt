@@ -685,7 +685,10 @@ fun AppListScreen(
                 ) {
                     when {
                         isInitialLoading -> {
-                            items(Tokens.SHIMMER_PLACEHOLDER_COUNT) { index ->
+                            items(
+                                count = Tokens.SHIMMER_PLACEHOLDER_COUNT,
+                                contentType = { "shimmer_row" },
+                            ) { index ->
                                 val position =
                                     when (index) {
                                         0 -> SectionPosition.Top
@@ -721,6 +724,7 @@ fun AppListScreen(
                             itemsIndexed(
                                 items = sortedApps,
                                 key = { _, app -> app.key },
+                                contentType = { _, _ -> "app_row" },
                             ) { index, app ->
                                 val position =
                                     when {
