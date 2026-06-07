@@ -5,7 +5,6 @@ package eu.hxreborn.biometricapplock.ui.navigation
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -166,7 +165,7 @@ fun ClassicBottomNav(
                     icon = {
                         Crossfade(
                             targetState = selected,
-                            animationSpec = tween(300),
+                            animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
                             label = "iconCrossfade",
                         ) { isSelected ->
                             val icon = if (isSelected) item.selectedIcon else item.unselectedIcon

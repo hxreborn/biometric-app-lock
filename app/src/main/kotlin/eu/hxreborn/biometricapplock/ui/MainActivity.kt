@@ -12,13 +12,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -90,7 +89,7 @@ class MainActivity :
                 Box(modifier = Modifier.fillMaxSize()) {
                     MainScaffold(viewModel = viewModel)
                     if (prefs.selfLock) {
-                        val spec = tween<Float>(durationMillis = 200, easing = FastOutSlowInEasing)
+                        val spec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
                         AnimatedVisibility(
                             visible = lockState !is SelfLockState.Unlocked,
                             enter = fadeIn(spec),

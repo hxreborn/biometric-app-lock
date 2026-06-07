@@ -121,6 +121,7 @@ fun WhatsNewSheet(
 
     val scope = rememberCoroutineScope()
     val contentAlpha = remember { Animatable(0f) }
+    val contentAlphaSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
     val density = LocalDensity.current
     val screenHeight =
         with(density) {
@@ -131,7 +132,7 @@ fun WhatsNewSheet(
 
     LaunchedEffect(Unit) {
         haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-        launch { contentAlpha.animateTo(1f, tween(300)) }
+        launch { contentAlpha.animateTo(1f, contentAlphaSpec) }
     }
 
     val dismiss: () -> Unit = {
