@@ -76,7 +76,7 @@ class ScopeViewModel(
         }
 
     init {
-        app.boundService?.let { onServiceBound(it) }
+        app.mService?.let { onServiceBound(it) }
         _scope.value = readLockedPackages()
         viewModelScope.launch(Dispatchers.IO) {
             _rootGranted.value = RootShell.isRootGranted()

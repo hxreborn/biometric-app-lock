@@ -16,7 +16,7 @@ class App :
     Application(),
     XposedServiceHelper.OnServiceListener {
     @Volatile
-    var boundService: XposedService? = null
+    var mService: XposedService? = null
         private set
 
     lateinit var prefsRepository: PrefsRepository
@@ -36,32 +36,32 @@ class App :
         Migration.migrateIfNeeded(localPrefs)
         prefsRepository =
             PrefsRepository(localPrefs) {
-                runCatching { boundService?.getRemotePreferences(Prefs.GROUP) }.getOrNull()
+                runCatching { mService?.getRemotePreferences(Prefs.GROUP) }.getOrNull()
             }
         updateRepository = UpdateRepository(this)
         appOverridesRepository =
             AppOverridesRepository(localPrefs) {
-                runCatching { boundService?.getRemotePreferences(Prefs.GROUP) }.getOrNull()
+                runCatching { mService?.getRemotePreferences(Prefs.GROUP) }.getOrNull()
             }
         XposedServiceHelper.registerListener(this)
     }
 
     override fun onServiceBind(service: XposedService) {
         Log.i(TAG, "service bound: ${service.frameworkName} v${service.frameworkVersion}")
-        boundService = service
+        mService = service
         prefsRepository.syncToRemote()
         listeners.forEach { it.onServiceBind(service) }
     }
 
     override fun onServiceDied(service: XposedService) {
         Log.w(TAG, "service died")
-        boundService = null
+        mService = null
         listeners.forEach { it.onServiceDied(service) }
     }
 
     fun addServiceListener(listener: XposedServiceHelper.OnServiceListener) {
         listeners.add(listener)
-        boundService?.let { listener.onServiceBind(it) }
+        mService?.let { listener.onServiceBind(it) }
     }
 
     fun removeServiceListener(listener: XposedServiceHelper.OnServiceListener) {
