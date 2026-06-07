@@ -10,7 +10,6 @@ import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.os.UserHandle
 import android.os.UserManager
-import android.util.LruCache
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -91,7 +90,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
@@ -100,7 +98,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.hxreborn.biometricapplock.App
 import eu.hxreborn.biometricapplock.R
@@ -110,6 +107,7 @@ import eu.hxreborn.biometricapplock.ui.component.SectionCard
 import eu.hxreborn.biometricapplock.ui.component.SectionPosition
 import eu.hxreborn.biometricapplock.ui.theme.Tokens
 import eu.hxreborn.biometricapplock.ui.util.openAppInfo
+import eu.hxreborn.biometricapplock.ui.util.rememberAppIcon
 import eu.hxreborn.biometricapplock.ui.viewmodel.ScopeViewModel
 import eu.hxreborn.biometricapplock.util.getUserHandle
 import eu.hxreborn.biometricapplock.util.getUserId
@@ -172,29 +170,6 @@ private suspend fun loadApps(
                 }.awaitAll()
         }
     }
-
-private val iconCache = LruCache<String, ImageBitmap>(200)
-
-@Composable
-private fun rememberAppIcon(
-    packageName: String,
-    userId: Int,
-): ImageBitmap? {
-    val context = LocalContext.current
-    val key = "$packageName:$userId"
-    return produceState<ImageBitmap?>(initialValue = iconCache.get(key), key1 = key) {
-        if (value != null) return@produceState
-        value =
-            withContext(Dispatchers.IO) {
-                runCatching {
-                    val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
-                    val userHandle = getUserHandle(userId)
-                    val info = launcherApps.getActivityList(packageName, userHandle).firstOrNull()
-                    info?.getIcon(0)?.toBitmap()?.asImageBitmap()
-                }.getOrNull()?.also { iconCache.put(key, it) }
-            }
-    }.value
-}
 
 @Composable
 private fun rememberInstalledApps(refreshKey: Int): AppLoadState {
