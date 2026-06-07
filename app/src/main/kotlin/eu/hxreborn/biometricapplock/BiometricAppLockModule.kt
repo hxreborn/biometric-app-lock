@@ -19,12 +19,28 @@ internal lateinit var module: BiometricAppLockModule
 class BiometricAppLockModule : XposedModule() {
     private val prefsListener =
         SharedPreferences.OnSharedPreferenceChangeListener { sp, key ->
-            if (key == Prefs.LOCKED_PACKAGES.key) {
-                lockedPackages = parseLockedPackages(Prefs.LOCKED_PACKAGES.read(sp))
-                Logger.info("config updated locked=${lockedPackages.size}")
+            when {
+                key == null -> {
+                    lockedPackages = parseLockedPackages(Prefs.LOCKED_PACKAGES.read(sp))
+                    loadHookPrefs(sp)
+                    refreshSecureSurfaces()
+                }
+
+                key == Prefs.LOCKED_PACKAGES.key -> {
+                    lockedPackages = parseLockedPackages(Prefs.LOCKED_PACKAGES.read(sp))
+                    Logger.info("config updated locked=${lockedPackages.size}")
+                    refreshSecureSurfaces()
+                }
+
+                key.endsWith(Prefs.BLOCK_SCREENSHOTS.key) -> {
+                    loadHookPrefs(sp)
+                    refreshSecureSurfaces()
+                }
+
+                else -> {
+                    loadHookPrefs(sp)
+                }
             }
-            loadHookPrefs(sp)
-            refreshSecureSurfaces()
         }
 
     override fun onModuleLoaded(param: ModuleLoadedParam) {
