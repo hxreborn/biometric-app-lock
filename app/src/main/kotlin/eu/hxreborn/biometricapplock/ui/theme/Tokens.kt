@@ -43,6 +43,7 @@ object Tokens {
     val SkeletonTitleHeight: Dp = 16.dp
     val SkeletonSubtitleHeight: Dp = 12.dp
     val SmallCornerRadius: Dp = 4.dp
+    val ChipHorizontalPadding: Dp = 12.dp
 
     const val DISABLED_ALPHA: Float = 0.38f
     const val CHEVRON_ALPHA: Float = 0.6f

@@ -7,7 +7,7 @@ import android.hardware.biometrics.BiometricManager
 import android.hardware.biometrics.BiometricManager.Authenticators
 import android.os.SystemClock
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.Fingerprint
@@ -188,13 +188,13 @@ private fun ChipBadge(
     Surface(
         color = container,
         contentColor = content,
-        shape = RoundedCornerShape(Tokens.SmallCornerRadius),
+        shape = CircleShape,
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(horizontal = Tokens.SpacingSm, vertical = Tokens.SpacingXs),
+            modifier = Modifier.padding(horizontal = Tokens.ChipHorizontalPadding, vertical = Tokens.SpacingXs),
         )
     }
 }
