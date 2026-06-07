@@ -31,6 +31,7 @@
     <string name="dashboard_biometric_title">Hardware</string>
     <string name="dashboard_biometric_fingerprint">Fingerprint</string>
     <string name="dashboard_biometric_face">Face unlock</string>
+    <string name="dashboard_biometric_class_label">Biometric class</string>
     <string name="dashboard_biometric_class_strong">Class 3 · STRONG</string>
     <string name="dashboard_biometric_class_weak">Class 2 · WEAK</string>
     <string name="dashboard_biometric_chip_enrolled">Enrolled</string>

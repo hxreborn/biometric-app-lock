@@ -6,25 +6,19 @@ import android.content.pm.PackageManager
 import android.hardware.biometrics.BiometricManager
 import android.hardware.biometrics.BiometricManager.Authenticators
 import android.os.SystemClock
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material3.Icon
+import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -43,7 +37,6 @@ private enum class ChipKind { Enrolled, NotEnrolled, NoSensor, Unavailable, Upda
 private enum class ClassLabel { STRONG, WEAK }
 
 private data class ModalityState(
-    val classLabel: ClassLabel?,
     val chip: ChipKind,
     val enrolledCount: Int? = null,
 )
@@ -51,13 +44,14 @@ private data class ModalityState(
 private data class BiometricState(
     val fingerprint: ModalityState,
     val face: ModalityState,
+    val strongestClass: ClassLabel? = null,
     val lastAuthAgo: String? = null,
 )
 
 private val BiometricStateUnknown =
     BiometricState(
-        fingerprint = ModalityState(null, ChipKind.NoSensor),
-        face = ModalityState(null, ChipKind.NoSensor),
+        fingerprint = ModalityState(ChipKind.NoSensor),
+        face = ModalityState(ChipKind.NoSensor),
     )
 
 @Composable
@@ -72,70 +66,69 @@ fun BiometricHardwareSection(modifier: Modifier = Modifier) {
         modifier = modifier,
     )
 
-    ModalityCard(
-        icon = Icons.Outlined.Fingerprint,
-        name = stringResource(R.string.dashboard_biometric_fingerprint),
-        state = state.fingerprint,
-        position = SectionPosition.Top,
-    )
-    ModalityCard(
-        icon = Icons.Outlined.Face,
-        name = stringResource(R.string.dashboard_biometric_face),
-        state = state.face,
-        position = if (state.lastAuthAgo != null) SectionPosition.Middle else SectionPosition.Bottom,
-    )
-    if (state.lastAuthAgo != null) {
-        PreferenceRow(
-            icon = Icons.Outlined.Schedule,
-            title = stringResource(R.string.dashboard_biometric_last_auth),
-            summary = state.lastAuthAgo,
-            position = SectionPosition.Bottom,
-        )
-    }
+    val rows =
+        buildList<@Composable (SectionPosition) -> Unit> {
+            add { position ->
+                ModalityRow(
+                    Icons.Outlined.Fingerprint,
+                    stringResource(R.string.dashboard_biometric_fingerprint),
+                    state.fingerprint,
+                    position,
+                )
+            }
+            add { position ->
+                ModalityRow(Icons.Outlined.Face, stringResource(R.string.dashboard_biometric_face), state.face, position)
+            }
+            state.strongestClass?.let { strongest ->
+                add { position ->
+                    PreferenceRow(
+                        icon = Icons.Outlined.Security,
+                        title = stringResource(R.string.dashboard_biometric_class_label),
+                        summary = classLabelText(strongest),
+                        position = position,
+                    )
+                }
+            }
+            state.lastAuthAgo?.let { ago ->
+                add { position ->
+                    PreferenceRow(
+                        icon = Icons.Outlined.Schedule,
+                        title = stringResource(R.string.dashboard_biometric_last_auth),
+                        summary = ago,
+                        position = position,
+                    )
+                }
+            }
+        }
+
+    rows.forEachIndexed { index, row -> row(positionFor(index, rows.size)) }
 }
 
+private fun positionFor(
+    index: Int,
+    count: Int,
+): SectionPosition =
+    when {
+        count == 1 -> SectionPosition.Single
+        index == 0 -> SectionPosition.Top
+        index == count - 1 -> SectionPosition.Bottom
+        else -> SectionPosition.Middle
+    }
+
 @Composable
-private fun ModalityCard(
+private fun ModalityRow(
     icon: ImageVector,
     name: String,
     state: ModalityState,
     position: SectionPosition,
 ) {
-    SectionCard(position = position) {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        horizontal = Tokens.PreferenceRowHorizontalPadding,
-                        vertical = Tokens.PreferenceRowVerticalPadding,
-                    ),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Tokens.PreferenceRowIconTextSpacing),
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(Tokens.SettingsIconSize),
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = name,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                if (state.classLabel != null) {
-                    Text(
-                        text = classLabelText(state.classLabel),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            ChipBadge(kind = state.chip, count = state.enrolledCount)
-        }
-    }
+    PreferenceRow(
+        icon = icon,
+        title = name,
+        summary = null,
+        position = position,
+        trailing = { ChipBadge(kind = state.chip, count = state.enrolledCount) },
+    )
 }
 
 @Composable
@@ -221,7 +214,7 @@ private fun readBiometricState(context: Context): BiometricState {
         runCatching { bm?.canAuthenticate(Authenticators.BIOMETRIC_WEAK) }
             .getOrNull() ?: BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE
 
-    val deviceClass: ClassLabel? =
+    val strongestClass: ClassLabel? =
         when {
             strongStatus == BiometricManager.BIOMETRIC_SUCCESS -> ClassLabel.STRONG
             weakStatus == BiometricManager.BIOMETRIC_SUCCESS -> ClassLabel.WEAK
@@ -235,7 +228,6 @@ private fun readBiometricState(context: Context): BiometricState {
         fingerprint =
             modalityState(
                 hasHardware = hasFingerprint,
-                deviceClass = deviceClass,
                 weakStatus = weakStatus,
                 strongStatus = strongStatus,
                 explicitCount = fpEnrolled,
@@ -243,24 +235,23 @@ private fun readBiometricState(context: Context): BiometricState {
         face =
             modalityState(
                 hasHardware = hasFace,
-                deviceClass = deviceClass,
                 weakStatus = weakStatus,
                 strongStatus = strongStatus,
                 explicitCount = null,
             ),
+        strongestClass = strongestClass,
         lastAuthAgo = lastAuthAgo,
     )
 }
 
 private fun modalityState(
     hasHardware: Boolean,
-    deviceClass: ClassLabel?,
     weakStatus: Int,
     strongStatus: Int,
     explicitCount: Int?,
 ): ModalityState {
     if (!hasHardware) {
-        return ModalityState(null, ChipKind.NoSensor)
+        return ModalityState(ChipKind.NoSensor)
     }
     val chip =
         when {
@@ -278,11 +269,7 @@ private fun modalityState(
 
             else -> ChipKind.NotEnrolled
         }
-    return ModalityState(
-        classLabel = if (chip == ChipKind.Enrolled) deviceClass else null,
-        chip = chip,
-        enrolledCount = explicitCount,
-    )
+    return ModalityState(chip = chip, enrolledCount = explicitCount)
 }
 
 @SuppressLint("MissingPermission")
