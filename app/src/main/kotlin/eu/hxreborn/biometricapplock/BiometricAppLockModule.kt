@@ -17,7 +17,15 @@ internal lateinit var module: BiometricAppLockModule
     private set
 
 class BiometricAppLockModule : XposedModule() {
-    private var prefsListener: SharedPreferences.OnSharedPreferenceChangeListener? = null
+    private val prefsListener =
+        SharedPreferences.OnSharedPreferenceChangeListener { sp, key ->
+            if (key == Prefs.LOCKED_PACKAGES.key) {
+                lockedPackages = parseLockedPackages(Prefs.LOCKED_PACKAGES.read(sp))
+                Logger.info("config updated locked=${lockedPackages.size}")
+            }
+            loadHookPrefs(sp)
+            refreshSecureSurfaces()
+        }
 
     override fun onModuleLoaded(param: ModuleLoadedParam) {
         module = this
@@ -25,45 +33,13 @@ class BiometricAppLockModule : XposedModule() {
     }
 
     override fun onSystemServerStarting(param: SystemServerStartingParam) {
-        val prefs = runCatching { getRemotePreferences(Prefs.GROUP) }.getOrNull()
-        val locked = readLockedPackages(prefs)
+        val prefs = getRemotePreferences(Prefs.GROUP)
+        val locked = parseLockedPackages(Prefs.LOCKED_PACKAGES.read(prefs))
         Logger.info("system_server starting pid=${Process.myPid()} locked=${locked.size}")
         Logger.debug { "locked=$locked" }
-        if (prefs != null) {
-            runCatching { loadHookPrefs(prefs) }
-                .onFailure { Logger.warn("prefs load failed: ${it.message}", it) }
-        }
-        runCatching { registerSystemServerHooks(param.classLoader, locked) }
-            .onFailure { Logger.error("registerSystemServerHooks failed: ${it.message}", it) }
-        registerPrefsListener(prefs)
-    }
-
-    private fun registerPrefsListener(prefs: SharedPreferences?) {
-        if (prefs == null) return
-        runCatching {
-            val listener =
-                SharedPreferences.OnSharedPreferenceChangeListener { sp, key ->
-                    if (key == Prefs.LOCKED_PACKAGES.key) {
-                        lockedPackages = parseLockedPackages(Prefs.LOCKED_PACKAGES.read(sp))
-                        Logger.info("config updated locked=${lockedPackages.size}")
-                    }
-                    runCatching { loadHookPrefs(sp) }
-                        .onFailure { Logger.warn("prefs reload failed: ${it.message}", it) }
-                    refreshSecureSurfaces()
-                }
-            prefsListener = listener
-            prefs.registerOnSharedPreferenceChangeListener(listener)
-        }.onFailure { Logger.warn("prefs listener failed: ${it.message}", it) }
-    }
-
-    private fun readLockedPackages(prefs: SharedPreferences?): Set<String> {
-        if (prefs == null) return emptySet()
-        return runCatching {
-            parseLockedPackages(Prefs.LOCKED_PACKAGES.read(prefs))
-        }.getOrElse {
-            Logger.error("failed to read locked packages: ${it.message}", it)
-            emptySet()
-        }
+        loadHookPrefs(prefs)
+        prefs.registerOnSharedPreferenceChangeListener(prefsListener)
+        registerSystemServerHooks(param.classLoader, locked)
     }
 
     private fun parseLockedPackages(raw: String): Set<String> =
