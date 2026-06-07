@@ -209,6 +209,7 @@ abstract class GenerateXposedModuleProp : DefaultTask() {
             minApiVersion=${moduleApiVersion.get()}
             targetApiVersion=${moduleApiVersion.get()}
             staticScope=true
+            exceptionMode=protective
             """.trimIndent() + "\n",
         )
         xposedDir.resolve("scope.list").writeText("system\n")
