@@ -2,11 +2,13 @@ package eu.hxreborn.biometricapplock
 
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.LauncherApps
 import android.hardware.biometrics.BiometricManager
 import android.hardware.biometrics.BiometricManager.Authenticators
 import android.hardware.biometrics.BiometricPrompt
 import android.os.Bundle
 import android.os.CancellationSignal
+import android.os.UserManager
 import android.util.Log
 import eu.hxreborn.biometricapplock.prefs.Prefs
 import eu.hxreborn.biometricapplock.util.pickAuthenticators
@@ -35,18 +37,23 @@ open class BiometricAuthActivity : Activity() {
         }
         Log.i(TAG, "gating $targetPkg via=${javaClass.simpleName}")
         val pkg = targetPkg ?: return
+        val userId = intent.getIntExtra(EXTRA_TARGET_USER_ID, 0)
         intent.getStringExtra(EXTRA_TARGET_ACTIVITY)?.let { activity ->
             runCatching {
                 App
                     .from(
                         this,
                     ).appOverridesRepository
-                    .recordRecentActivity(pkg, activity)
+                    .recordRecentActivity("$pkg:$userId", activity)
             }
         }
         val label =
             runCatching {
-                packageManager.getApplicationInfo(pkg, 0).loadLabel(packageManager).toString()
+                val launcherApps = getSystemService(LauncherApps::class.java)
+                val userManager = getSystemService(UserManager::class.java)
+                val userHandle = userManager.getUserForSerialNumber(userId.toLong())
+                val info = launcherApps.getActivityList(pkg, userHandle).firstOrNull()
+                info?.label?.toString() ?: pkg
             }.getOrDefault(pkg)
         showPrompt(getString(R.string.biometric_prompt_unlock_title, label))
     }
@@ -136,7 +143,11 @@ open class BiometricAuthActivity : Activity() {
         val pkg = targetPkg ?: return false
         val token = authToken ?: return false
         // just carries the token back so the hook can resume the real launch
-        val signal = packageManager.getLaunchIntentForPackage(pkg) ?: return false
+        val signal =
+            packageManager.getLaunchIntentForPackage(pkg) ?: Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                setPackage(pkg)
+            }
         signal.putExtra(EXTRA_AUTH_TOKEN, token)
         signal.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
         Log.i(TAG, "auth ok, signaling resume pkg=$pkg")
@@ -153,6 +164,7 @@ open class BiometricAuthActivity : Activity() {
         const val OPAQUE_AUTH_ACTIVITY = "$MODULE_PACKAGE.OpaqueAuthActivity"
 
         const val EXTRA_TARGET_PKG = "$MODULE_PACKAGE.TARGET_PKG"
+        const val EXTRA_TARGET_USER_ID = "$MODULE_PACKAGE.TARGET_USER_ID"
         const val EXTRA_AUTH_TOKEN = "$MODULE_PACKAGE.AUTH_TOKEN"
         const val EXTRA_TARGET_ACTIVITY = "$MODULE_PACKAGE.TARGET_ACTIVITY"
 

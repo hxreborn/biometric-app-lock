@@ -36,10 +36,10 @@ fun DashboardScreen(
     val moduleStatus by viewModel.moduleStatus.collectAsStateWithLifecycle()
     val scope by viewModel.scope.collectAsStateWithLifecycle()
     val serviceLoadEvent by viewModel.serviceLoadEvent.collectAsStateWithLifecycle()
-    val launchablePackageNames = rememberLaunchablePackageNames()
+    val launchablePackageKeys = rememberLaunchablePackageKeys()
     val lockedApps =
-        remember(scope, launchablePackageNames) {
-            scope.filterTo(linkedSetOf()) { it in launchablePackageNames }
+        remember(scope, launchablePackageKeys) {
+            scope.filterTo(linkedSetOf()) { it in launchablePackageKeys }
         }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 

@@ -3,8 +3,13 @@
 package eu.hxreborn.biometricapplock.ui.screen
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.pm.ApplicationInfo
+import android.content.pm.LauncherActivityInfo
+import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
+import android.os.UserHandle
+import android.os.UserManager
 import android.util.LruCache
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -106,6 +111,8 @@ import eu.hxreborn.biometricapplock.ui.component.SectionPosition
 import eu.hxreborn.biometricapplock.ui.theme.Tokens
 import eu.hxreborn.biometricapplock.ui.util.openAppInfo
 import eu.hxreborn.biometricapplock.ui.viewmodel.ScopeViewModel
+import eu.hxreborn.biometricapplock.util.getUserHandle
+import eu.hxreborn.biometricapplock.util.getUserId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -118,8 +125,11 @@ import kotlinx.coroutines.withContext
 private data class AppItem(
     val label: String,
     val packageName: String,
+    val userId: Int,
     val isSystem: Boolean,
-)
+) {
+    val key: String get() = "$packageName:$userId"
+}
 
 private data class AppLoadState(
     val apps: List<AppItem>,
@@ -129,29 +139,33 @@ private data class AppLoadState(
 
 @SuppressLint("QueryPermissionsNeeded")
 private suspend fun loadApps(
-    pm: PackageManager,
+    context: Context,
     ownPackage: String,
 ): List<AppItem> =
     withContext(Dispatchers.IO) {
-        val entries =
-            pm
-                .queryIntentActivities(launchableAppsIntent(), 0)
-                .asSequence()
-                .mapNotNull { resolveInfo ->
-                    val appInfo = resolveInfo.activityInfo?.applicationInfo ?: return@mapNotNull null
-                    val packageName = appInfo.packageName
-                    if (packageName == ownPackage) return@mapNotNull null
-                    packageName to appInfo
-                }.distinctBy { it.first }
-                .toList()
+        val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+        val userManager = context.getSystemService(Context.USER_SERVICE) as UserManager
+        val profiles = userManager.userProfiles
+
+        val entries = mutableListOf<Pair<LauncherActivityInfo, Int>>()
+        for (user in profiles) {
+            val userId = getUserId(user)
+            launcherApps.getActivityList(null, user).forEach { info ->
+                if (info.applicationInfo.packageName != ownPackage) {
+                    entries.add(info to userId)
+                }
+            }
+        }
 
         coroutineScope {
             entries
-                .map { (packageName, appInfo) ->
+                .map { (info, userId) ->
                     async {
+                        val appInfo = info.applicationInfo
                         AppItem(
-                            label = appInfo.loadLabel(pm).toString(),
-                            packageName = packageName,
+                            label = info.label.toString(),
+                            packageName = appInfo.packageName,
+                            userId = userId,
                             isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0,
                         )
                     }
@@ -162,15 +176,22 @@ private suspend fun loadApps(
 private val iconCache = LruCache<String, ImageBitmap>(200)
 
 @Composable
-private fun rememberAppIcon(packageName: String): ImageBitmap? {
-    val pm = LocalContext.current.packageManager
-    return produceState<ImageBitmap?>(initialValue = iconCache.get(packageName), key1 = packageName) {
+private fun rememberAppIcon(
+    packageName: String,
+    userId: Int,
+): ImageBitmap? {
+    val context = LocalContext.current
+    val key = "$packageName:$userId"
+    return produceState<ImageBitmap?>(initialValue = iconCache.get(key), key1 = key) {
         if (value != null) return@produceState
         value =
             withContext(Dispatchers.IO) {
-                runCatching { pm.getApplicationIcon(packageName).toBitmap().asImageBitmap() }
-                    .getOrNull()
-                    ?.also { iconCache.put(packageName, it) }
+                runCatching {
+                    val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+                    val userHandle = getUserHandle(userId)
+                    val info = launcherApps.getActivityList(packageName, userHandle).firstOrNull()
+                    info?.getIcon(0)?.toBitmap()?.asImageBitmap()
+                }.getOrNull()?.also { iconCache.put(key, it) }
             }
     }.value
 }
@@ -178,7 +199,6 @@ private fun rememberAppIcon(packageName: String): ImageBitmap? {
 @Composable
 private fun rememberInstalledApps(refreshKey: Int): AppLoadState {
     val context = LocalContext.current
-    val pm = context.packageManager
     val ownPackage = context.packageName
 
     return produceState(
@@ -186,7 +206,7 @@ private fun rememberInstalledApps(refreshKey: Int): AppLoadState {
         key1 = refreshKey,
     ) {
         value = AppLoadState(value.apps, isLoading = true, refreshKey = refreshKey)
-        val apps = loadApps(pm, ownPackage)
+        val apps = loadApps(context, ownPackage)
         value = AppLoadState(apps, isLoading = false, refreshKey = refreshKey)
     }.value
 }
@@ -307,7 +327,7 @@ private fun AppRow(
     onNavigateToDetail: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
-    val icon = rememberAppIcon(app.packageName)
+    val icon = rememberAppIcon(app.packageName, app.userId)
 
     SectionCard(
         position = position,
@@ -325,7 +345,15 @@ private fun AppRow(
             Spacer(modifier = Modifier.width(Tokens.PreferenceHorizontalSpacing))
             Column(modifier = Modifier.weight(1f)) {
                 AppLabel(app.label)
-                AppPackage(app.packageName)
+                AppPackage(
+                    if (app.userId ==
+                        0
+                    ) {
+                        app.packageName
+                    } else {
+                        "${app.packageName} (${stringResource(R.string.apps_user_id, app.userId)})"
+                    },
+                )
             }
             if (canToggle && onNavigateToDetail != null) {
                 Spacer(modifier = Modifier.width(Tokens.PreferenceRowTrailingSpacing))
@@ -449,7 +477,6 @@ fun AppListScreen(
 ) {
     val context = LocalContext.current
     val app = App.from(context)
-    val pm = context.packageManager
 
     val scope by viewModel.scope.collectAsStateWithLifecycle()
     val framework by viewModel.framework.collectAsStateWithLifecycle()
@@ -465,7 +492,17 @@ fun AppListScreen(
     LaunchedEffect(refreshKey) {
         val installed =
             withContext(Dispatchers.IO) {
-                pm.getInstalledApplications(0).mapTo(mutableSetOf()) { it.packageName }
+                val userManager = context.getSystemService(Context.USER_SERVICE) as UserManager
+                val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+                val profiles = userManager.userProfiles
+                val keys = mutableSetOf<String>()
+                for (user in profiles) {
+                    val userId = getUserId(user)
+                    launcherApps.getActivityList(null, user).forEach { info ->
+                        keys.add("${info.applicationInfo.packageName}:$userId")
+                    }
+                }
+                keys
             }
         app.appOverridesRepository.prune(installed)
     }
@@ -505,8 +542,8 @@ fun AppListScreen(
 
     val selectableScope =
         remember(appState.apps, scope) {
-            val appPackageNames = appState.apps.mapTo(mutableSetOf()) { it.packageName }
-            scope.filterTo(linkedSetOf()) { it in appPackageNames }
+            val appKeys = appState.apps.mapTo(mutableSetOf()) { it.key }
+            scope.filterTo(linkedSetOf()) { it in appKeys }
         }
 
     // snapshot of scope so toggling a row doesn't reorder the visible list
@@ -516,7 +553,7 @@ fun AppListScreen(
     val sortedApps =
         remember(filteredApps, scopeAtScreenOpen) {
             filteredApps.sortedWith(
-                compareByDescending<AppItem> { it.packageName in scopeAtScreenOpen }.thenBy { it.label.lowercase() },
+                compareByDescending<AppItem> { it.key in scopeAtScreenOpen }.thenBy { it.label.lowercase() },
             )
         }
 
@@ -683,7 +720,7 @@ fun AppListScreen(
                         else -> {
                             itemsIndexed(
                                 items = sortedApps,
-                                key = { _, app -> app.packageName },
+                                key = { _, app -> app.key },
                             ) { index, app ->
                                 val position =
                                     when {
@@ -694,13 +731,13 @@ fun AppListScreen(
                                     }
                                 AppRow(
                                     app = app,
-                                    isChecked = app.packageName in scope,
+                                    isChecked = app.key in scope,
                                     canToggle = serviceAvailable,
                                     onCheckedChange = { checked ->
-                                        viewModel.toggleScope(app.packageName, checked)
+                                        viewModel.toggleScope(app.key, checked)
                                     },
                                     position = position,
-                                    onNavigateToDetail = { onNavigateToAppDetail(app.packageName) },
+                                    onNavigateToDetail = { onNavigateToAppDetail(app.key) },
                                 )
                             }
                         }

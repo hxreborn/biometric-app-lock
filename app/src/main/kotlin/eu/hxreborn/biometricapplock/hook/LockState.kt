@@ -11,20 +11,30 @@ internal const val RELOCK_DELAY_NEVER = -1
 
 internal data class TaskEntry(
     val packageName: String,
+    val userId: Int,
 )
 
 @Volatile
 internal var lockedPackages: Set<String> = emptySet()
 
-// pkg -> elapsedRealtime of last interaction; entry exists iff the pkg is currently considered unlocked
+private fun packageKey(
+    pkg: String,
+    userId: Int?,
+): String = "$pkg:$userId"
+
+// pkg:userId -> elapsedRealtime of last interaction; entry exists iff the pkg is currently considered unlocked
 private val unlockedMap = ConcurrentHashMap<String, Long>()
 
 internal val unlockedPackages: Set<String>
     get() = unlockedMap.keys.toSet()
 
-internal fun isUnlocked(pkg: String): Boolean {
-    val ts = unlockedMap[pkg] ?: return false
-    val delay = getEffectiveRelockDelay(pkg)
+internal fun isUnlocked(
+    pkg: String,
+    userId: Int,
+): Boolean {
+    val key = packageKey(pkg, userId)
+    val ts = unlockedMap[key] ?: return false
+    val delay = getEffectiveRelockDelay(pkg, userId)
     if (delay == RELOCK_DELAY_NEVER) return true
     if (delay == 0) return true
     return SystemClock.elapsedRealtime() - ts < delay * 1000L
@@ -32,43 +42,67 @@ internal fun isUnlocked(pkg: String): Boolean {
 
 internal fun shouldRelockOnTransition(
     pkg: String,
+    userId: Int,
     now: Long,
 ): Boolean {
-    val delay = getEffectiveRelockDelay(pkg)
+    val key = packageKey(pkg, userId)
+    val delay = getEffectiveRelockDelay(pkg, userId)
     if (delay == RELOCK_DELAY_NEVER) return false
     if (delay == 0) return true
-    val ts = unlockedMap[pkg] ?: return true
+    val ts = unlockedMap[key] ?: return true
     return now - ts >= delay * 1000L
 }
 
-internal fun addUnlocked(pkg: String) {
-    unlockedMap[pkg] = SystemClock.elapsedRealtime()
+internal fun addUnlocked(
+    pkg: String,
+    userId: Int,
+) {
+    unlockedMap[packageKey(pkg, userId)] = SystemClock.elapsedRealtime()
 }
 
-internal fun refreshUnlock(pkg: String) {
-    unlockedMap.computeIfPresent(pkg) { _, _ -> SystemClock.elapsedRealtime() }
+internal fun refreshUnlock(
+    pkg: String,
+    userId: Int,
+) {
+    unlockedMap.computeIfPresent(packageKey(pkg, userId)) { _, _ -> SystemClock.elapsedRealtime() }
 }
 
 internal fun clearUnlocked() {
     unlockedMap.clear()
 }
 
-internal fun removeFromUnlocked(pkgs: Set<String>) {
-    pkgs.forEach { unlockedMap.remove(it) }
+internal fun removeFromUnlocked(keys: Set<String>) {
+    keys.forEach { unlockedMap.remove(it) }
 }
 
 internal val taskCache = ConcurrentHashMap<Int, TaskEntry>()
 
-internal fun clearRuntimeStateForPackage(pkg: String) {
-    unlockedMap.remove(pkg)
-    taskCache.entries.removeIf { it.value.packageName == pkg }
+internal fun clearRuntimeStateForPackage(
+    pkg: String,
+    userId: Int? = null,
+) {
+    if (userId != null) {
+        val key = packageKey(pkg, userId)
+        unlockedMap.remove(key)
+        taskCache.entries.removeIf { it.value.packageName == pkg && it.value.userId == userId }
+    } else {
+        unlockedMap.keys.removeIf { it.startsWith("$pkg:") }
+        taskCache.entries.removeIf { it.value.packageName == pkg }
+    }
 }
 
-internal fun relockOtherPackages(keepPkg: String?) {
+internal fun relockOtherPackages(
+    keepPkg: String?,
+    userId: Int?,
+) {
     if (keepPkg == BiometricAuthActivity.MODULE_PACKAGE) return
     val now = SystemClock.elapsedRealtime()
-    unlockedMap.entries.removeIf { (pkg, _) ->
-        pkg != keepPkg && shouldRelockOnTransition(pkg, now)
+    val keepKey = keepPkg?.let { packageKey(it, userId) }
+    unlockedMap.entries.removeIf { (key, _) ->
+        if (key == keepKey) return@removeIf false
+        val pkg = key.substringBeforeLast(':')
+        val uid = key.substringAfterLast(':').toIntOrNull() ?: 0
+        shouldRelockOnTransition(pkg, uid, now)
     }
 }
 
@@ -92,18 +126,23 @@ private val appBlockScreenshotsOverrides = ConcurrentHashMap<String, Boolean>()
 
 private val appAllowedActivities = ConcurrentHashMap<String, Set<String>>()
 
-internal fun getEffectiveRelockDelay(pkg: String): Int =
-    appRelockOverrides[pkg] ?: globalRelockDelaySeconds
+internal fun getEffectiveRelockDelay(
+    pkg: String,
+    userId: Int,
+): Int = appRelockOverrides[packageKey(pkg, userId)] ?: globalRelockDelaySeconds
 
-internal fun shouldBlockScreenshots(pkg: String): Boolean =
-    appBlockScreenshotsOverrides[pkg] ?: globalBlockScreenshots
+internal fun shouldBlockScreenshots(
+    pkg: String,
+    userId: Int,
+): Boolean = appBlockScreenshotsOverrides[packageKey(pkg, userId)] ?: globalBlockScreenshots
 
 internal fun isActivityAllowed(
     pkg: String,
+    userId: Int,
     className: String?,
     targetActivity: String?,
 ): Boolean {
-    val allowed = appAllowedActivities[pkg] ?: return false
+    val allowed = appAllowedActivities[packageKey(pkg, userId)] ?: return false
     if (className != null && className in allowed) return true
     return targetActivity != null && targetActivity in allowed
 }
@@ -130,24 +169,24 @@ internal fun loadHookPrefs(prefs: SharedPreferences) {
         if (!key.startsWith("app_override:")) return@forEach
         when {
             key.endsWith(":relock_delay_seconds") -> {
-                val pkg = key.removePrefix("app_override:").removeSuffix(":relock_delay_seconds")
-                appRelockOverrides[pkg] = prefs.getInt(key, 0)
+                val pkgKey = key.removePrefix("app_override:").removeSuffix(":relock_delay_seconds")
+                appRelockOverrides[pkgKey] = prefs.getInt(key, 0)
             }
 
             key.endsWith(":block_screenshots") -> {
-                val pkg = key.removePrefix("app_override:").removeSuffix(":block_screenshots")
-                appBlockScreenshotsOverrides[pkg] = prefs.getBoolean(key, false)
+                val pkgKey = key.removePrefix("app_override:").removeSuffix(":block_screenshots")
+                appBlockScreenshotsOverrides[pkgKey] = prefs.getBoolean(key, false)
             }
 
             key.endsWith(":allowed_activities") -> {
-                val pkg = key.removePrefix("app_override:").removeSuffix(":allowed_activities")
+                val pkgKey = key.removePrefix("app_override:").removeSuffix(":allowed_activities")
                 val activities =
                     prefs
                         .getString(key, "")
                         ?.split('\n')
                         ?.filterTo(mutableSetOf()) { it.isNotBlank() }
                         .orEmpty()
-                if (activities.isNotEmpty()) appAllowedActivities[pkg] = activities
+                if (activities.isNotEmpty()) appAllowedActivities[pkgKey] = activities
             }
         }
     }

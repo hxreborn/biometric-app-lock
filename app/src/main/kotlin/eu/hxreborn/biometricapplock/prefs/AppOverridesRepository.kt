@@ -140,12 +140,19 @@ class AppOverridesRepository(
             remove(blockScreenshotsKey(pkg))
         }
 
-    fun prune(installedPackages: Set<String>) {
+    fun prune(installedPackageKeys: Set<String>) {
         val keys = local.all.keys
         val overrideKeys =
             keys.filter { key ->
                 if (!key.startsWith("app_override:")) return@filter false
-                key.removePrefix("app_override:").substringBefore(":") !in installedPackages
+                // app_override:pkg:userId:suffix
+                val pkgPart = key.removePrefix("app_override:")
+                val firstColon = pkgPart.indexOf(':')
+                if (firstColon == -1) return@filter false
+                val secondColon = pkgPart.indexOf(':', firstColon + 1)
+                if (secondColon == -1) return@filter false
+                val packageKey = pkgPart.substring(0, secondColon)
+                packageKey !in installedPackageKeys
             }
         if (overrideKeys.isNotEmpty()) {
             editLocalAndRemote { overrideKeys.forEach { remove(it) } }
@@ -153,7 +160,7 @@ class AppOverridesRepository(
         val recentsKeys =
             keys.filter {
                 it.startsWith("recents:") &&
-                    it.removePrefix("recents:") !in installedPackages
+                    it.removePrefix("recents:") !in installedPackageKeys
             }
         if (recentsKeys.isNotEmpty()) {
             local.edit { recentsKeys.forEach { remove(it) } }

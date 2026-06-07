@@ -53,6 +53,7 @@
     <string name="apps_snackbar_selection_cleared">Selection cleared</string>
     <string name="apps_snackbar_undo">Undo</string>
     <string name="apps_empty_no_matches">No apps match</string>
+    <string name="apps_user_id">User %1$d</string>
 
     <string name="app_type_system">SYSTEM</string>
     <string name="app_type_user">USER</string>

@@ -121,36 +121,47 @@ private fun XposedModule.hookLaunchIntercept(classLoader: ClassLoader) {
             val intent = chain.args[intentIdx] as? Intent
             val activityInfo = chain.args[actInfoIdx] as? ActivityInfo
             val packageName = activityInfo?.packageName
+            val userId = reflection?.userIdField?.get(chain.thisObject) as? Int ?: 0
 
-            val auth = resolveAuthToken(intent, packageName)
+            val auth = resolveAuthToken(intent, packageName, userId)
             if (auth != null) {
-                val original = auth.launch
-                if (original != null) {
-                    Logger.debug { "resume original pkg=$packageName" }
-                    resumeOriginalLaunch(original)
+                if (auth.launch != null) {
+                    Logger.debug { "resume original pkg=$packageName user=$userId" }
+                    resumeOriginalLaunch(auth)
                     return@intercept true
                 }
                 return@intercept chain.proceed()
             }
 
-            relockOtherPackages(packageName)
+            relockOtherPackages(packageName, userId)
 
             val result = chain.proceed()
             if (result == true) return@intercept true
-            if (packageName == null || packageName !in lockedPackages) return@intercept false
+            val pkgKey = "$packageName:$userId"
+            if (packageName == null || pkgKey !in lockedPackages) return@intercept false
             if (intent?.hasCategory(Intent.CATEGORY_HOME) == true) return@intercept false
-            if (isActivityAllowed(packageName, activityInfo.name, activityInfo.targetActivity)) {
-                Logger.debug { "intercept allowlisted pkg=$packageName comp=${activityInfo.name}" }
+            if (isActivityAllowed(
+                    packageName,
+                    userId,
+                    activityInfo.name,
+                    activityInfo.targetActivity,
+                )
+            ) {
+                Logger.debug {
+                    "intercept allowlisted pkg=$packageName user=$userId comp=${activityInfo.name}"
+                }
                 return@intercept false
             }
-            if (isUnlocked(packageName)) {
-                refreshUnlock(packageName)
-                Logger.debug { "intercept pass pkg=$packageName comp=${activityInfo.name}" }
+            if (isUnlocked(packageName, userId)) {
+                refreshUnlock(packageName, userId)
+                Logger.debug {
+                    "intercept pass pkg=$packageName user=$userId comp=${activityInfo.name}"
+                }
                 return@intercept false
             }
 
             Logger.debug {
-                "intercept gating pkg=$packageName comp=${activityInfo.name} action=${intent?.action}"
+                "intercept gating pkg=$packageName user=$userId comp=${activityInfo.name} action=${intent?.action}"
             }
             tryRedirect(chain.thisObject, packageName, activityInfo.name)
         }
@@ -171,10 +182,12 @@ private fun XposedModule.hookActivityLaunched(classLoader: ClassLoader) {
             val taskInfo = chain.args[0] as? TaskInfo ?: return@intercept chain.proceed()
             val topActivity = taskInfo.topActivity ?: return@intercept chain.proceed()
             val packageName = topActivity.packageName
-            if (packageName in lockedPackages) {
-                taskCache[taskInfo.taskId] = TaskEntry(packageName)
+            val userId = reflection?.taskInfoUserIdField?.get(taskInfo) as? Int ?: 0
+            val pkgKey = "$packageName:$userId"
+            if (pkgKey in lockedPackages) {
+                taskCache[taskInfo.taskId] = TaskEntry(packageName, userId)
                 Logger.debug {
-                    "launched pkg=$packageName taskId=${taskInfo.taskId} top=${topActivity.shortClassName}"
+                    "launched pkg=$packageName user=$userId taskId=${taskInfo.taskId} top=${topActivity.shortClassName}"
                 }
             }
             chain.proceed()
@@ -202,13 +215,15 @@ private fun XposedModule.hookRecentsLaunch(classLoader: ClassLoader) {
             val taskId = chain.args[2] as? Int
             val entry = taskId?.let { taskCache[it] }
 
-            relockOtherPackages(entry?.packageName)
+            relockOtherPackages(entry?.packageName, entry?.userId)
 
-            if (entry != null && !isUnlocked(entry.packageName)) {
+            if (entry != null && !isUnlocked(entry.packageName, entry.userId)) {
                 val opaque = shouldUseOpaqueUnlockPrompt()
                 Logger.debug {
-                    "recents gate pkg=${entry.packageName} taskId=$taskId pid=$callingPid " +
-                        "uid=$callingUid ${recentsGesture(chain.args.getOrNull(3))} " +
+                    "recents gate pkg=${entry.packageName} user=${entry.userId} taskId=$taskId " +
+                        "pid=$callingPid uid=$callingUid ${recentsGesture(
+                            chain.args.getOrNull(3),
+                        )} " +
                         "mode=${if (opaque) "block" else "surface"}"
                 }
                 if (opaque) {
@@ -224,9 +239,9 @@ private fun XposedModule.hookRecentsLaunch(classLoader: ClassLoader) {
                 return@intercept result
             }
             if (entry != null) {
-                refreshUnlock(entry.packageName)
+                refreshUnlock(entry.packageName, entry.userId)
                 Logger.debug {
-                    "recents pass pkg=${entry.packageName} taskId=$taskId " +
+                    "recents pass pkg=${entry.packageName} user=${entry.userId} taskId=$taskId " +
                         recentsGesture(chain.args.getOrNull(3))
                 }
             }
@@ -261,7 +276,7 @@ private fun XposedModule.hookTaskRemoved(classLoader: ClassLoader) {
                 if (!shouldRelockOnTaskRemoved()) return@runCatching
                 val taskId = chain.args.getOrNull(0)?.let { taskIdField.getInt(it) }
                 val entry = taskId?.let { taskCache.remove(it) } ?: return@runCatching
-                removeFromUnlocked(setOf(entry.packageName))
+                removeFromUnlocked(setOf("${entry.packageName}:${entry.userId}"))
                 Logger.debug { "task removed relock pkg=${entry.packageName} taskId=$taskId" }
             }
             result
@@ -295,12 +310,18 @@ private fun XposedModule.hookScreenAwake(classLoader: ClassLoader) {
             if (awake == true && unlockedPackages.isNotEmpty()) {
                 // back awake, only relock the ones past their delay
                 val now = SystemClock.elapsedRealtime()
-                val toRelock = unlockedPackages.filter { shouldRelockOnTransition(it, now) }.toSet()
+                val toRelock =
+                    unlockedPackages
+                        .filter { key ->
+                            val pkg = key.substringBeforeLast(':')
+                            val uid = key.substringAfterLast(':').toIntOrNull() ?: 0
+                            shouldRelockOnTransition(pkg, uid, now)
+                        }.toSet()
                 if (toRelock.isNotEmpty()) removeFromUnlocked(toRelock)
                 Logger.debug {
                     val topPkg =
                         runCatching {
-                            reflection?.findTopResumedPackageName(chain.thisObject)
+                            reflection?.findTopResumedPackageKey(chain.thisObject)
                         }.getOrNull()
                     "screen on relocked=${toRelock.size} topPkg=$topPkg"
                 }
@@ -325,11 +346,17 @@ private fun XposedModule.hookFlagSecure(classLoader: ClassLoader) {
             windowStateClass.getDeclaredField("mActivityRecord").apply { isAccessible = true }
         val packageNameField =
             reflection?.activityRecordPackageNameField ?: error("reflection not ready")
+        val userIdField =
+            reflection?.activityRecordUserIdField ?: error("reflection not ready")
         hook(method).intercept { chain ->
             val ar = activityRecordField.get(chain.thisObject) ?: return@intercept chain.proceed()
             val pkg = packageNameField.get(ar) as? String ?: return@intercept chain.proceed()
-            if (pkg in lockedPackages && isUnlocked(pkg) && shouldBlockScreenshots(pkg)) {
-                Logger.debug { "flagsecure force-block pkg=$pkg" }
+            val userId = userIdField.get(ar) as? Int ?: 0
+            val pkgKey = "$pkg:$userId"
+            if (pkgKey in lockedPackages && isUnlocked(pkg, userId) &&
+                shouldBlockScreenshots(pkg, userId)
+            ) {
+                Logger.debug { "flagsecure force-block pkg=$pkg user=$userId" }
                 return@intercept true
             }
             chain.proceed()

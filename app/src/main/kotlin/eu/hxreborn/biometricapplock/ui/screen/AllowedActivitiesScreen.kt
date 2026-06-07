@@ -3,7 +3,9 @@
 
 package eu.hxreborn.biometricapplock.ui.screen
 
+import android.content.Context
 import android.content.Intent
+import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.text.format.DateUtils
 import androidx.compose.foundation.layout.Box
@@ -64,6 +66,7 @@ import eu.hxreborn.biometricapplock.ui.component.ExpandedTitle
 import eu.hxreborn.biometricapplock.ui.component.SectionCard
 import eu.hxreborn.biometricapplock.ui.component.SectionPosition
 import eu.hxreborn.biometricapplock.ui.theme.Tokens
+import eu.hxreborn.biometricapplock.util.getUserHandle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -81,35 +84,44 @@ private fun sectionPosition(
     }
 
 @Composable
-fun rememberLauncherActivities(packageName: String): Set<String> {
-    val pm = LocalContext.current.packageManager
-    return produceState(emptySet<String>(), packageName) {
+fun rememberLauncherActivities(packageKey: String): Set<String> {
+    val context = LocalContext.current
+    val packageName = remember(packageKey) { packageKey.substringBeforeLast(':') }
+    val userId = remember(packageKey) { packageKey.substringAfterLast(':').toIntOrNull() ?: 0 }
+    return produceState(emptySet<String>(), packageKey) {
         value =
             withContext(Dispatchers.IO) {
                 runCatching {
-                    val intent =
-                        Intent(Intent.ACTION_MAIN)
-                            .addCategory(Intent.CATEGORY_LAUNCHER)
-                            .setPackage(packageName)
-                    pm.queryIntentActivities(intent, 0).mapTo(mutableSetOf()) { it.activityInfo.name }
+                    val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+                    val userHandle = getUserHandle(userId)
+                    launcherApps.getActivityList(packageName, userHandle).mapTo(mutableSetOf()) { it.componentName.className }
                 }.getOrDefault(emptySet())
             }
     }.value
 }
 
 @Composable
-private fun rememberDeclaredActivities(packageName: String): List<String> {
-    val pm = LocalContext.current.packageManager
-    return produceState(emptyList<String>(), packageName) {
+private fun rememberDeclaredActivities(packageKey: String): List<String> {
+    val context = LocalContext.current
+    val packageName = remember(packageKey) { packageKey.substringBeforeLast(':') }
+    val userId = remember(packageKey) { packageKey.substringAfterLast(':').toIntOrNull() ?: 0 }
+    return produceState(emptyList<String>(), packageKey) {
         value =
             withContext(Dispatchers.IO) {
                 runCatching {
-                    pm
-                        .getPackageInfo(packageName, PackageManager.GET_ACTIVITIES)
-                        .activities
-                        ?.map { it.name }
-                        ?.sorted()
-                        .orEmpty()
+                    if (userId == 0) {
+                        context.packageManager
+                            .getPackageInfo(packageName, PackageManager.GET_ACTIVITIES)
+                            .activities
+                            ?.map { it.name }
+                            ?.sorted()
+                            .orEmpty()
+                    } else {
+                        // For other users, we might only be able to see launcher activities if we are not root or system
+                        val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+                        val userHandle = getUserHandle(userId)
+                        launcherApps.getActivityList(packageName, userHandle).map { it.componentName.className }.sorted()
+                    }
                 }.getOrDefault(emptyList())
             }
     }.value
@@ -215,7 +227,7 @@ fun LauncherAllowConfirmDialog(
 
 @Composable
 fun AllowedActivitiesScreen(
-    packageName: String,
+    packageKey: String,
     onBack: () -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
@@ -224,14 +236,14 @@ fun AllowedActivitiesScreen(
     val app = App.from(context)
 
     val overrides by app.appOverridesRepository
-        .observe(packageName)
+        .observe(packageKey)
         .collectAsStateWithLifecycle(initialValue = AppOverrides(null, null))
     val recents by app.appOverridesRepository
-        .observeRecentActivities(packageName)
+        .observeRecentActivities(packageKey)
         .collectAsStateWithLifecycle(initialValue = emptyList())
     val allowed = overrides.allowedActivities
-    val launcherActivities = rememberLauncherActivities(packageName)
-    val declared = rememberDeclaredActivities(packageName)
+    val launcherActivities = rememberLauncherActivities(packageKey)
+    val declared = rememberDeclaredActivities(packageKey)
 
     val recentTimes = remember(recents) { recents.associate { it.className to it.lastSeen } }
     val ordered =
@@ -257,7 +269,7 @@ fun AllowedActivitiesScreen(
             return
         }
         app.appOverridesRepository.setAllowedActivities(
-            packageName,
+            packageKey,
             if (allow) allowed + name else allowed - name,
         )
     }
@@ -265,7 +277,7 @@ fun AllowedActivitiesScreen(
     pendingLauncher?.let { name ->
         LauncherAllowConfirmDialog(
             onConfirm = {
-                app.appOverridesRepository.setAllowedActivities(packageName, allowed + name)
+                app.appOverridesRepository.setAllowedActivities(packageKey, allowed + name)
                 pendingLauncher = null
             },
             onDismiss = { pendingLauncher = null },

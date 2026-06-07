@@ -62,6 +62,10 @@ internal class SystemServerReflection(
         cl.loadClass("com.android.server.wm.ActivityRecord")
 
     val activityRecordPackageNameField: Field = activityRecordClass.getField("packageName")
+    val activityRecordUserIdField: Field = activityRecordClass.getField("mUserId")
+
+    private val taskInfoClass = cl.loadClass("android.app.TaskInfo")
+    val taskInfoUserIdField: Field = taskInfoClass.getField("userId")
 
     val intentField: Field = activityStartInterceptorClass.getField("mIntent")
     val resolvedInfoField: Field = activityStartInterceptorClass.getField("mRInfo")
@@ -93,6 +97,16 @@ internal class SystemServerReflection(
 
     val activityTaskManagerServiceField: Field = activityTaskSupervisorClass.getField("mService")
     val contextField: Field = activityTaskManagerServiceClass.getField("mContext")
+    val startActivityAsUser: Method by lazy {
+        contextField.type.getMethod(
+            "startActivityAsUser",
+            Intent::class.java,
+            android.os.UserHandle::class.java,
+        )
+    }
+    val userHandleOf: Method by lazy {
+        android.os.UserHandle::class.java.getMethod("of", Int::class.javaPrimitiveType)
+    }
     val handlerField: Field =
         activityTaskManagerServiceClass.getDeclaredField("mH").apply { isAccessible = true }
 
@@ -104,15 +118,20 @@ internal class SystemServerReflection(
     private val packageNameField: Field by lazy {
         getTopResumedActivity.returnType.getField("packageName")
     }
+    private val userIdFieldTop: Field by lazy {
+        getTopResumedActivity.returnType.getField("mUserId")
+    }
     val refreshSecureSurfaceState: Method by lazy {
         rootWindowContainerField.type.getMethod("refreshSecureSurfaceState")
     }
 
-    fun findTopResumedPackageName(activityTaskManagerService: Any): String? {
+    fun findTopResumedPackageKey(activityTaskManagerService: Any): String? {
         val rootWindowContainer =
             rootWindowContainerField.get(activityTaskManagerService) ?: return null
         val topResumedActivityRecord =
             getTopResumedActivity.invoke(rootWindowContainer) ?: return null
-        return packageNameField.get(topResumedActivityRecord) as? String
+        val pkg = packageNameField.get(topResumedActivityRecord) as? String ?: return null
+        val userId = userIdFieldTop.get(topResumedActivityRecord) as? Int ?: 0
+        return "$pkg:$userId"
     }
 }

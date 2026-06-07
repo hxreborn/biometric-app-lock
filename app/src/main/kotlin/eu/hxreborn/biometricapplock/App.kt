@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.util.Log
 import eu.hxreborn.biometricapplock.prefs.AppOverridesRepository
+import eu.hxreborn.biometricapplock.prefs.Migration
 import eu.hxreborn.biometricapplock.prefs.Prefs
 import eu.hxreborn.biometricapplock.prefs.PrefsRepository
 import eu.hxreborn.biometricapplock.updates.UpdateRepository
@@ -32,6 +33,7 @@ class App :
     override fun onCreate() {
         super.onCreate()
         val localPrefs = getSharedPreferences(Prefs.GROUP, Context.MODE_PRIVATE)
+        Migration.migrateIfNeeded(localPrefs)
         prefsRepository =
             PrefsRepository(localPrefs) {
                 runCatching { boundService?.getRemotePreferences(Prefs.GROUP) }.getOrNull()

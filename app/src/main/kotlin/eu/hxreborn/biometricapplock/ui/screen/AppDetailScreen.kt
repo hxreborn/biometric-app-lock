@@ -3,6 +3,8 @@
 
 package eu.hxreborn.biometricapplock.ui.screen
 
+import android.content.Context
+import android.content.pm.LauncherApps
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -64,12 +66,13 @@ import eu.hxreborn.biometricapplock.ui.screen.settings.PreferenceRow
 import eu.hxreborn.biometricapplock.ui.screen.settings.SettingsSectionHeader
 import eu.hxreborn.biometricapplock.ui.theme.Tokens
 import eu.hxreborn.biometricapplock.ui.util.openAppInfo
+import eu.hxreborn.biometricapplock.util.getUserHandle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 @Composable
 fun AppDetailScreen(
-    packageName: String,
+    packageKey: String,
     onBack: () -> Unit,
     contentPadding: PaddingValues,
     onNavigateToAllowedActivities: (String) -> Unit,
@@ -77,34 +80,43 @@ fun AppDetailScreen(
 ) {
     val context = LocalContext.current
     val app = App.from(context)
-    val pm = context.packageManager
 
-    val appName by produceState(initialValue = packageName, key1 = packageName) {
-        value =
-            withContext(Dispatchers.IO) {
-                runCatching { pm.getApplicationInfo(packageName, 0).loadLabel(pm).toString() }
-                    .getOrDefault(packageName)
-            }
-    }
+    val packageName = remember(packageKey) { packageKey.substringBeforeLast(':') }
+    val userId = remember(packageKey) { packageKey.substringAfterLast(':').toIntOrNull() ?: 0 }
 
-    val icon by produceState<ImageBitmap?>(initialValue = null, key1 = packageName) {
+    val appName by produceState(initialValue = packageName, key1 = packageKey) {
         value =
             withContext(Dispatchers.IO) {
                 runCatching {
-                    pm.getApplicationIcon(packageName).toBitmap().asImageBitmap()
+                    val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+                    val userHandle = getUserHandle(userId)
+                    val info = launcherApps.getActivityList(packageName, userHandle).firstOrNull()
+                    info?.label?.toString() ?: packageName
+                }.getOrDefault(packageName)
+            }
+    }
+
+    val icon by produceState<ImageBitmap?>(initialValue = null, key1 = packageKey) {
+        value =
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+                    val userHandle = getUserHandle(userId)
+                    val info = launcherApps.getActivityList(packageName, userHandle).firstOrNull()
+                    info?.getIcon(0)?.toBitmap()?.asImageBitmap()
                 }.getOrNull()
             }
     }
 
-    val versionName by produceState<String?>(initialValue = null, key1 = packageName) {
+    val versionName by produceState<String?>(initialValue = null, key1 = packageKey) {
         value =
             withContext(Dispatchers.IO) {
-                runCatching { pm.getPackageInfo(packageName, 0).versionName }.getOrNull()
+                runCatching { context.packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull()
             }
     }
 
     val overrides by app.appOverridesRepository
-        .observe(packageName)
+        .observe(packageKey)
         .collectAsStateWithLifecycle(initialValue = AppOverrides(null, null))
 
     val hasOverrides =
@@ -118,7 +130,7 @@ fun AppDetailScreen(
         RelockDelayDialog(
             currentSeconds = overrides.relockDelaySeconds ?: 0,
             onSelect = { seconds ->
-                app.appOverridesRepository.setRelockDelaySeconds(packageName, seconds)
+                app.appOverridesRepository.setRelockDelaySeconds(packageKey, seconds)
                 showRelockDialog = false
             },
             onDismiss = { showRelockDialog = false },
@@ -162,7 +174,7 @@ fun AppDetailScreen(
             item {
                 AppHeaderCard(
                     appName = appName,
-                    packageName = packageName,
+                    packageName = if (userId == 0) packageName else "$packageName (${stringResource(R.string.apps_user_id, userId)})",
                     versionName = versionName,
                     icon = icon,
                 )
@@ -177,9 +189,9 @@ fun AppDetailScreen(
                     summary = null,
                     onClick = {
                         if (hasOverrides) {
-                            app.appOverridesRepository.reset(packageName)
+                            app.appOverridesRepository.reset(packageKey)
                         } else {
-                            app.appOverridesRepository.setRelockDelaySeconds(packageName, 0)
+                            app.appOverridesRepository.setRelockDelaySeconds(packageKey, 0)
                         }
                     },
                     trailing = {
@@ -187,9 +199,9 @@ fun AppDetailScreen(
                             checked = hasOverrides,
                             onCheckedChange = { enabled ->
                                 if (enabled) {
-                                    app.appOverridesRepository.setRelockDelaySeconds(packageName, 0)
+                                    app.appOverridesRepository.setRelockDelaySeconds(packageKey, 0)
                                 } else {
-                                    app.appOverridesRepository.reset(packageName)
+                                    app.appOverridesRepository.reset(packageKey)
                                 }
                             },
                         )
@@ -216,7 +228,7 @@ fun AppDetailScreen(
                         if (hasOverrides) {
                             {
                                 app.appOverridesRepository.setBlockScreenshots(
-                                    packageName,
+                                    packageKey,
                                     overrides.blockScreenshots != true,
                                 )
                             }
@@ -247,7 +259,7 @@ fun AppDetailScreen(
                                 overrides.allowedActivities.size,
                             )
                         },
-                    onClick = { onNavigateToAllowedActivities(packageName) },
+                    onClick = { onNavigateToAllowedActivities(packageKey) },
                 )
             }
 

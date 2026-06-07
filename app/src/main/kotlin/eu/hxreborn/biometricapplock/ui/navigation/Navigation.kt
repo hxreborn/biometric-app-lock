@@ -98,12 +98,12 @@ sealed interface Screen : NavKey {
 
     @Serializable
     data class AppDetail(
-        val packageName: String,
+        val packageKey: String,
     ) : Screen
 
     @Serializable
     data class AllowedActivities(
-        val packageName: String,
+        val packageKey: String,
     ) : Screen
 }
 
@@ -215,17 +215,17 @@ fun MainNavDisplay(
                 }
                 entry<Screen.AppDetail> { appDetail ->
                     AppDetailScreen(
-                        packageName = appDetail.packageName,
+                        packageKey = appDetail.packageKey,
                         onBack = dropUnlessResumed { backStack.removeLastOrNull() },
                         contentPadding = contentPadding,
-                        onNavigateToAllowedActivities = { pkg ->
-                            backStack.add(Screen.AllowedActivities(pkg))
+                        onNavigateToAllowedActivities = { key ->
+                            backStack.add(Screen.AllowedActivities(key))
                         },
                     )
                 }
                 entry<Screen.AllowedActivities> { key ->
                     AllowedActivitiesScreen(
-                        packageName = key.packageName,
+                        packageKey = key.packageKey,
                         onBack = dropUnlessResumed { backStack.removeLastOrNull() },
                         contentPadding = contentPadding,
                     )

@@ -19,14 +19,18 @@ import eu.hxreborn.biometricapplock.util.Logger
 internal fun resolveAuthToken(
     intent: Intent?,
     packageName: String?,
+    userId: Int,
 ): PendingAuth? {
     val token = intent?.getStringExtra(BiometricAuthActivity.EXTRA_AUTH_TOKEN) ?: return null
     val pkg = packageName ?: return null
-    if (pkg !in lockedPackages) return null
     val entry = consumeToken(token) ?: return null
+    if (entry.packageName != pkg) {
+        Logger.warn("token package mismatch: expected=${entry.packageName} actual=$pkg")
+        return null
+    }
     intent.removeExtra(BiometricAuthActivity.EXTRA_AUTH_TOKEN)
-    addUnlocked(pkg)
-    Logger.info("unlocked pkg=$pkg")
+    addUnlocked(pkg, entry.userId)
+    Logger.info("unlocked pkg=$pkg user=${entry.userId}")
     return entry
 }
 
@@ -42,7 +46,8 @@ internal fun tryRedirect(
     className: String,
 ): Boolean {
     val reflection = reflection ?: return false
-    val token = createToken()
+    val userId = runCatching { reflection.userIdField.getInt(interceptor) }.getOrDefault(0)
+    val token = createToken(packageName, userId)
 
     val redirected =
         runCatching {
@@ -55,7 +60,13 @@ internal fun tryRedirect(
             val startFlags = reflection.startFlagsField.getInt(interceptor)
 
             val authIntent =
-                buildAuthIntent(packageName, token, shouldUseOpaqueUnlockPrompt(), className)
+                buildAuthIntent(
+                    packageName,
+                    userId,
+                    token,
+                    shouldUseOpaqueUnlockPrompt(),
+                    className,
+                )
             originalIntent?.let { stashLaunch(token, it) }
 
             val resolveArgs =
@@ -82,6 +93,7 @@ internal fun tryRedirect(
             reflection.activityInfoField.set(interceptor, activityInfo)
             reflection.callingPidField.setInt(interceptor, realPid)
             reflection.callingUidField.setInt(interceptor, realUid)
+            reflection.userIdField.setInt(interceptor, 0)
             reflection.resolvedTypeField.set(interceptor, null)
         }.onFailure {
             discardToken(token)
@@ -97,14 +109,18 @@ internal fun tryRedirect(
  * reliable: it holds START_ANY_ACTIVITY and skips background-launch limits, so the exact task comes
  * forward and deep links / non-exported targets land. Post off the lock, mGlobalLock is held upstream.
  */
-internal fun resumeOriginalLaunch(original: Intent) {
+internal fun resumeOriginalLaunch(auth: PendingAuth) {
     val reflection = reflection ?: return
     val atms = atmsRef ?: return
     val handler = reflection.handlerField.get(atms) as? Handler ?: return
     val context = reflection.contextField.get(atms) as? Context ?: return
+    val original = auth.launch ?: return
     val launch = Intent(original).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+    val userHandle = reflection.userHandleOf.invoke(null, auth.userId)
     handler.post {
-        runCatching { context.startActivity(launch) }.onFailure {
+        runCatching {
+            reflection.startActivityAsUser.invoke(context, launch, userHandle)
+        }.onFailure {
             Logger.error(
                 "resume launch failed: ${it.message}",
                 it,
@@ -129,8 +145,9 @@ internal fun postAuthLaunch(
     val handler = reflection.handlerField.get(activityTaskManagerService) as Handler
     val context = reflection.contextField.get(activityTaskManagerService) as Context
 
-    val token = createToken()
-    val intent = buildAuthIntent(entry.packageName, token, shouldUseOpaqueUnlockPrompt())
+    val token = createToken(entry.packageName, entry.userId)
+    val intent =
+        buildAuthIntent(entry.packageName, entry.userId, token, shouldUseOpaqueUnlockPrompt())
 
     handler.post {
         runCatching { context.startActivity(intent) }.onFailure {
@@ -143,6 +160,7 @@ internal fun postAuthLaunch(
 // translucent by default, opaque is the compat fallback for OEMs that cancel the see-through prompt
 private fun buildAuthIntent(
     targetPackageName: String,
+    targetUserId: Int,
     token: String,
     opaque: Boolean,
     className: String? = null,
@@ -155,6 +173,7 @@ private fun buildAuthIntent(
         }
     component = ComponentName(BiometricAuthActivity.MODULE_PACKAGE, authActivity)
     putExtra(BiometricAuthActivity.EXTRA_TARGET_PKG, targetPackageName)
+    putExtra(BiometricAuthActivity.EXTRA_TARGET_USER_ID, targetUserId)
     putExtra(BiometricAuthActivity.EXTRA_AUTH_TOKEN, token)
     if (!className.isNullOrEmpty()) {
         putExtra(BiometricAuthActivity.EXTRA_TARGET_ACTIVITY, className)

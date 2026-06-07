@@ -1,5 +1,7 @@
 package eu.hxreborn.biometricapplock.ui.component
 
+import android.content.Context
+import android.content.pm.LauncherApps
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -37,6 +40,7 @@ import androidx.core.graphics.drawable.toBitmap
 import eu.hxreborn.biometricapplock.R
 import eu.hxreborn.biometricapplock.ui.screen.settings.SettingsSectionHeader
 import eu.hxreborn.biometricapplock.ui.theme.Tokens
+import eu.hxreborn.biometricapplock.util.getUserHandle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -121,10 +125,10 @@ private fun FilledContent(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(Tokens.SpacingSm),
         ) {
-            visible.forEach { pkg ->
+            visible.forEach { key ->
                 AppChip(
-                    pkg = pkg,
-                    onClick = { onAppClick(pkg) },
+                    packageKey = key,
+                    onClick = { onAppClick(key) },
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -141,30 +145,33 @@ private fun FilledContent(
 
 @Composable
 private fun AppChip(
-    pkg: String,
+    packageKey: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val appName by produceState(initialValue = pkg.substringAfterLast('.'), key1 = pkg) {
+    val packageName = remember(packageKey) { packageKey.substringBeforeLast(':') }
+    val userId = remember(packageKey) { packageKey.substringAfterLast(':').toIntOrNull() ?: 0 }
+
+    val appName by produceState(initialValue = packageName.substringAfterLast('.'), key1 = packageKey) {
         value =
             withContext(Dispatchers.IO) {
                 runCatching {
-                    context.packageManager
-                        .getApplicationInfo(pkg, 0)
-                        .loadLabel(context.packageManager)
-                        .toString()
-                }.getOrDefault(pkg.substringAfterLast('.'))
+                    val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+                    val userHandle = getUserHandle(userId)
+                    val info = launcherApps.getActivityList(packageName, userHandle).firstOrNull()
+                    info?.label?.toString() ?: packageName.substringAfterLast('.')
+                }.getOrDefault(packageName.substringAfterLast('.'))
             }
     }
-    val icon by produceState<ImageBitmap?>(initialValue = null, key1 = pkg) {
+    val icon by produceState<ImageBitmap?>(initialValue = null, key1 = packageKey) {
         value =
             withContext(Dispatchers.IO) {
                 runCatching {
-                    context.packageManager
-                        .getApplicationIcon(pkg)
-                        .toBitmap()
-                        .asImageBitmap()
+                    val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+                    val userHandle = getUserHandle(userId)
+                    val info = launcherApps.getActivityList(packageName, userHandle).firstOrNull()
+                    info?.getIcon(0)?.toBitmap()?.asImageBitmap()
                 }.getOrNull()
             }
     }
