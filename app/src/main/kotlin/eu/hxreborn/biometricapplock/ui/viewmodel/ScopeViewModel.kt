@@ -12,6 +12,7 @@ import eu.hxreborn.biometricapplock.App
 import eu.hxreborn.biometricapplock.prefs.Prefs
 import eu.hxreborn.biometricapplock.util.RootShell
 import io.github.libxposed.service.XposedService
+import io.github.libxposed.service.XposedServiceHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -75,12 +76,28 @@ class ScopeViewModel(
             else -> ModuleStatus.Enabled
         }
 
+    private val serviceListener =
+        object : XposedServiceHelper.OnServiceListener {
+            override fun onServiceBind(service: XposedService) {
+                onServiceBound(service)
+            }
+
+            override fun onServiceDied(service: XposedService) {
+                onServiceDied()
+            }
+        }
+
     init {
-        app.mService?.let { onServiceBound(it) }
+        app.addServiceListener(serviceListener)
         _scope.value = readLockedPackages()
         viewModelScope.launch(Dispatchers.IO) {
             _rootGranted.value = RootShell.isRootGranted()
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        app.removeServiceListener(serviceListener)
     }
 
     fun onServiceBound(service: XposedService) {

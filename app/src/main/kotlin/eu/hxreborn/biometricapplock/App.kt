@@ -16,8 +16,7 @@ class App :
     Application(),
     XposedServiceHelper.OnServiceListener {
     @Volatile
-    var mService: XposedService? = null
-        private set
+    private var mService: XposedService? = null
 
     lateinit var prefsRepository: PrefsRepository
         private set
@@ -61,11 +60,15 @@ class App :
 
     fun addServiceListener(listener: XposedServiceHelper.OnServiceListener) {
         listeners.add(listener)
-        mService?.let { listener.onServiceBind(it) }
+        mService?.let {
+            Log.d(TAG, "listener add replay=true")
+            listener.onServiceBind(it)
+        }
     }
 
     fun removeServiceListener(listener: XposedServiceHelper.OnServiceListener) {
         listeners.remove(listener)
+        Log.d(TAG, "listener remove")
     }
 
     companion object {
