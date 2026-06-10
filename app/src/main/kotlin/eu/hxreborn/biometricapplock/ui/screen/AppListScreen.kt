@@ -7,8 +7,6 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
-import android.content.pm.PackageManager
-import android.os.UserHandle
 import android.os.UserManager
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -109,7 +107,6 @@ import eu.hxreborn.biometricapplock.ui.theme.Tokens
 import eu.hxreborn.biometricapplock.ui.util.openAppInfo
 import eu.hxreborn.biometricapplock.ui.util.rememberAppIcon
 import eu.hxreborn.biometricapplock.ui.viewmodel.ScopeViewModel
-import eu.hxreborn.biometricapplock.util.getUserHandle
 import eu.hxreborn.biometricapplock.util.getUserId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -321,9 +318,7 @@ private fun AppRow(
             Column(modifier = Modifier.weight(1f)) {
                 AppLabel(app.label)
                 AppPackage(
-                    if (app.userId ==
-                        0
-                    ) {
+                    if (app.userId == 0) {
                         app.packageName
                     } else {
                         "${app.packageName} (${stringResource(R.string.apps_user_id, app.userId)})"
@@ -401,17 +396,11 @@ private fun ShimmerListItem(modifier: Modifier = Modifier) {
         )
 
     Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(Tokens.PreferencePadding),
+        modifier = modifier.fillMaxWidth().padding(Tokens.PreferencePadding),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            modifier =
-                Modifier
-                    .size(Tokens.AppIconSize)
-                    .background(shimmerBrush, RoundedCornerShape(Tokens.AppIconCornerRadius)),
+            modifier = Modifier.size(Tokens.AppIconSize).background(shimmerBrush, RoundedCornerShape(Tokens.AppIconCornerRadius)),
         )
         Spacer(modifier = Modifier.width(Tokens.PreferenceHorizontalSpacing))
         Column(modifier = Modifier.weight(1f)) {
@@ -615,10 +604,7 @@ fun AppListScreen(
         }
 
         Box(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(top = innerPadding.calculateTopPadding()),
+            modifier = Modifier.fillMaxSize().padding(top = innerPadding.calculateTopPadding()),
         ) {
             PullToRefreshBox(
                 isRefreshing = isRefreshing,
@@ -643,15 +629,12 @@ fun AppListScreen(
                 LazyColumn(
                     state = lazyListState,
                     modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .nestedScroll(scrollBehavior.nestedScrollConnection)
-                            .scrollbar(
-                                lazyListState,
-                                scrollbarColor,
-                                scrollbarAlpha,
-                                contentPadding.calculateBottomPadding() + Tokens.SpacingLg,
-                            ),
+                        Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection).scrollbar(
+                            lazyListState,
+                            scrollbarColor,
+                            scrollbarAlpha,
+                            contentPadding.calculateBottomPadding() + Tokens.SpacingLg,
+                        ),
                     contentPadding =
                         PaddingValues(
                             top = Tokens.SpacingSm,
@@ -679,10 +662,7 @@ fun AppListScreen(
                         sortedApps.isEmpty() -> {
                             item(key = "empty") {
                                 Box(
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .padding(Tokens.SpacingLg),
+                                    modifier = Modifier.fillMaxWidth().padding(Tokens.SpacingLg),
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Text(
@@ -726,10 +706,7 @@ fun AppListScreen(
 
             SnackbarHost(
                 hostState = snackbarHostState,
-                modifier =
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = contentPadding.calculateBottomPadding()),
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = contentPadding.calculateBottomPadding()),
             )
         }
     }

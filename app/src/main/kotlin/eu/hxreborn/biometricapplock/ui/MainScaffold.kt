@@ -52,16 +52,12 @@ fun MainScaffold(viewModel: ScopeViewModel) {
     var showUpdateSheet by remember { mutableStateOf(false) }
     var shownForVersion by remember { mutableStateOf<String?>(null) }
 
-    val hasUnseenUpdate =
-        cachedAvailable?.latestVersion?.let { it != prefs.lastDismissedAvailableVersion } == true
+    val hasUnseenUpdate = cachedAvailable?.latestVersion?.let { it != prefs.lastDismissedAvailableVersion } == true
 
     LaunchedEffect(updateState) {
         val state = updateState
         val dismissed = app.prefsRepository.read(Prefs.LAST_DISMISSED_AVAILABLE_VERSION)
-        if (state is UpdateState.Available &&
-            state.latestVersion != dismissed &&
-            shownForVersion != state.latestVersion
-        ) {
+        if (state is UpdateState.Available && state.latestVersion != dismissed && shownForVersion != state.latestVersion) {
             delay(800L)
             shownForVersion = state.latestVersion
             showUpdateSheet = true

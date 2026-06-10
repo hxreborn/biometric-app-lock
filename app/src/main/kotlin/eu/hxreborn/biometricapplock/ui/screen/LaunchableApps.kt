@@ -2,7 +2,6 @@ package eu.hxreborn.biometricapplock.ui.screen
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.Intent
 import android.content.pm.LauncherApps
 import android.os.UserManager
 import androidx.compose.runtime.Composable

@@ -58,8 +58,7 @@ internal class SystemServerReflection(
         )
     private val activityTaskManagerServiceClass =
         cl.loadClass("com.android.server.wm.ActivityTaskManagerService")
-    private val activityRecordClass =
-        cl.loadClass("com.android.server.wm.ActivityRecord")
+    private val activityRecordClass = cl.loadClass("com.android.server.wm.ActivityRecord")
 
     val activityRecordPackageNameField: Field = activityRecordClass.getField("packageName")
     val activityRecordUserIdField: Field = activityRecordClass.getField("mUserId")

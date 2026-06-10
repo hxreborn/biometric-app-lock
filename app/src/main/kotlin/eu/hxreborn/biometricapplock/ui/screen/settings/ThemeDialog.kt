@@ -1,4 +1,3 @@
-
 package eu.hxreborn.biometricapplock.ui.screen.settings
 
 import androidx.compose.foundation.layout.Column

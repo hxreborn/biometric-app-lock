@@ -20,8 +20,13 @@ object RootShell {
 
     fun exec(vararg commands: String): Result =
         runCatching { runShell(commands) }
-            .onFailure { Log.w(Logger.TAG, "su exec failed: ${it.message}", it) }
-            .getOrDefault(FAILURE)
+            .onFailure {
+                Log.w(
+                    Logger.TAG,
+                    "su exec failed: ${it.message}",
+                    it,
+                )
+            }.getOrDefault(FAILURE)
 
     fun isRootGranted(): Boolean = exec("true").code == 0
 

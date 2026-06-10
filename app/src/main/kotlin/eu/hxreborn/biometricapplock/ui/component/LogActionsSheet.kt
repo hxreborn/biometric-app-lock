@@ -82,12 +82,10 @@ fun LogActionsSheet(
     ) {
         Box(
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        horizontal = Tokens.SheetContentPadding,
-                        vertical = Tokens.SheetSectionSpacing,
-                    ),
+                Modifier.fillMaxWidth().padding(
+                    horizontal = Tokens.SheetContentPadding,
+                    vertical = Tokens.SheetSectionSpacing,
+                ),
             contentAlignment = Alignment.Center,
         ) {
             AnimatedContent(
@@ -96,8 +94,13 @@ fun LogActionsSheet(
                 transitionSpec = {
                     val animation = spring<Float>(stiffness = Spring.StiffnessLow)
                     (fadeIn(animation) + scaleIn(animation, initialScale = 0.85f))
-                        .togetherWith(fadeOut(animation) + scaleOut(animation, targetScale = 0.85f))
-                        .using(SizeTransform(clip = false) { _, _ -> spring(stiffness = Spring.StiffnessMediumLow) })
+                        .togetherWith(
+                            fadeOut(animation) +
+                                scaleOut(
+                                    animation,
+                                    targetScale = 0.85f,
+                                ),
+                        ).using(SizeTransform(clip = false) { _, _ -> spring(stiffness = Spring.StiffnessMediumLow) })
                 },
                 label = "logActions",
             ) { busy ->

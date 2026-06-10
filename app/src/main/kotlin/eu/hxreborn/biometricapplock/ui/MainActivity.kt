@@ -129,8 +129,7 @@ class MainActivity :
     private fun promptUnlock(credentialOnly: Boolean = false) {
         if (promptInFlight) return
         val bm = getSystemService(BiometricManager::class.java)
-        val authenticators =
-            if (credentialOnly) Authenticators.DEVICE_CREDENTIAL else pickAuthenticators(bm)
+        val authenticators = if (credentialOnly) Authenticators.DEVICE_CREDENTIAL else pickAuthenticators(bm)
         if (authenticators == null) {
             // allow if no security enrolled for module settings app
             selfLock.setUnlocked()

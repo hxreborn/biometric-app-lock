@@ -55,10 +55,7 @@ fun RelockDelayDialog(
             Column {
                 options.forEach { (seconds, labelRes) ->
                     Row(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable { onSelect(seconds) },
+                        modifier = Modifier.fillMaxWidth().clickable { onSelect(seconds) },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         RadioButton(

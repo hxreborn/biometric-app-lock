@@ -129,8 +129,9 @@ class AppOverridesRepository(
         val key = recentsKey(pkg)
         val existing = parseRecents(local.getString(key, null)).filter { it.className != className }
         val updated =
-            (listOf(RecentActivity(className, System.currentTimeMillis())) + existing)
-                .take(MAX_RECENT_ACTIVITIES)
+            (listOf(RecentActivity(className, System.currentTimeMillis())) + existing).take(
+                MAX_RECENT_ACTIVITIES,
+            )
         local.edit { putString(key, serializeRecents(updated)) }
     }
 
@@ -159,8 +160,7 @@ class AppOverridesRepository(
         }
         val recentsKeys =
             keys.filter {
-                it.startsWith("recents:") &&
-                    it.removePrefix("recents:") !in installedPackageKeys
+                it.startsWith("recents:") && it.removePrefix("recents:") !in installedPackageKeys
             }
         if (recentsKeys.isNotEmpty()) {
             local.edit { recentsKeys.forEach { remove(it) } }

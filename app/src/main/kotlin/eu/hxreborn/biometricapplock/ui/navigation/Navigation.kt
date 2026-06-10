@@ -241,8 +241,7 @@ fun MainNavDisplay(
                         framework = framework,
                         rootGranted = rootGranted,
                         onNavigateToAbout = dropUnlessResumed { backStack.add(Screen.About) },
-                        onNavigateToAppManagement =
-                            dropUnlessResumed { backStack.add(Screen.AppManagement) },
+                        onNavigateToAppManagement = dropUnlessResumed { backStack.add(Screen.AppManagement) },
                         onShowUpdateSheet = onShowUpdateSheet,
                         contentPadding = contentPadding,
                     )

@@ -208,11 +208,9 @@ private fun readBiometricState(context: Context): BiometricState {
     val hasFace = pm.hasSystemFeature(PackageManager.FEATURE_FACE)
 
     val strongStatus =
-        runCatching { bm?.canAuthenticate(Authenticators.BIOMETRIC_STRONG) }
-            .getOrNull() ?: BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE
+        runCatching { bm?.canAuthenticate(Authenticators.BIOMETRIC_STRONG) }.getOrNull() ?: BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE
     val weakStatus =
-        runCatching { bm?.canAuthenticate(Authenticators.BIOMETRIC_WEAK) }
-            .getOrNull() ?: BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE
+        runCatching { bm?.canAuthenticate(Authenticators.BIOMETRIC_WEAK) }.getOrNull() ?: BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE
 
     val strongestClass: ClassLabel? =
         when {

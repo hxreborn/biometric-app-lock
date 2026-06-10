@@ -55,10 +55,7 @@ fun ChangelogSheet(
     }
 
     val latestVersionForMatch = cachedAvailable?.latestVersion ?: BuildConfig.VERSION_NAME
-    val hasMatchingChangelogEntry =
-        cachedEntries
-            ?.any { it.version != null && it.version == latestVersionForMatch }
-            ?: false
+    val hasMatchingChangelogEntry = cachedEntries?.any { it.version != null && it.version == latestVersionForMatch } ?: false
 
     val sheetState =
         if (!minDelayPassed) {
@@ -79,19 +76,17 @@ fun ChangelogSheet(
         }
 
     val items =
-        cachedEntries
-            ?.filter { it.version == latestVersionForMatch }
-            ?.map { entry ->
-                val type = ChangeType.from(entry.type, entry.breaking)
-                FeatureSheetItem(
-                    label = stringResource(changeTypeLabelRes(type)),
-                    scope = entry.scope?.takeIf { it.isNotBlank() },
-                    changeType = type,
-                    title = entry.title,
-                    body = entry.description,
-                    onClick = entry.url?.let { url -> { uriHandler.openUri(url) } },
-                )
-            } ?: emptyList()
+        cachedEntries?.filter { it.version == latestVersionForMatch }?.map { entry ->
+            val type = ChangeType.from(entry.type, entry.breaking)
+            FeatureSheetItem(
+                label = stringResource(changeTypeLabelRes(type)),
+                scope = entry.scope?.takeIf { it.isNotBlank() },
+                changeType = type,
+                title = entry.title,
+                body = entry.description,
+                onClick = entry.url?.let { url -> { uriHandler.openUri(url) } },
+            )
+        } ?: emptyList()
 
     WhatsNewSheet(
         state = sheetState,

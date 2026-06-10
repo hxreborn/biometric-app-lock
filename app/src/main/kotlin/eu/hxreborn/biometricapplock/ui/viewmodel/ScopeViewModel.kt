@@ -41,8 +41,7 @@ class ScopeViewModel(
     application: Application,
 ) : AndroidViewModel(application) {
     private val app = App.from(application)
-    private val localPrefs =
-        application.getSharedPreferences(Prefs.GROUP, Context.MODE_PRIVATE)
+    private val localPrefs = application.getSharedPreferences(Prefs.GROUP, Context.MODE_PRIVATE)
 
     private val _framework = MutableStateFlow<FrameworkInfo?>(null)
     val framework: StateFlow<FrameworkInfo?> = _framework.asStateFlow()
@@ -65,9 +64,7 @@ class ScopeViewModel(
     }
 
     val moduleStatus: StateFlow<ModuleStatus> =
-        _framework
-            .map(::deriveStatus)
-            .stateIn(viewModelScope, SharingStarted.Eagerly, deriveStatus(_framework.value))
+        _framework.map(::deriveStatus).stateIn(viewModelScope, SharingStarted.Eagerly, deriveStatus(_framework.value))
 
     private fun deriveStatus(framework: FrameworkInfo?): ModuleStatus =
         when {
@@ -106,8 +103,7 @@ class ScopeViewModel(
                 name = service.frameworkName,
                 version = "v${service.frameworkVersion}",
             )
-        _serviceLoadEvent.value =
-            ServiceLoadEvent.Boot(System.currentTimeMillis() - SystemClock.elapsedRealtime())
+        _serviceLoadEvent.value = ServiceLoadEvent.Boot(System.currentTimeMillis() - SystemClock.elapsedRealtime())
     }
 
     fun onServiceDied() {

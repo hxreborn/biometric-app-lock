@@ -17,6 +17,5 @@ fun openAppInfo(
             .setData(Uri.parse("package:$packageName"))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
-    runCatching { context.startActivity(intent) }
-        .onFailure { Log.w(TAG, "openAppInfo failed pkg=$packageName: ${it.message}") }
+    runCatching { context.startActivity(intent) }.onFailure { Log.w(TAG, "openAppInfo failed pkg=$packageName: ${it.message}") }
 }

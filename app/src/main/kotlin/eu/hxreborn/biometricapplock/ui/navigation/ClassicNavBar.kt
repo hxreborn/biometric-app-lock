@@ -52,11 +52,9 @@ import androidx.navigation3.runtime.NavKey
 import eu.hxreborn.biometricapplock.ui.theme.Tokens
 import kotlinx.coroutines.launch
 
-internal val LocalSelectedIndex: ProvidableCompositionLocal<Int> =
-    compositionLocalOf { 0 }
+internal val LocalSelectedIndex: ProvidableCompositionLocal<Int> = compositionLocalOf { 0 }
 
-internal val LocalItemCount: ProvidableCompositionLocal<Int> =
-    compositionLocalOf { 0 }
+internal val LocalItemCount: ProvidableCompositionLocal<Int> = compositionLocalOf { 0 }
 
 private object StretchingPillOverride : NavigationBarOverride {
     @Composable
@@ -73,27 +71,20 @@ private object StretchingPillOverride : NavigationBarOverride {
             modifier = modifier,
         ) {
             BoxWithConstraints(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .windowInsetsPadding(windowInsets)
-                        .height(Tokens.ClassicNavBarHeight),
+                modifier = Modifier.fillMaxWidth().windowInsetsPadding(windowInsets).height(Tokens.ClassicNavBarHeight),
             ) {
                 val totalWidth = maxWidth
                 val totalSpacing = Tokens.ClassicNavBarItemSpacing * (itemCount - 1)
                 val itemWidth = (totalWidth - totalSpacing) / itemCount
 
                 fun pillStartFor(index: Int): Dp =
-                    (itemWidth + Tokens.ClassicNavBarItemSpacing) * index +
-                        (itemWidth - Tokens.ClassicNavBarPillWidth) / 2
+                    (itemWidth + Tokens.ClassicNavBarItemSpacing) * index + (itemWidth - Tokens.ClassicNavBarPillWidth) / 2
 
                 fun pillEndFor(index: Int): Dp = pillStartFor(index) + Tokens.ClassicNavBarPillWidth
 
                 val initialIndex = remember { selectedIndex }
-                val startEdge =
-                    remember { Animatable(pillStartFor(initialIndex), Dp.VectorConverter) }
-                val endEdge =
-                    remember { Animatable(pillEndFor(initialIndex), Dp.VectorConverter) }
+                val startEdge = remember { Animatable(pillStartFor(initialIndex), Dp.VectorConverter) }
+                val endEdge = remember { Animatable(pillEndFor(initialIndex), Dp.VectorConverter) }
 
                 LaunchedEffect(selectedIndex, itemWidth) {
                     val newStart = pillStartFor(selectedIndex)
@@ -141,8 +132,7 @@ fun ClassicBottomNav(
 ) {
     val haptics = LocalHapticFeedback.current
     val selectedIndex = bottomNavItems.indexOfFirst { it.key == currentKey }.coerceAtLeast(0)
-    val transparentIndicatorColors =
-        NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
+    val transparentIndicatorColors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
 
     CompositionLocalProvider(
         LocalSelectedIndex provides selectedIndex,

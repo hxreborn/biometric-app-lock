@@ -84,10 +84,7 @@ fun StatusCard(
         }
 
     Surface(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(horizontal = Tokens.SectionHorizontalMargin, vertical = Tokens.SectionItemSpacing),
+        modifier = modifier.fillMaxWidth().padding(horizontal = Tokens.SectionHorizontalMargin, vertical = Tokens.SectionItemSpacing),
         shape = MaterialTheme.shapes.large,
         color = visual.container,
         contentColor = visual.content,

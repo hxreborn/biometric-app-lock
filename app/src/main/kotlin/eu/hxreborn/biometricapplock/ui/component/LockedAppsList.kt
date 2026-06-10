@@ -74,13 +74,10 @@ fun LockedAppsSection(
 private fun EmptyContent(onClick: () -> Unit) {
     Row(
         modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(
-                    horizontal = Tokens.PreferenceRowHorizontalPadding,
-                    vertical = Tokens.PreferenceRowVerticalPadding,
-                ),
+            Modifier.fillMaxWidth().clickable(onClick = onClick).padding(
+                horizontal = Tokens.PreferenceRowHorizontalPadding,
+                vertical = Tokens.PreferenceRowVerticalPadding,
+            ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Tokens.PreferenceHorizontalSpacing),
     ) {
@@ -177,10 +174,7 @@ private fun AppChip(
     }
 
     Column(
-        modifier =
-            modifier
-                .clickable(onClick = onClick)
-                .padding(vertical = Tokens.SpacingXs),
+        modifier = modifier.clickable(onClick = onClick).padding(vertical = Tokens.SpacingXs),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Surface(
@@ -217,10 +211,7 @@ private fun OverflowChip(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier =
-            modifier
-                .clickable(onClick = onClick)
-                .padding(vertical = Tokens.SpacingXs),
+        modifier = modifier.clickable(onClick = onClick).padding(vertical = Tokens.SpacingXs),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Surface(

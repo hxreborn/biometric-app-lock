@@ -1,4 +1,3 @@
-
 package eu.hxreborn.biometricapplock.ui.component
 
 import androidx.compose.foundation.layout.size

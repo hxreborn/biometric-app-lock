@@ -24,12 +24,10 @@ fun SectionCard(
     content: @Composable () -> Unit,
 ) {
     val cardModifier =
-        modifier
-            .fillMaxWidth()
-            .padding(
-                horizontal = Tokens.SectionHorizontalMargin,
-                vertical = Tokens.SectionItemSpacing,
-            )
+        modifier.fillMaxWidth().padding(
+            horizontal = Tokens.SectionHorizontalMargin,
+            vertical = Tokens.SectionItemSpacing,
+        )
     val colors =
         CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,

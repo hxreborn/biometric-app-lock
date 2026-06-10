@@ -171,12 +171,9 @@ fun WhatsNewSheet(
 
             Column(
                 modifier =
-                    Modifier
-                        .weight(1f, fill = false)
-                        .verticalScroll(rememberScrollState())
-                        .onSizeChanged { size ->
-                            contentHeight.value = with(density) { size.height.toDp() }
-                        },
+                    Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).onSizeChanged { size ->
+                        contentHeight.value = with(density) { size.height.toDp() }
+                    },
                 verticalArrangement = Arrangement.spacedBy(Tokens.SheetSectionSpacing),
             ) {
                 SheetHeader(versionLabel = versionLabel, title = title, itemCount = itemCount)
@@ -276,8 +273,13 @@ private fun SheetBody(
                         targetState = state,
                         contentKey = { it::class },
                         transitionSpec = {
-                            (fadeIn(tween(600)) + scaleIn(tween(600), initialScale = 0.6f))
-                                .togetherWith(fadeOut(tween(400)) + scaleOut(tween(400), targetScale = 0.6f))
+                            (fadeIn(tween(600)) + scaleIn(tween(600), initialScale = 0.6f)).togetherWith(
+                                fadeOut(tween(400)) +
+                                    scaleOut(
+                                        tween(400),
+                                        targetScale = 0.6f,
+                                    ),
+                            )
                         },
                         label = "updateBadge",
                     ) { target ->
@@ -560,12 +562,10 @@ private fun TypeSection(
 
     Surface(
         modifier =
-            Modifier
-                .fillMaxWidth()
-                .graphicsLayer {
-                    alpha = cardAlpha.value
-                    translationY = cardOffsetY.value
-                },
+            Modifier.fillMaxWidth().graphicsLayer {
+                alpha = cardAlpha.value
+                translationY = cardOffsetY.value
+            },
         shape = MaterialTheme.shapes.large,
         color = cs.surfaceContainerHigh,
     ) {
@@ -781,13 +781,10 @@ private fun PrimaryAction(
         enabled = enabled,
         interactionSource = interactionSource,
         modifier =
-            Modifier
-                .fillMaxWidth()
-                .height(Tokens.PrimaryActionHeight)
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                },
+            Modifier.fillMaxWidth().height(Tokens.PrimaryActionHeight).graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
         shape = CircleShape,
         colors =
             ButtonDefaults.buttonColors(
