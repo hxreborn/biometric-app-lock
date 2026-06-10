@@ -29,7 +29,13 @@ internal fun resolveAuthToken(
         return null
     }
     intent.removeExtra(BiometricAuthActivity.EXTRA_AUTH_TOKEN)
-    addUnlocked(pkg, entry.userId)
+    // install/uninstall handlers get the action-keyed grant, not the per-pkg unlock map, so an
+    // install auth can't silently authorize an uninstall
+    if (isSystemHandler(pkg)) {
+        grantSystemHandler(entry.launch?.action)
+    } else {
+        addUnlocked(pkg, entry.userId)
+    }
     Logger.info("unlocked pkg=$pkg user=${entry.userId}")
     return entry
 }
@@ -115,7 +121,15 @@ internal fun resumeOriginalLaunch(auth: PendingAuth) {
     val handler = reflection.handlerField.get(atms) as? Handler ?: return
     val context = reflection.contextField.get(atms) as? Context ?: return
     val original = auth.launch ?: return
-    val launch = Intent(original).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+    val launch =
+        Intent(original).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            // the replay runs as the system uid, so without this documented hint the installer
+            // would stack an unknown-sources warning in front of its dialog
+            if (isSystemHandler(auth.packageName)) {
+                putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
+            }
+        }
     val userHandle = reflection.userHandleOf.invoke(null, auth.userId)
     handler.post {
         runCatching {
@@ -153,6 +167,36 @@ internal fun postAuthLaunch(
         runCatching { context.startActivity(intent) }.onFailure {
             discardToken(token)
             Logger.error("posted auth launch failed: ${it.message}", it)
+        }
+    }
+}
+
+/**
+ * Uninstall backstop prompt, fired from the deletePackageX hook. No token round-trip and no
+ * resume: the prompt writes a grant timestamp to remote prefs and the hook reads it when the
+ * caller retries. Always opaque, there is no foreground task behind it to surface.
+ */
+internal fun launchUninstallAuth(targetPackage: String?) {
+    val reflection = reflection ?: return
+    val atms = atmsRef ?: return
+    val handler = reflection.handlerField.get(atms) as? Handler ?: return
+    val context = reflection.contextField.get(atms) as? Context ?: return
+    val intent =
+        Intent().apply {
+            component =
+                ComponentName(
+                    BiometricAuthActivity.MODULE_PACKAGE,
+                    BiometricAuthActivity.OPAQUE_AUTH_ACTIVITY,
+                )
+            putExtra(BiometricAuthActivity.EXTRA_UNINSTALL_AUTH, true)
+            if (!targetPackage.isNullOrEmpty()) {
+                putExtra(BiometricAuthActivity.EXTRA_TARGET_PKG, targetPackage)
+            }
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+    handler.post {
+        runCatching { context.startActivity(intent) }.onFailure {
+            Logger.error("uninstall auth launch failed: ${it.message}", it)
         }
     }
 }

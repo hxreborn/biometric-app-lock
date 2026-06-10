@@ -18,6 +18,15 @@ object Prefs {
     val PREVENT_MODULE_UNINSTALL = BoolPref("prevent_module_uninstall", false)
     val SELF_LOCK = BoolPref("self_lock", false)
 
+    // require biometric before the system install/uninstall dialogs, regardless of which app or
+    // source started the action. uninstall is also backstopped at the binder delete path
+    val REQUIRE_BIOMETRIC_INSTALL = BoolPref("require_biometric_install", false)
+    val REQUIRE_BIOMETRIC_UNINSTALL = BoolPref("require_biometric_uninstall", false)
+
+    // wall-clock millis the prompt writes after a successful uninstall auth. any value within the
+    // last 60s counts as a fresh grant, so the user authenticates once and the retry proceeds
+    val UNINSTALL_AUTH_GRANT_MS = LongPref("uninstall_auth_grant_ms", 0L)
+
     // hook reads this to gauge cache staleness
     val LAST_REMOTE_WRITE = LongPref("_last_remote_write", 0L)
 
@@ -45,6 +54,9 @@ object Prefs {
             USE_OPAQUE_UNLOCK_PROMPT,
             PREVENT_MODULE_UNINSTALL,
             SELF_LOCK,
+            REQUIRE_BIOMETRIC_INSTALL,
+            REQUIRE_BIOMETRIC_UNINSTALL,
+            UNINSTALL_AUTH_GRANT_MS,
             LAST_REMOTE_WRITE,
             FLOATING_NAV_BAR,
             AUTO_CHECK_UPDATE,

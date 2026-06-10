@@ -21,6 +21,8 @@ data class AppPrefs(
     val useOpaqueUnlockPrompt: Boolean,
     val preventModuleUninstall: Boolean,
     val selfLock: Boolean,
+    val requireBiometricInstall: Boolean,
+    val requireBiometricUninstall: Boolean,
     val autoCheckUpdate: Boolean,
     val lastDismissedAvailableVersion: String,
 ) {
@@ -38,6 +40,8 @@ data class AppPrefs(
                 useOpaqueUnlockPrompt = false,
                 preventModuleUninstall = false,
                 selfLock = false,
+                requireBiometricInstall = false,
+                requireBiometricUninstall = false,
                 autoCheckUpdate = true,
                 lastDismissedAvailableVersion = "",
             )
@@ -64,6 +68,8 @@ class PrefsRepository(
                         useOpaqueUnlockPrompt = Prefs.USE_OPAQUE_UNLOCK_PROMPT.read(local),
                         preventModuleUninstall = Prefs.PREVENT_MODULE_UNINSTALL.read(local),
                         selfLock = Prefs.SELF_LOCK.read(local),
+                        requireBiometricInstall = Prefs.REQUIRE_BIOMETRIC_INSTALL.read(local),
+                        requireBiometricUninstall = Prefs.REQUIRE_BIOMETRIC_UNINSTALL.read(local),
                         autoCheckUpdate = Prefs.AUTO_CHECK_UPDATE.read(local),
                         lastDismissedAvailableVersion =
                             Prefs.LAST_DISMISSED_AVAILABLE_VERSION.read(
@@ -74,8 +80,7 @@ class PrefsRepository(
             }
 
             emit()
-            val listener =
-                SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> emit() }
+            val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> emit() }
             local.registerOnSharedPreferenceChangeListener(listener)
             awaitClose { local.unregisterOnSharedPreferenceChangeListener(listener) }
         }

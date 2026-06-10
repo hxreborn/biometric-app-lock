@@ -36,6 +36,21 @@ private fun ensurePackageEventsRegistered() {
     registerPackageEvents(ctx, handler)
 }
 
+// PackageManager is not published at onSystemServerStarting, so the install/uninstall handler
+// resolution comes back empty at boot. once an intercept fires the system is up, so replay
+// loadHookPrefs off the lock and the handler set fills in for subsequent launches
+private fun postBootPrefsRefresh() {
+    val atms = atmsRef ?: return
+    val r = reflection ?: return
+    val handler = r.handlerField.get(atms) as? Handler ?: return
+    val prefs = hookPrefs ?: return
+    handler.post {
+        runCatching {
+            loadHookPrefs(prefs)
+        }.onFailure { Logger.warn("post-boot prefs refresh failed: ${it.message}") }
+    }
+}
+
 // toast on the ATMS handler, the PMS lock is held here
 private fun postUninstallBlockedToast() {
     val atms = atmsRef ?: return
@@ -116,6 +131,7 @@ private fun XposedModule.hookLaunchIntercept(classLoader: ClassLoader) {
             if (atmsRef == null) {
                 atmsRef = captureAtms(chain.thisObject)
                 ensurePackageEventsRegistered()
+                postBootPrefsRefresh()
             }
 
             val intent = chain.args[intentIdx] as? Intent
@@ -137,8 +153,27 @@ private fun XposedModule.hookLaunchIntercept(classLoader: ClassLoader) {
 
             val result = chain.proceed()
             if (result == true) return@intercept true
+            if (packageName == null) return@intercept false
+            if (isSystemHandler(packageName)) {
+                if (!shouldInterceptSystemHandler(intent?.action)) {
+                    Logger.debug {
+                        "intercept skip system-handler pkg=$packageName action=${intent?.action}"
+                    }
+                    return@intercept false
+                }
+                if (isSystemHandlerGrantFresh(intent?.action)) {
+                    Logger.debug {
+                        "intercept pass system-handler pkg=$packageName action=${intent?.action}"
+                    }
+                    return@intercept false
+                }
+                Logger.debug {
+                    "intercept gating system-handler pkg=$packageName action=${intent?.action}"
+                }
+                return@intercept tryRedirect(chain.thisObject, packageName, activityInfo.name)
+            }
             val pkgKey = "$packageName:$userId"
-            if (packageName == null || pkgKey !in lockedPackages) return@intercept false
+            if (pkgKey !in lockedPackages) return@intercept false
             if (intent?.hasCategory(Intent.CATEGORY_HOME) == true) return@intercept false
             if (isActivityAllowed(
                     packageName,
@@ -221,28 +256,39 @@ private fun XposedModule.hookRecentsLaunch(classLoader: ClassLoader) {
                 val opaque = shouldUseOpaqueUnlockPrompt()
                 Logger.debug {
                     "recents gate pkg=${entry.packageName} user=${entry.userId} taskId=$taskId " +
-                        "pid=$callingPid uid=$callingUid ${recentsGesture(
-                            chain.args.getOrNull(3),
-                        )} " +
-                        "mode=${if (opaque) "block" else "surface"}"
+                        "pid=$callingPid uid=$callingUid ${
+                            recentsGesture(
+                                chain.args.getOrNull(3),
+                            )
+                        } " + "mode=${if (opaque) "block" else "surface"}"
                 }
                 if (opaque) {
                     // don't surface the task or it steals focus from the solid prompt.
                     // a quick switch still backgrounds the prompt though, so it self-cancels there
-                    runCatching { postAuthLaunch(chain.thisObject, entry) }
-                        .onFailure { Logger.error("recents auth failed: ${it.message}", it) }
+                    runCatching {
+                        postAuthLaunch(
+                            chain.thisObject,
+                            entry,
+                        )
+                    }.onFailure { Logger.error("recents auth failed: ${it.message}", it) }
                     return@intercept 0
                 }
                 val result = chain.proceed()
-                runCatching { postAuthLaunch(chain.thisObject, entry) }
-                    .onFailure { Logger.error("recents auth failed: ${it.message}", it) }
+                runCatching {
+                    postAuthLaunch(
+                        chain.thisObject,
+                        entry,
+                    )
+                }.onFailure { Logger.error("recents auth failed: ${it.message}", it) }
                 return@intercept result
             }
             if (entry != null) {
                 refreshUnlock(entry.packageName, entry.userId)
                 Logger.debug {
                     "recents pass pkg=${entry.packageName} user=${entry.userId} taskId=$taskId " +
-                        recentsGesture(chain.args.getOrNull(3))
+                        recentsGesture(
+                            chain.args.getOrNull(3),
+                        )
                 }
             }
             chain.proceed()
@@ -346,15 +392,17 @@ private fun XposedModule.hookFlagSecure(classLoader: ClassLoader) {
             windowStateClass.getDeclaredField("mActivityRecord").apply { isAccessible = true }
         val packageNameField =
             reflection?.activityRecordPackageNameField ?: error("reflection not ready")
-        val userIdField =
-            reflection?.activityRecordUserIdField ?: error("reflection not ready")
+        val userIdField = reflection?.activityRecordUserIdField ?: error("reflection not ready")
         hook(method).intercept { chain ->
             val ar = activityRecordField.get(chain.thisObject) ?: return@intercept chain.proceed()
             val pkg = packageNameField.get(ar) as? String ?: return@intercept chain.proceed()
             val userId = userIdField.get(ar) as? Int ?: 0
             val pkgKey = "$pkg:$userId"
             if (pkgKey in lockedPackages && isUnlocked(pkg, userId) &&
-                shouldBlockScreenshots(pkg, userId)
+                shouldBlockScreenshots(
+                    pkg,
+                    userId,
+                )
             ) {
                 Logger.debug { "flagsecure force-block pkg=$pkg user=$userId" }
                 return@intercept true
@@ -376,21 +424,38 @@ private fun XposedModule.hookUninstall(classLoader: ClassLoader) {
             )
         hook(method).intercept { chain ->
             // fail open: if the args shifted, let the delete run instead of crashing system_server
-            val shouldBlock =
-                runCatching {
-                    val packageName = chain.args.getOrNull(0) as? String
-                    val removedBySystem = chain.args.getOrNull(4) as? Boolean
-                    packageName == BiometricAuthActivity.MODULE_PACKAGE &&
-                        removedBySystem == false &&
-                        shouldPreventModuleUninstall()
-                }.getOrDefault(false)
+            val packageName = runCatching { chain.args.getOrNull(0) as? String }.getOrNull()
+            val removedBySystem =
+                runCatching { chain.args.getOrNull(4) as? Boolean }.getOrDefault(false)
 
-            if (shouldBlock) {
+            val selfProtect =
+                packageName == BiometricAuthActivity.MODULE_PACKAGE && removedBySystem == false &&
+                    shouldPreventModuleUninstall()
+            if (selfProtect) {
                 Logger.info("blocked uninstall pkg=${BiometricAuthActivity.MODULE_PACKAGE}")
                 postUninstallBlockedToast()
                 // DELETE_FAILED_INTERNAL_ERROR aborts the deletion without running it
                 return@intercept -1
             }
+
+            // backstop for deletes that never show the system dialog (pm/adb, silent callers).
+            // blocked attempts prompt, the grant lets the user's retry through
+            val needsBiometric =
+                removedBySystem == false && requireBiometricForUninstall() &&
+                    !packageName.isNullOrEmpty() &&
+                    packageName != BiometricAuthActivity.MODULE_PACKAGE
+            if (needsBiometric) {
+                if (hasFreshUninstallAuth() || isSystemHandlerGrantFresh(Intent.ACTION_DELETE)) {
+                    Logger.info("uninstall grant fresh pkg=$packageName")
+                    return@intercept chain.proceed()
+                }
+                Logger.info("blocked uninstall pkg=$packageName awaiting biometric")
+                runCatching {
+                    launchUninstallAuth(packageName)
+                }.onFailure { Logger.warn("uninstall auth launch failed: ${it.message}") }
+                return@intercept -1
+            }
+
             chain.proceed()
         }
         Logger.info("hooked deletePackageX args=${method.parameterCount}")

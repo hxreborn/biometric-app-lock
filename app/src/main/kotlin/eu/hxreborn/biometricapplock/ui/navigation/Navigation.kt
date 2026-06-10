@@ -75,6 +75,7 @@ import eu.hxreborn.biometricapplock.ui.screen.AboutScreen
 import eu.hxreborn.biometricapplock.ui.screen.AllowedActivitiesScreen
 import eu.hxreborn.biometricapplock.ui.screen.AppDetailScreen
 import eu.hxreborn.biometricapplock.ui.screen.AppListScreen
+import eu.hxreborn.biometricapplock.ui.screen.AppManagementScreen
 import eu.hxreborn.biometricapplock.ui.screen.DashboardScreen
 import eu.hxreborn.biometricapplock.ui.screen.settings.SettingsScreen
 import eu.hxreborn.biometricapplock.ui.theme.Tokens
@@ -95,6 +96,9 @@ sealed interface Screen : NavKey {
 
     @Serializable
     data object About : Screen
+
+    @Serializable
+    data object AppManagement : Screen
 
     @Serializable
     data class AppDetail(
@@ -237,7 +241,15 @@ fun MainNavDisplay(
                         framework = framework,
                         rootGranted = rootGranted,
                         onNavigateToAbout = dropUnlessResumed { backStack.add(Screen.About) },
+                        onNavigateToAppManagement =
+                            dropUnlessResumed { backStack.add(Screen.AppManagement) },
                         onShowUpdateSheet = onShowUpdateSheet,
+                        contentPadding = contentPadding,
+                    )
+                }
+                entry<Screen.AppManagement> {
+                    AppManagementScreen(
+                        onBack = dropUnlessResumed { backStack.removeLastOrNull() },
                         contentPadding = contentPadding,
                     )
                 }

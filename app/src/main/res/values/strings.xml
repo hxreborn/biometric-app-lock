@@ -97,6 +97,21 @@
     <string name="settings_self_lock_summary">Require biometric or device credential to open module settings</string>
     <string name="uninstall_blocked_toast">This app is protected and can\'t be uninstalled</string>
 
+    <string name="settings_app_management_title">App management</string>
+    <string name="settings_app_management_summary">Require biometric to install, update, or uninstall any app</string>
+
+    <string name="app_management_title">App management</string>
+    <string name="app_management_description">Intercepts install, update, and uninstall calls in the system server, so the prompt fires no matter which app or source started the action. OS-initiated installs such as OTA updates are not affected.</string>
+    <string name="app_management_install_title">Require biometric to install apps</string>
+    <string name="app_management_install_summary">Any APK install asks for biometric first</string>
+    <string name="app_management_update_title">Require biometric to update apps</string>
+    <string name="app_management_update_summary">Replacing an installed app asks for biometric first</string>
+    <string name="app_management_uninstall_title">Require biometric to uninstall apps</string>
+    <string name="app_management_uninstall_summary">Removing any app asks for biometric first</string>
+
+    <string name="biometric_prompt_uninstall_title">Uninstall %1$s</string>
+    <string name="biometric_prompt_default_target">app</string>
+
     <string name="settings_diagnostics">Diagnostics</string>
     <string name="settings_about">About</string>
     <string name="settings_about_entry">About</string>

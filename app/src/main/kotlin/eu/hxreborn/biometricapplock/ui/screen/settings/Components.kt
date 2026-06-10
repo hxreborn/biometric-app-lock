@@ -129,7 +129,7 @@ fun PreferenceRowContent(
                     text = summary,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 4,
+                    maxLines = 8,
                     overflow = TextOverflow.Ellipsis,
                 )
             }

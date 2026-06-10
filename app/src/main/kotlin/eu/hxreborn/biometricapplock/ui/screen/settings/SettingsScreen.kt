@@ -16,7 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AppBlocking
-import androidx.compose.material.icons.outlined.Contrast
+import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Fingerprint
@@ -85,6 +85,7 @@ fun SettingsScreen(
     framework: FrameworkInfo?,
     rootGranted: Boolean?,
     onNavigateToAbout: () -> Unit,
+    onNavigateToAppManagement: () -> Unit,
     onShowUpdateSheet: () -> Unit,
     contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
@@ -167,19 +168,17 @@ fun SettingsScreen(
     if (showWhatsNew) {
         val uriHandler = LocalUriHandler.current
         val whatsNewItems =
-            app.updateRepository.bundledChangelog
-                .filter { it.version == BuildConfig.VERSION_NAME }
-                .map { entry ->
-                    val type = ChangeType.from(entry.type, entry.breaking)
-                    FeatureSheetItem(
-                        label = stringResource(changeTypeLabelRes(type)),
-                        scope = entry.scope?.takeIf { it.isNotBlank() },
-                        changeType = type,
-                        title = entry.title,
-                        body = entry.description,
-                        onClick = entry.url?.let { url -> { uriHandler.openUri(url) } },
-                    )
-                }
+            app.updateRepository.bundledChangelog.filter { it.version == BuildConfig.VERSION_NAME }.map { entry ->
+                val type = ChangeType.from(entry.type, entry.breaking)
+                FeatureSheetItem(
+                    label = stringResource(changeTypeLabelRes(type)),
+                    scope = entry.scope?.takeIf { it.isNotBlank() },
+                    changeType = type,
+                    title = entry.title,
+                    body = entry.description,
+                    onClick = entry.url?.let { url -> { uriHandler.openUri(url) } },
+                )
+            }
 
         WhatsNewSheet(
             state = UpdateSheetState.WhatsNew,
@@ -216,8 +215,7 @@ fun SettingsScreen(
         )
     }
 
-    val showDotIndicator =
-        cachedAvailable?.latestVersion?.let { it != prefs.lastDismissedAvailableVersion } == true
+    val showDotIndicator = cachedAvailable?.latestVersion?.let { it != prefs.lastDismissedAvailableVersion } == true
 
     Scaffold(
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -303,7 +301,7 @@ fun SettingsScreen(
             }
             item {
                 PreferenceRow(
-                    icon = Icons.Outlined.Contrast,
+                    icon = Icons.Outlined.Build,
                     title = stringResource(R.string.settings_opaque_unlock_prompt_title),
                     summary = stringResource(R.string.settings_opaque_unlock_prompt_summary),
                     position = SectionPosition.Bottom,
@@ -388,6 +386,17 @@ fun SettingsScreen(
                 )
             }
 
+            item { SettingsSectionHeader(title = stringResource(R.string.settings_app_management)) }
+            item {
+                PreferenceRow(
+                    icon = Icons.Outlined.Download,
+                    title = stringResource(R.string.settings_app_management_title),
+                    summary = stringResource(R.string.settings_app_management_summary),
+                    position = SectionPosition.Single,
+                    onClick = onNavigateToAppManagement,
+                )
+            }
+
             item { SettingsSectionHeader(title = stringResource(R.string.settings_appearance)) }
             item {
                 PreferenceRow(
@@ -442,11 +451,7 @@ fun SettingsScreen(
                     trailing = {
                         if (showDotIndicator) {
                             Box(
-                                modifier =
-                                    Modifier
-                                        .size(Tokens.SpacingSm)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.primary),
+                                modifier = Modifier.size(Tokens.SpacingSm).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
                             )
                         }
                     },

@@ -37,6 +37,9 @@ class BiometricAppLockModule : XposedModule() {
                     refreshSecureSurfaces()
                 }
 
+                // the uninstall hook re-reads the grant timestamp on demand, nothing to reload
+                key == Prefs.UNINSTALL_AUTH_GRANT_MS.key -> {}
+
                 else -> {
                     loadHookPrefs(sp)
                 }
