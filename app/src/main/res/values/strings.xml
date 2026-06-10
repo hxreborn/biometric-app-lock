@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Biometric App Locker</string>
-    <string name="module_description">Blocks access to selected apps at the System Framework level until you authenticate via fingerprint or face unlock.</string>
+    <string name="module_description">Blocks access to selected apps at the System Framework level until you authenticate via fingerprint or face unlock</string>
 
     <string name="app_bar_title">Biometric App Locker</string>
 
@@ -68,10 +68,10 @@
     <string name="settings_dynamic_color">Dynamic color</string>
     <string name="settings_dynamic_color_summary">Use wallpaper colors</string>
     <string name="settings_floating_nav_bar">Floating navigation bar</string>
-    <string name="settings_floating_nav_bar_summary">Replaces the classic nav bar with a M3E floating nav bar</string>
+    <string name="settings_floating_nav_bar_summary">Replaces the classic navigation bar with a floating one</string>
 
     <string name="settings_hide_launcher">Hide from launcher</string>
-    <string name="settings_hide_launcher_summary">Hides app from launcher. You can still open it from Xposed manager</string>
+    <string name="settings_hide_launcher_summary">Open it from your Xposed manager instead</string>
     <string name="settings_hide_launcher_confirm_title">Hide from launcher?</string>
     <string name="settings_hide_launcher_confirm_body">The app icon will be removed from your launcher. You can open it only from your Xposed manager.</string>
 
@@ -88,26 +88,25 @@
     <string name="settings_block_screenshots_summary">Blocks screenshots, screen recording, and the recents preview inside selected apps. May not apply if another module bypasses FLAG_SECURE</string>
     <string name="settings_unlock_prompt">Unlock prompt</string>
     <string name="settings_unlock_confirmation_title">Require confirmation</string>
-    <string name="settings_unlock_confirmation_summary">After a passive unlock like face, tap to confirm before the app opens. Android\'s default</string>
-    <string name="settings_opaque_unlock_prompt_title">Solid unlock screen</string>
-    <string name="settings_opaque_unlock_prompt_summary">Use a solid screen instead of a see-through one. Helps on phones where the prompt closes by itself or makes you retry</string>
+    <string name="settings_unlock_confirmation_summary">After a passive unlock such as face unlock, tap Confirm before the app opens. Matches Android\'s default</string>
+    <string name="settings_opaque_unlock_prompt_title">Compatibility mode</string>
+    <string name="settings_opaque_unlock_prompt_summary">Helps on some non-AOSP ROMs where the prompt closes itself or loses focus. Leave it off on stock Android, where it hides the screen behind the prompt</string>
     <string name="settings_prevent_uninstall_title">Prevent uninstall</string>
-    <string name="settings_prevent_uninstall_summary">Blocks uninstall attempts. Disable the module in your Xposed manager and reboot to uninstall it.</string>
+    <string name="settings_prevent_uninstall_summary">Blocks attempts to uninstall this app. To remove it, disable the module in your Xposed manager and reboot</string>
     <string name="settings_self_lock_title">Require biometric unlock</string>
-    <string name="settings_self_lock_summary">Require biometric or device credential to open module settings</string>
+    <string name="settings_self_lock_summary">Open the app\'s own settings only after biometric or screen lock</string>
     <string name="uninstall_blocked_toast">This app is protected and can\'t be uninstalled</string>
 
+    <string name="settings_app_management">App management</string>
     <string name="settings_app_management_title">App management</string>
-    <string name="settings_app_management_summary">Require biometric to install, update, or uninstall any app</string>
+    <string name="settings_app_management_summary">Require biometric to install, update, or uninstall apps</string>
 
     <string name="app_management_title">App management</string>
-    <string name="app_management_description">Intercepts install, update, and uninstall calls in the system server, so the prompt fires no matter which app or source started the action. OS-initiated installs such as OTA updates are not affected.</string>
+    <string name="app_management_description">Installs and updates are intercepted only when the system installer screen appears, whichever app started them. Silent installers that skip that screen, like the Play Store or adb, aren\'t covered. The system server catches uninstalls from the launcher, Settings, and adb. One approval covers the same kind of action for any app in any profile, for a short time</string>
     <string name="app_management_install_title">Require biometric to install apps</string>
-    <string name="app_management_install_summary">Any APK install asks for biometric first</string>
-    <string name="app_management_update_title">Require biometric to update apps</string>
-    <string name="app_management_update_summary">Replacing an installed app asks for biometric first</string>
+    <string name="app_management_install_summary">Protect APK installs and app updates before Android shows the installer</string>
     <string name="app_management_uninstall_title">Require biometric to uninstall apps</string>
-    <string name="app_management_uninstall_summary">Removing any app asks for biometric first</string>
+    <string name="app_management_uninstall_summary">Protect app removals from the launcher, Settings, and adb</string>
 
     <string name="biometric_prompt_uninstall_title">Uninstall %1$s</string>
     <string name="biometric_prompt_default_target">app</string>
@@ -164,7 +163,7 @@
     <string name="app_detail_allowed_section">Allowed activities</string>
     <string name="app_detail_allowed_row_empty">Choose activities that skip the unlock prompt</string>
     <string name="app_detail_allowed_count">%1$d allowed</string>
-    <string name="app_detail_allowed_screen_desc">Checked activities skip the unlock prompt. Going back from one can reach the rest of the app without asking again.</string>
+    <string name="app_detail_allowed_screen_desc">Checked activities skip the unlock prompt. Going back from one can reach the rest of the app without asking again</string>
     <string name="app_detail_allowed_recent">Prompted %1$s</string>
     <string name="app_detail_allowed_main_badge">Launcher</string>
     <string name="app_detail_allowed_main_confirm_title">Allow the launcher activity?</string>
@@ -175,7 +174,7 @@
 
     <string name="app_detail_section_advanced">Advanced</string>
     <string name="app_detail_open_app_info_title">Open system app info</string>
-    <string name="app_detail_open_app_info_summary">Force stop the app here if changes aren\'t taking effect.</string>
+    <string name="app_detail_open_app_info_summary">Force stop the app here if changes aren\'t taking effect</string>
 
     <string name="settings_updates">Updates</string>
     <string name="updates_check_title">Check for updates</string>
