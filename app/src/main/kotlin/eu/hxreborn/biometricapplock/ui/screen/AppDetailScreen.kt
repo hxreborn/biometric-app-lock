@@ -18,11 +18,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.Screenshot
 import androidx.compose.material.icons.outlined.Timer
@@ -30,8 +28,6 @@ import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -54,12 +50,12 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.hxreborn.biometricapplock.App
 import eu.hxreborn.biometricapplock.R
 import eu.hxreborn.biometricapplock.prefs.AppOverrides
+import eu.hxreborn.biometricapplock.ui.component.BackButton
 import eu.hxreborn.biometricapplock.ui.component.ExpandedTitle
 import eu.hxreborn.biometricapplock.ui.component.LockSwitch
 import eu.hxreborn.biometricapplock.ui.screen.settings.PreferenceRow
@@ -115,13 +111,9 @@ fun AppDetailScreen(
             }
     }
 
-    val overrides by app.appOverridesRepository
-        .observe(packageKey)
-        .collectAsStateWithLifecycle(initialValue = AppOverrides(null, null))
+    val overrides by app.appOverridesRepository.observe(packageKey).collectAsStateWithLifecycle(initialValue = AppOverrides(null, null))
 
-    val hasOverrides =
-        overrides.relockDelaySeconds != null ||
-            overrides.blockScreenshots != null
+    val hasOverrides = overrides.relockDelaySeconds != null || overrides.blockScreenshots != null
     val disabledModifier = if (hasOverrides) Modifier else Modifier.alpha(Tokens.DISABLED_ALPHA)
 
     var showRelockDialog by remember { mutableStateOf(false) }
@@ -144,20 +136,7 @@ fun AppDetailScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             LargeTopAppBar(
-                navigationIcon = {
-                    Surface(
-                        modifier = Modifier.padding(start = Tokens.SpacingSm).size(40.dp),
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    ) {
-                        IconButton(onClick = onBack) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                                contentDescription = stringResource(R.string.about_back_cd),
-                            )
-                        }
-                    }
-                },
+                navigationIcon = { BackButton(onClick = onBack) },
                 title = { ExpandedTitle(stringResource(R.string.app_detail_title)) },
                 scrollBehavior = scrollBehavior,
             )
@@ -287,12 +266,10 @@ private fun AppHeaderCard(
 ) {
     Row(
         modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(
-                    horizontal = Tokens.DetailHeaderCardPadding,
-                    vertical = Tokens.DetailHeaderCardPadding,
-                ),
+            modifier.fillMaxWidth().padding(
+                horizontal = Tokens.DetailHeaderCardPadding,
+                vertical = Tokens.DetailHeaderCardPadding,
+            ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         DetailAppIcon(icon = icon, modifier = Modifier.size(Tokens.DetailHeaderIconSize))

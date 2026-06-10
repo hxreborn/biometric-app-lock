@@ -20,21 +20,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -56,6 +51,7 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import eu.hxreborn.biometricapplock.BuildConfig
 import eu.hxreborn.biometricapplock.R
+import eu.hxreborn.biometricapplock.ui.component.BackButton
 import eu.hxreborn.biometricapplock.ui.component.ExpandedTitle
 import eu.hxreborn.biometricapplock.ui.component.SectionPosition
 import eu.hxreborn.biometricapplock.ui.component.SoftBlobBadge
@@ -112,20 +108,7 @@ fun AboutScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             LargeTopAppBar(
-                navigationIcon = {
-                    Surface(
-                        modifier = Modifier.padding(start = Tokens.SpacingSm).size(40.dp),
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    ) {
-                        IconButton(onClick = onBack) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                                contentDescription = stringResource(R.string.about_back_cd),
-                            )
-                        }
-                    }
-                },
+                navigationIcon = { BackButton(onClick = onBack) },
                 title = { ExpandedTitle(stringResource(R.string.about_title)) },
                 scrollBehavior = scrollBehavior,
             )
@@ -223,9 +206,7 @@ fun AboutScreen(
                 PreferenceRow(
                     icon = Icons.Outlined.Memory,
                     title = stringResource(R.string.about_framework_title),
-                    summary =
-                        framework?.let { "${it.name} ${it.version}" }
-                            ?: stringResource(R.string.settings_lsposed_framework_unbound),
+                    summary = framework?.let { "${it.name} ${it.version}" } ?: stringResource(R.string.settings_lsposed_framework_unbound),
                     position = SectionPosition.Bottom,
                 )
             }

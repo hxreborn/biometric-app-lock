@@ -4,7 +4,6 @@
 package eu.hxreborn.biometricapplock.ui.screen
 
 import android.content.Context
-import android.content.Intent
 import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.text.format.DateUtils
@@ -17,16 +16,13 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Checkbox
@@ -62,6 +58,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.hxreborn.biometricapplock.App
 import eu.hxreborn.biometricapplock.R
 import eu.hxreborn.biometricapplock.prefs.AppOverrides
+import eu.hxreborn.biometricapplock.ui.component.BackButton
 import eu.hxreborn.biometricapplock.ui.component.ExpandedTitle
 import eu.hxreborn.biometricapplock.ui.component.SectionCard
 import eu.hxreborn.biometricapplock.ui.component.SectionPosition
@@ -117,7 +114,7 @@ private fun rememberDeclaredActivities(packageKey: String): List<String> {
                             ?.sorted()
                             .orEmpty()
                     } else {
-                        // For other users, we might only be able to see launcher activities if we are not root or system
+                        // other profiles expose only launcher activities without root or system access
                         val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
                         val userHandle = getUserHandle(userId)
                         launcherApps.getActivityList(packageName, userHandle).map { it.componentName.className }.sorted()
@@ -140,12 +137,10 @@ fun ActivityToggleRow(
     SectionCard(modifier = modifier, position = position, onClick = { onCheckedChange(!checked) }) {
         Row(
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        horizontal = Tokens.PreferenceRowHorizontalPadding,
-                        vertical = Tokens.PreferenceRowVerticalPadding,
-                    ),
+                Modifier.fillMaxWidth().padding(
+                    horizontal = Tokens.PreferenceRowHorizontalPadding,
+                    vertical = Tokens.PreferenceRowVerticalPadding,
+                ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
@@ -235,12 +230,8 @@ fun AllowedActivitiesScreen(
     val context = LocalContext.current
     val app = App.from(context)
 
-    val overrides by app.appOverridesRepository
-        .observe(packageKey)
-        .collectAsStateWithLifecycle(initialValue = AppOverrides(null, null))
-    val recents by app.appOverridesRepository
-        .observeRecentActivities(packageKey)
-        .collectAsStateWithLifecycle(initialValue = emptyList())
+    val overrides by app.appOverridesRepository.observe(packageKey).collectAsStateWithLifecycle(initialValue = AppOverrides(null, null))
+    val recents by app.appOverridesRepository.observeRecentActivities(packageKey).collectAsStateWithLifecycle(initialValue = emptyList())
     val allowed = overrides.allowedActivities
     val launcherActivities = rememberLauncherActivities(packageKey)
     val declared = rememberDeclaredActivities(packageKey)
@@ -291,20 +282,7 @@ fun AllowedActivitiesScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             LargeTopAppBar(
-                navigationIcon = {
-                    Surface(
-                        modifier = Modifier.padding(start = Tokens.SpacingSm).size(40.dp),
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    ) {
-                        IconButton(onClick = onBack) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                                contentDescription = stringResource(R.string.about_back_cd),
-                            )
-                        }
-                    }
-                },
+                navigationIcon = { BackButton(onClick = onBack) },
                 title = { ExpandedTitle(stringResource(R.string.app_detail_allowed_section)) },
                 scrollBehavior = scrollBehavior,
             )
@@ -321,10 +299,7 @@ fun AllowedActivitiesScreen(
             item(key = "search") {
                 TextField(
                     state = searchState,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = Tokens.ScreenHorizontalPadding, vertical = Tokens.SpacingSm),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = Tokens.ScreenHorizontalPadding, vertical = Tokens.SpacingSm),
                     placeholder = { Text(stringResource(R.string.app_detail_allowed_search)) },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     trailingIcon = {
