@@ -11,6 +11,7 @@ internal class PendingAuth(
     val issuedAt: Long,
     val packageName: String,
     val userId: Int,
+    val callingUid: Int,
     val launch: Intent?,
 )
 
@@ -19,10 +20,12 @@ private val pending = ConcurrentHashMap<String, PendingAuth>()
 internal fun createToken(
     packageName: String,
     userId: Int = 0,
+    callingUid: Int = -1,
 ): String {
     removeExpiredTokens()
     val token = UUID.randomUUID().toString()
-    pending[token] = PendingAuth(SystemClock.elapsedRealtime(), packageName, userId, null)
+    pending[token] =
+        PendingAuth(SystemClock.elapsedRealtime(), packageName, userId, callingUid, null)
     return token
 }
 
@@ -31,7 +34,13 @@ internal fun stashLaunch(
     intent: Intent,
 ) {
     pending.computeIfPresent(token) { _, current ->
-        PendingAuth(current.issuedAt, current.packageName, current.userId, Intent(intent))
+        PendingAuth(
+            current.issuedAt,
+            current.packageName,
+            current.userId,
+            current.callingUid,
+            Intent(intent),
+        )
     }
 }
 

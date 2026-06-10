@@ -106,6 +106,29 @@ internal class SystemServerReflection(
     val userHandleOf: Method by lazy {
         android.os.UserHandle::class.java.getMethod("of", Int::class.javaPrimitiveType)
     }
+
+    private val uriGrantsManagerInternalClass =
+        cl.loadClass("com.android.server.uri.UriGrantsManagerInternal")
+
+    // system_server-internal singleton registry, the only path to UriGrantsManagerInternal
+    val uriGrantsInternal: Any? by lazy {
+        runCatching {
+            cl
+                .loadClass("com.android.server.LocalServices")
+                .getMethod("getService", Class::class.java)
+                .invoke(null, uriGrantsManagerInternalClass)
+        }.getOrNull()
+    }
+
+    val checkGrantUriPermissionFromIntent: Method =
+        uriGrantsManagerInternalClass.declaredMethods
+            .firstOrNull { it.name == "checkGrantUriPermissionFromIntent" }
+            ?: error("checkGrantUriPermissionFromIntent not found sdk=${Build.VERSION.SDK_INT}")
+
+    val grantUriPermissionUncheckedFromIntent: Method =
+        uriGrantsManagerInternalClass.declaredMethods
+            .firstOrNull { it.name == "grantUriPermissionUncheckedFromIntent" }
+            ?: error("grantUriPermissionUncheckedFromIntent not found sdk=${Build.VERSION.SDK_INT}")
     val handlerField: Field =
         activityTaskManagerServiceClass.getDeclaredField("mH").apply { isAccessible = true }
 

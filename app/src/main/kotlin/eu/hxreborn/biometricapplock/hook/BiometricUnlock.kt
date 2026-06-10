@@ -53,7 +53,9 @@ internal fun tryRedirect(
 ): Boolean {
     val reflection = reflection ?: return false
     val userId = runCatching { reflection.userIdField.getInt(interceptor) }.getOrDefault(0)
-    val token = createToken(packageName, userId)
+    val callingUid =
+        runCatching { reflection.callingUidField.getInt(interceptor) }.getOrDefault(-1)
+    val token = createToken(packageName, userId, callingUid)
 
     val redirected =
         runCatching {
@@ -132,6 +134,7 @@ internal fun resumeOriginalLaunch(auth: PendingAuth) {
         }
     val userHandle = reflection.userHandleOf.invoke(null, auth.userId)
     handler.post {
+        regrantUriPermissions(auth, launch)
         runCatching {
             reflection.startActivityAsUser.invoke(context, launch, userHandle)
         }.onFailure {
@@ -140,6 +143,36 @@ internal fun resumeOriginalLaunch(auth: PendingAuth) {
                 it,
             )
         }
+    }
+}
+
+/**
+ * The replay runs as the system uid, which AOSP refuses to mint content grants for, so the target
+ * would launch without access to a content:// payload and crash reading it (e.g. the installer
+ * staging a downloaded APK). Re-issue the original caller's grants before replaying.
+ */
+private fun regrantUriPermissions(
+    auth: PendingAuth,
+    launch: Intent,
+) {
+    if (auth.callingUid < 0) return
+    val grantFlags =
+        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+    if (launch.flags and grantFlags == 0) return
+    if (launch.data == null && launch.clipData == null) return
+    val reflection = reflection ?: return
+    val ugmi = reflection.uriGrantsInternal ?: return
+    runCatching {
+        val needed =
+            reflection.checkGrantUriPermissionFromIntent
+                .invoke(ugmi, launch, auth.callingUid, auth.packageName, auth.userId)
+                ?: return
+        reflection.grantUriPermissionUncheckedFromIntent.invoke(ugmi, needed, null)
+        Logger.debug {
+            "regranted uris pkg=${auth.packageName} uid=${auth.callingUid} uri=${launch.data}"
+        }
+    }.onFailure {
+        Logger.warn("uri regrant failed pkg=${auth.packageName}: ${it.message}")
     }
 }
 
