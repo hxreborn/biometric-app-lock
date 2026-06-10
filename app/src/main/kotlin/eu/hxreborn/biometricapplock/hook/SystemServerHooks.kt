@@ -319,9 +319,10 @@ private fun XposedModule.hookTaskRemoved(classLoader: ClassLoader) {
             val result = chain.proceed()
             // do this after proceed and off the lock, mGlobalLock is held in here
             runCatching {
-                if (!shouldRelockOnTaskRemoved()) return@runCatching
+                // always evict the dead taskId so the cache can't go stale or grow unbounded
                 val taskId = chain.args.getOrNull(0)?.let { taskIdField.getInt(it) }
                 val entry = taskId?.let { taskCache.remove(it) } ?: return@runCatching
+                if (!shouldRelockOnTaskRemoved()) return@runCatching
                 removeFromUnlocked(setOf("${entry.packageName}:${entry.userId}"))
                 Logger.debug { "task removed relock pkg=${entry.packageName} taskId=$taskId" }
             }
