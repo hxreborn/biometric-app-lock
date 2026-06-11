@@ -162,12 +162,18 @@ private fun regrantUriPermissions(
     if (launch.data == null && launch.clipData == null) return
     val reflection = reflection ?: return
     val ugmi = reflection.uriGrantsInternal ?: return
+    val check = reflection.checkGrantUriPermissionFromIntent
+    val grant = reflection.grantUriPermissionUncheckedFromIntent
+    if (check == null || grant == null) {
+        Logger.warn("uri regrant unavailable pkg=${auth.packageName}")
+        return
+    }
     runCatching {
         val needed =
-            reflection.checkGrantUriPermissionFromIntent
+            check
                 .invoke(ugmi, launch, auth.callingUid, auth.packageName, auth.userId)
                 ?: return
-        reflection.grantUriPermissionUncheckedFromIntent.invoke(ugmi, needed, null)
+        grant.invoke(ugmi, needed, null)
         Logger.debug {
             "regranted uris pkg=${auth.packageName} uid=${auth.callingUid} uri=${launch.data}"
         }

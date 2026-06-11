@@ -120,15 +120,16 @@ internal class SystemServerReflection(
         }.getOrNull()
     }
 
-    val checkGrantUriPermissionFromIntent: Method =
+    // skips uri regrant on ROMs that removed these methods
+    val checkGrantUriPermissionFromIntent: Method? =
         uriGrantsManagerInternalClass.declaredMethods
-            .firstOrNull { it.name == "checkGrantUriPermissionFromIntent" }
-            ?: error("checkGrantUriPermissionFromIntent not found sdk=${Build.VERSION.SDK_INT}")
+            .filter { it.name == "checkGrantUriPermissionFromIntent" }
+            .minByOrNull { it.parameterCount }
 
-    val grantUriPermissionUncheckedFromIntent: Method =
+    val grantUriPermissionUncheckedFromIntent: Method? =
         uriGrantsManagerInternalClass.declaredMethods
-            .firstOrNull { it.name == "grantUriPermissionUncheckedFromIntent" }
-            ?: error("grantUriPermissionUncheckedFromIntent not found sdk=${Build.VERSION.SDK_INT}")
+            .filter { it.name == "grantUriPermissionUncheckedFromIntent" }
+            .minByOrNull { it.parameterCount }
     val handlerField: Field =
         activityTaskManagerServiceClass.getDeclaredField("mH").apply { isAccessible = true }
 
