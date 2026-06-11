@@ -62,5 +62,10 @@ class BiometricAppLockModule : XposedModule() {
     }
 
     private fun parseLockedPackages(raw: String): Set<String> =
-        if (raw.isEmpty()) emptySet() else raw.split("|").toSet()
+        if (raw.isEmpty()) {
+            emptySet()
+        } else {
+            // pre-1.5 entries carry no userId and a downgrade can write them back, key them to user 0
+            raw.split("|").mapTo(mutableSetOf()) { if (':' in it) it else "$it:0" }
+        }
 }
