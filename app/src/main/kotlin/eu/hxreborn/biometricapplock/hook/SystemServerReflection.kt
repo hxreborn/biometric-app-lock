@@ -66,6 +66,8 @@ internal class SystemServerReflection(
     private val taskInfoClass = cl.loadClass("android.app.TaskInfo")
     val taskInfoUserIdField: Field = taskInfoClass.getField("userId")
 
+    val taskLookup: TaskLookup? = runCatching { TaskLookup(cl) }.getOrNull()
+
     val intentField: Field = activityStartInterceptorClass.getField("mIntent")
     val resolvedInfoField: Field = activityStartInterceptorClass.getField("mRInfo")
     val activityInfoField: Field = activityStartInterceptorClass.getField("mAInfo")
@@ -157,4 +159,29 @@ internal class SystemServerReflection(
         val userId = userIdFieldTop.get(topResumedActivityRecord) as? Int ?: 0
         return "$pkg:$userId"
     }
+}
+
+// kept apart from SystemServerReflection so a missing piece never fails the whole init
+internal class TaskLookup(
+    cl: ClassLoader,
+) {
+    private val rootWindowContainerClass =
+        cl.loadClass("com.android.server.wm.RootWindowContainer")
+    private val taskClass = cl.loadClass("com.android.server.wm.Task")
+
+    val anyTaskForId: Method =
+        rootWindowContainerClass.declaredMethods
+            .first { it.name == "anyTaskForId" && it.parameterCount == 2 }
+            .apply { isAccessible = true }
+
+    val matchAttachedOrRecents: Int =
+        rootWindowContainerClass
+            .getDeclaredField("MATCH_ATTACHED_TASK_OR_RECENT_TASKS")
+            .apply { isAccessible = true }
+            .getInt(null)
+
+    val realActivityField: Field =
+        taskClass.getDeclaredField("realActivity").apply { isAccessible = true }
+    val userIdField: Field =
+        taskClass.getDeclaredField("mUserId").apply { isAccessible = true }
 }

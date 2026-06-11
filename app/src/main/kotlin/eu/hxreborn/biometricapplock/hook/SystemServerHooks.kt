@@ -1,6 +1,7 @@
 package eu.hxreborn.biometricapplock.hook
 
 import android.app.TaskInfo
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
@@ -149,7 +150,8 @@ private fun XposedModule.hookLaunchIntercept(classLoader: ClassLoader) {
                 return@intercept chain.proceed()
             }
 
-            relockOtherPackages(packageName, userId)
+            // skips relock since a null keep key wipes every unlock
+            if (packageName != null) relockOtherPackages(packageName, userId)
 
             val result = chain.proceed()
             if (result == true) return@intercept true
@@ -231,6 +233,27 @@ private fun XposedModule.hookActivityLaunched(classLoader: ClassLoader) {
     }.onFailure { Logger.error("hookActivityLaunched failed: ${it.message}", it) }
 }
 
+// falls back to the window hierarchy since ROMs without onActivityLaunched never fill taskCache
+private fun resolveTaskEntry(
+    supervisor: Any,
+    taskId: Int,
+): TaskEntry? {
+    taskCache[taskId]?.let { return it }
+    return runCatching {
+        val r = reflection ?: return null
+        val lookup = r.taskLookup ?: return null
+        val atms = r.activityTaskManagerServiceField.get(supervisor) ?: return null
+        val rwc = r.rootWindowContainerField.get(atms) ?: return null
+        val task =
+            lookup.anyTaskForId.invoke(rwc, taskId, lookup.matchAttachedOrRecents) ?: return null
+        val pkg =
+            (lookup.realActivityField.get(task) as? ComponentName)?.packageName ?: return null
+        val userId = lookup.userIdField.getInt(task)
+        if ("$pkg:$userId" !in lockedPackages) return null
+        TaskEntry(pkg, userId).also { taskCache[taskId] = it }
+    }.getOrNull()
+}
+
 /**
  * recents path: card taps and the nav-bar quick switch, which skip ActivityStarter.
  * - translucent: let the task come up, then drop the prompt over it (old 1.3 behavior)
@@ -248,9 +271,10 @@ private fun XposedModule.hookRecentsLaunch(classLoader: ClassLoader) {
             val callingPid = chain.args[0] as? Int
             val callingUid = chain.args[1] as? Int
             val taskId = chain.args[2] as? Int
-            val entry = taskId?.let { taskCache[it] }
+            val entry = taskId?.let { resolveTaskEntry(chain.thisObject, it) }
 
-            relockOtherPackages(entry?.packageName, entry?.userId)
+            // skips relock since a null keep key wipes the resumed app's unlock
+            if (entry != null) relockOtherPackages(entry.packageName, entry.userId)
 
             if (entry != null && !isUnlocked(entry.packageName, entry.userId)) {
                 val opaque = shouldUseOpaqueUnlockPrompt()
