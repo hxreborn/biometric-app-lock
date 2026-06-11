@@ -1,5 +1,6 @@
 package eu.hxreborn.biometricapplock.hook
 
+import android.content.ComponentName
 import android.content.Intent
 import android.os.Build
 import eu.hxreborn.biometricapplock.util.Logger
@@ -44,6 +45,41 @@ internal fun ClassLoader.anyClassFromNames(vararg names: String): Class<*> {
         if (cls != null) return cls
     }
     error("no class from ${names.toList()} sdk=${Build.VERSION.SDK_INT}")
+}
+
+// Optional framework symbols: resolve where present, null where an OEM stripped or renamed them,
+// and log one capability line per miss so an unfamiliar ROM names exactly what it lacks. Use these
+// for anything not every build carries, keep the non-optional getField/getMethod for the load-
+// bearing symbols whose absence should fail the hook loud.
+
+internal fun Class<*>.optionalField(vararg names: String): Field? {
+    for (name in names) {
+        runCatching { getDeclaredField(name).apply { isAccessible = true } }
+            .getOrNull()
+            ?.let { return it }
+    }
+    Logger.warn("optional field absent $simpleName.${names.joinToString("/")}")
+    return null
+}
+
+internal fun Class<*>.optionalMethod(
+    name: String,
+    argCount: Int? = null,
+): Method? {
+    declaredMethods
+        .filter { it.name == name && (argCount == null || it.parameterCount == argCount) }
+        .minByOrNull { it.parameterCount }
+        ?.let { return it.apply { isAccessible = true } }
+    Logger.warn("optional method absent $simpleName.$name")
+    return null
+}
+
+internal fun Class<*>.optionalIntConst(name: String): Int? {
+    runCatching { getDeclaredField(name).apply { isAccessible = true }.getInt(null) }
+        .getOrNull()
+        ?.let { return it }
+    Logger.warn("optional const absent $simpleName.$name")
+    return null
 }
 
 internal class SystemServerReflection(
@@ -164,27 +200,44 @@ internal class SystemServerReflection(
     }
 }
 
-// kept apart from SystemServerReflection so a missing piece never fails the whole init
+// Recents/task reflection, isolated from SystemServerReflection so an OEM-stripped symbol never
+// fails the whole init. Every member is optional and self-reports when absent, the hooks degrade
+// per capability: no package reader means cache-only entries, no anyTaskForId means no live
+// taskId lookup. A new OEM group should follow this shape, optional members plus a capability().
 internal class TaskLookup(
     cl: ClassLoader,
 ) {
-    private val rootWindowContainerClass =
-        cl.loadClass("com.android.server.wm.RootWindowContainer")
     private val taskClass = cl.loadClass("com.android.server.wm.Task")
+    private val rootWindowContainerClass: Class<*>? =
+        runCatching { cl.loadClass("com.android.server.wm.RootWindowContainer") }.getOrNull()
 
-    val anyTaskForId: Method =
-        rootWindowContainerClass.declaredMethods
-            .first { it.name == "anyTaskForId" && it.parameterCount == 2 }
-            .apply { isAccessible = true }
+    val userIdField: Field? = taskClass.optionalField("mUserId")
 
-    val matchAttachedOrRecents: Int =
-        rootWindowContainerClass
-            .getDeclaredField("MATCH_ATTACHED_TASK_OR_RECENT_TASKS")
-            .apply { isAccessible = true }
-            .getInt(null)
+    // three independent ways to read the package off a Task, any one surviving is enough
+    private val realActivityField: Field? = taskClass.optionalField("realActivity")
+    private val intentField: Field? = taskClass.optionalField("intent")
+    private val getBaseIntent: Method? = taskClass.optionalMethod("getBaseIntent")
 
-    val realActivityField: Field =
-        taskClass.getDeclaredField("realActivity").apply { isAccessible = true }
-    val userIdField: Field =
-        taskClass.getDeclaredField("mUserId").apply { isAccessible = true }
+    // resolves a taskId to its live Task, absent on OneUI so the recents resolver stays cache-only
+    val anyTaskForId: Method? =
+        rootWindowContainerClass?.optionalMethod(
+            "anyTaskForId",
+            argCount = 2,
+        )
+    val matchAttachedOrRecents: Int? =
+        rootWindowContainerClass?.optionalIntConst("MATCH_ATTACHED_TASK_OR_RECENT_TASKS")
+
+    fun packageOf(task: Any): String? {
+        (realActivityField?.get(task) as? ComponentName)?.packageName?.let { return it }
+        (intentField?.get(task) as? Intent)?.component?.packageName?.let { return it }
+        (getBaseIntent?.invoke(task) as? Intent)?.component?.packageName?.let { return it }
+        return null
+    }
+
+    // one line naming what this ROM can and can't do, read once at boot
+    fun capability(): String {
+        val canReadPkg = realActivityField != null || intentField != null || getBaseIntent != null
+        val canLiveLookup = anyTaskForId != null && matchAttachedOrRecents != null
+        return "taskLookup pkg=$canReadPkg user=${userIdField != null} liveLookup=$canLiveLookup"
+    }
 }

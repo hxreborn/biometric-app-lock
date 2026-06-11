@@ -1,7 +1,6 @@
 package eu.hxreborn.biometricapplock.hook
 
 import android.app.TaskInfo
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
@@ -100,6 +99,7 @@ internal fun XposedModule.registerSystemServerHooks(
                     it,
                 )
             }.getOrNull()
+    reflection?.taskLookup?.let { Logger.info(it.capability()) }
 
     hookLaunchIntercept(classLoader)
     hookActivityLaunched(classLoader)
@@ -245,8 +245,8 @@ private fun XposedModule.hookActivityLaunched(classLoader: ClassLoader) {
 // reads the task itself, only locked packages produce an entry
 private fun taskEntryFromTask(task: Any): TaskEntry? {
     val lookup = reflection?.taskLookup ?: return null
-    val pkg = (lookup.realActivityField.get(task) as? ComponentName)?.packageName ?: return null
-    val userId = runCatching { lookup.userIdField.getInt(task) }.getOrDefault(0)
+    val pkg = lookup.packageOf(task) ?: return null
+    val userId = runCatching { lookup.userIdField?.getInt(task) }.getOrNull() ?: 0
     if ("$pkg:$userId" !in lockedPackages) return null
     return TaskEntry(pkg, userId)
 }
@@ -260,10 +260,11 @@ private fun resolveTaskEntry(
     return runCatching {
         val r = reflection ?: return null
         val lookup = r.taskLookup ?: return null
+        val anyTaskForId = lookup.anyTaskForId ?: return null
+        val matchMode = lookup.matchAttachedOrRecents ?: return null
         val atms = r.activityTaskManagerServiceField.get(supervisor) ?: return null
         val rwc = r.rootWindowContainerField.get(atms) ?: return null
-        val task =
-            lookup.anyTaskForId.invoke(rwc, taskId, lookup.matchAttachedOrRecents) ?: return null
+        val task = anyTaskForId.invoke(rwc, taskId, matchMode) ?: return null
         taskEntryFromTask(task)?.also { taskCache[taskId] = it }
     }.getOrNull()
 }
