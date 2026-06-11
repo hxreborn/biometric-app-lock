@@ -242,6 +242,15 @@ private fun XposedModule.hookActivityLaunched(classLoader: ClassLoader) {
     }.onFailure { Logger.error("hookActivityLaunched failed: ${it.message}", it) }
 }
 
+// reads the task itself, only locked packages produce an entry
+private fun taskEntryFromTask(task: Any): TaskEntry? {
+    val lookup = reflection?.taskLookup ?: return null
+    val pkg = (lookup.realActivityField.get(task) as? ComponentName)?.packageName ?: return null
+    val userId = runCatching { lookup.userIdField.getInt(task) }.getOrDefault(0)
+    if ("$pkg:$userId" !in lockedPackages) return null
+    return TaskEntry(pkg, userId)
+}
+
 // falls back to the window hierarchy since ROMs without onActivityLaunched never fill taskCache
 private fun resolveTaskEntry(
     supervisor: Any,
@@ -255,11 +264,7 @@ private fun resolveTaskEntry(
         val rwc = r.rootWindowContainerField.get(atms) ?: return null
         val task =
             lookup.anyTaskForId.invoke(rwc, taskId, lookup.matchAttachedOrRecents) ?: return null
-        val pkg =
-            (lookup.realActivityField.get(task) as? ComponentName)?.packageName ?: return null
-        val userId = lookup.userIdField.getInt(task)
-        if ("$pkg:$userId" !in lockedPackages) return null
-        TaskEntry(pkg, userId).also { taskCache[taskId] = it }
+        taskEntryFromTask(task)?.also { taskCache[taskId] = it }
     }.getOrNull()
 }
 
@@ -333,10 +338,13 @@ private fun XposedModule.hookTaskRemoved(classLoader: ClassLoader) {
             val result = chain.proceed()
             // runs after proceed since mGlobalLock is held in here
             runCatching {
+                val task = chain.args.getOrNull(0) ?: return@runCatching
+                val taskId = taskIdField.getInt(task)
                 // always evicts the dead taskId so the cache can't go stale or grow unbounded
-                val taskId = chain.args.getOrNull(0)?.let { taskIdField.getInt(it) }
-                val entry = taskId?.let { taskCache.remove(it) } ?: return@runCatching
+                val cached = taskCache.remove(taskId)
                 if (!shouldRelockOnTaskRemoved()) return@runCatching
+                // the cache misses tasks that never passed the recents hook, so read the task
+                val entry = cached ?: taskEntryFromTask(task) ?: return@runCatching
                 removeFromUnlocked(setOf("${entry.packageName}:${entry.userId}"))
                 Logger.debug { "task removed relock pkg=${entry.packageName} taskId=$taskId" }
             }
