@@ -101,13 +101,20 @@ internal fun XposedModule.registerSystemServerHooks(
             }.getOrNull()
     reflection?.taskLookup?.let { Logger.info(it.capability()) }
 
-    hookLaunchIntercept(classLoader)
-    hookActivityLaunched(classLoader)
-    hookRecentsLaunch(classLoader)
-    hookTaskRemoved(classLoader)
-    hookScreenAwake(classLoader)
-    hookFlagSecure(classLoader)
-    hookUninstall(classLoader)
+    // one line naming which framework target each hook found, the first thing to read on an
+    // unfamiliar ROM. a false points straight at the hook whose method moved or vanished
+    val installed =
+        mapOf(
+            "intercept" to hookLaunchIntercept(classLoader),
+            "onActivityLaunched" to hookActivityLaunched(classLoader),
+            "startActivityFromRecents" to hookRecentsLaunch(classLoader),
+            "cleanUpRemovedTask" to hookTaskRemoved(classLoader),
+            "onScreenAwakeChanged" to hookScreenAwake(classLoader),
+            "isSecureLocked" to hookFlagSecure(classLoader),
+            "deletePackageX" to hookUninstall(classLoader),
+        )
+    val summary = installed.entries.joinToString(" ") { "${it.key}=${it.value}" }
+    Logger.info("hooks installed $summary")
 }
 
 // runs once on the first intercept, the earliest point where the supervisor is reachable
@@ -165,7 +172,7 @@ private fun interceptLockedLaunch(
 }
 
 // launcher path: swaps the launch for the prompt and replays the original once auth passes
-private fun XposedModule.hookLaunchIntercept(classLoader: ClassLoader) {
+private fun XposedModule.hookLaunchIntercept(classLoader: ClassLoader): Boolean =
     runCatching {
         val method =
             classLoader.findMethod(
@@ -212,11 +219,10 @@ private fun XposedModule.hookLaunchIntercept(classLoader: ClassLoader) {
             interceptLockedLaunch(chain.thisObject, intent, activityInfo, userId)
         }
         Logger.info("hooked intercept args=${method.parameterCount}")
-    }.onFailure { Logger.error("hookLaunchIntercept failed: ${it.message}", it) }
-}
+    }.onFailure { Logger.error("hookLaunchIntercept failed: ${it.message}", it) }.isSuccess
 
 // bookkeeping: taskId -> package so the recents and task-removed hooks can find it
-private fun XposedModule.hookActivityLaunched(classLoader: ClassLoader) {
+private fun XposedModule.hookActivityLaunched(classLoader: ClassLoader): Boolean =
     runCatching {
         val method =
             classLoader.findMethod(
@@ -239,8 +245,7 @@ private fun XposedModule.hookActivityLaunched(classLoader: ClassLoader) {
             chain.proceed()
         }
         Logger.info("hooked onActivityLaunched args=${method.parameterCount}")
-    }.onFailure { Logger.error("hookActivityLaunched failed: ${it.message}", it) }
-}
+    }.onFailure { Logger.error("hookActivityLaunched failed: ${it.message}", it) }.isSuccess
 
 // reads the task itself, only locked packages produce an entry
 private fun taskEntryFromTask(task: Any): TaskEntry? {
@@ -274,7 +279,7 @@ private fun resolveTaskEntry(
  * - translucent: let the task come up, then drop the prompt over it (old 1.3 behavior)
  * - opaque: keep the task off-screen, return START_SUCCESS, let auth own the screen
  */
-private fun XposedModule.hookRecentsLaunch(classLoader: ClassLoader) {
+private fun XposedModule.hookRecentsLaunch(classLoader: ClassLoader): Boolean =
     runCatching {
         val method =
             classLoader.findMethod(
@@ -314,11 +319,10 @@ private fun XposedModule.hookRecentsLaunch(classLoader: ClassLoader) {
             result
         }
         Logger.info("hooked startActivityFromRecents args=${method.parameterCount}")
-    }.onFailure { Logger.error("hookRecentsLaunch failed: ${it.message}", it) }
-}
+    }.onFailure { Logger.error("hookRecentsLaunch failed: ${it.message}", it) }.isSuccess
 
 // drops the unlock when a locked task gets swiped off recents
-private fun XposedModule.hookTaskRemoved(classLoader: ClassLoader) {
+private fun XposedModule.hookTaskRemoved(classLoader: ClassLoader): Boolean =
     runCatching {
         val supervisorClass =
             classLoader.anyClassFromNames(
@@ -354,11 +358,10 @@ private fun XposedModule.hookTaskRemoved(classLoader: ClassLoader) {
         Logger.info("hooked ${method.name} args=${method.parameterCount}")
     }.onFailure {
         Logger.warn("hookTaskRemoved unavailable (cleanUpRemovedTask/mTaskId): ${it.message}")
-    }
-}
+    }.isSuccess
 
 // screen off wipes unlock state and screen on relocks whatever's past its delay
-private fun XposedModule.hookScreenAwake(classLoader: ClassLoader) {
+private fun XposedModule.hookScreenAwake(classLoader: ClassLoader): Boolean =
     runCatching {
         val method =
             classLoader.findMethod(
@@ -391,11 +394,10 @@ private fun XposedModule.hookScreenAwake(classLoader: ClassLoader) {
             chain.proceed()
         }
         Logger.info("hooked onScreenAwakeChanged args=${method.parameterCount}")
-    }.onFailure { Logger.error("hookScreenAwake failed: ${it.message}", it) }
-}
+    }.onFailure { Logger.error("hookScreenAwake failed: ${it.message}", it) }.isSuccess
 
 // force-blocks screenshots in unlocked locked apps when BLOCK_SCREENSHOTS is on
-private fun XposedModule.hookFlagSecure(classLoader: ClassLoader) {
+private fun XposedModule.hookFlagSecure(classLoader: ClassLoader): Boolean =
     runCatching {
         val method =
             classLoader.findMethod(
@@ -420,11 +422,10 @@ private fun XposedModule.hookFlagSecure(classLoader: ClassLoader) {
             chain.proceed()
         }
         Logger.info("hooked isSecureLocked args=${method.parameterCount}")
-    }.onFailure { Logger.warn("hookFlagSecure not available: ${it.message}") }
-}
+    }.onFailure { Logger.warn("hookFlagSecure not available: ${it.message}") }.isSuccess
 
 // every user uninstall (launcher, Settings, Play Store, adb) ends up here at deletePackageX
-private fun XposedModule.hookUninstall(classLoader: ClassLoader) {
+private fun XposedModule.hookUninstall(classLoader: ClassLoader): Boolean =
     runCatching {
         val method =
             classLoader.findMethod(
@@ -468,5 +469,4 @@ private fun XposedModule.hookUninstall(classLoader: ClassLoader) {
             chain.proceed()
         }
         Logger.info("hooked deletePackageX args=${method.parameterCount}")
-    }.onFailure { Logger.warn("hookUninstall not available: ${it.message}") }
-}
+    }.onFailure { Logger.warn("hookUninstall not available: ${it.message}") }.isSuccess
