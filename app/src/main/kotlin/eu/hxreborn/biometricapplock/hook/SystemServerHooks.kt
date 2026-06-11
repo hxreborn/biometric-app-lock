@@ -7,7 +7,6 @@ import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.os.Build
 import android.os.Handler
-import android.os.SystemClock
 import android.widget.Toast
 import eu.hxreborn.biometricapplock.BiometricAuthActivity
 import eu.hxreborn.biometricapplock.R
@@ -28,36 +27,38 @@ private fun captureAtms(interceptor: Any): Any? =
         r.activityTaskManagerServiceField.get(sup)
     }.getOrNull()
 
+private fun atmsHandler(): Handler? {
+    val atms = atmsRef ?: return null
+    return reflection?.handlerField?.get(atms) as? Handler
+}
+
+private fun atmsContext(): Context? {
+    val atms = atmsRef ?: return null
+    return reflection?.contextField?.get(atms) as? Context
+}
+
 private fun ensurePackageEventsRegistered() {
-    val atms = atmsRef ?: return
+    val ctx = atmsContext() ?: return
+    val handler = atmsHandler() ?: return
     if (!packageEventsRegistered.compareAndSet(false, true)) return
-    val r = reflection ?: return
-    val ctx = r.contextField.get(atms) as? Context ?: return
-    val handler = r.handlerField.get(atms) as? Handler ?: return
     registerPackageEvents(ctx, handler)
 }
 
-// PackageManager is not published at onSystemServerStarting, so the install/uninstall handler
-// resolution comes back empty at boot. once an intercept fires the system is up, so replay
-// loadHookPrefs off the lock and the handler set fills in for subsequent launches
+// replays loadHookPrefs once the system is up since the install/uninstall handler resolve
+// comes back empty at boot, before PackageManager is published
 private fun postBootPrefsRefresh() {
-    val atms = atmsRef ?: return
-    val r = reflection ?: return
-    val handler = r.handlerField.get(atms) as? Handler ?: return
+    val handler = atmsHandler() ?: return
     val prefs = hookPrefs ?: return
     handler.post {
-        runCatching {
-            loadHookPrefs(prefs)
-        }.onFailure { Logger.warn("post-boot prefs refresh failed: ${it.message}") }
+        runCatching { loadHookPrefs(prefs) }
+            .onFailure { Logger.warn("post-boot prefs refresh failed: ${it.message}") }
     }
 }
 
-// toast on the ATMS handler, the PMS lock is held here
+// shows the toast on the ATMS handler since the PMS lock is held here
 private fun postUninstallBlockedToast() {
-    val atms = atmsRef ?: return
-    val r = reflection ?: return
-    val handler = r.handlerField.get(atms) as? Handler ?: return
-    val ctx = r.contextField.get(atms) as? Context ?: return
+    val handler = atmsHandler() ?: return
+    val ctx = atmsContext() ?: return
     handler.post {
         runCatching {
             val pkgCtx = ctx.createPackageContext(BiometricAuthActivity.MODULE_PACKAGE, 0)
@@ -68,17 +69,13 @@ private fun postUninstallBlockedToast() {
 }
 
 internal fun refreshSecureSurfaces() {
-    val atms = atmsRef ?: return
     val r = reflection ?: return
+    val atms = atmsRef ?: return
     val rwc = r.rootWindowContainerField.get(atms) ?: return
-    val handler = r.handlerField.get(atms) as? Handler ?: return
+    val handler = atmsHandler() ?: return
     handler.post {
-        runCatching { r.refreshSecureSurfaceState.invoke(rwc) }.onFailure {
-            Logger.warn(
-                "refreshSecureSurfaceState failed: ${it.message}",
-                it,
-            )
-        }
+        runCatching { r.refreshSecureSurfaceState.invoke(rwc) }
+            .onFailure { Logger.warn("refreshSecureSurfaceState failed: ${it.message}", it) }
     }
 }
 
@@ -113,7 +110,61 @@ internal fun XposedModule.registerSystemServerHooks(
     hookUninstall(classLoader)
 }
 
-// launcher path. swap the launch for the prompt, then replay the original once auth passes
+// runs once on the first intercept, the earliest point where the supervisor is reachable
+private fun bootstrapFromIntercept(interceptor: Any) {
+    atmsRef = captureAtms(interceptor)
+    ensurePackageEventsRegistered()
+    postBootPrefsRefresh()
+}
+
+// install and uninstall dialogs share one OS package, so the action picks which toggle applies
+private fun interceptSystemHandlerLaunch(
+    interceptor: Any,
+    packageName: String,
+    className: String,
+    action: String?,
+): Boolean {
+    if (!shouldInterceptSystemHandler(action)) {
+        Logger.debug { "intercept skip system-handler pkg=$packageName action=$action" }
+        return false
+    }
+    if (isSystemHandlerGrantFresh(action)) {
+        Logger.debug { "intercept pass system-handler pkg=$packageName action=$action" }
+        return false
+    }
+    Logger.debug { "intercept gating system-handler pkg=$packageName action=$action" }
+    return tryRedirect(interceptor, packageName, className)
+}
+
+// decides whether a locked package's launch gets redirected to the prompt
+private fun interceptLockedLaunch(
+    interceptor: Any,
+    intent: Intent?,
+    activityInfo: ActivityInfo,
+    userId: Int,
+): Boolean {
+    val packageName = activityInfo.packageName
+    if ("$packageName:$userId" !in lockedPackages) return false
+    if (intent?.hasCategory(Intent.CATEGORY_HOME) == true) return false
+    if (isActivityAllowed(packageName, userId, activityInfo.name, activityInfo.targetActivity)) {
+        Logger.debug {
+            "intercept allowlisted pkg=$packageName user=$userId comp=${activityInfo.name}"
+        }
+        return false
+    }
+    if (isUnlocked(packageName, userId)) {
+        refreshUnlock(packageName, userId)
+        Logger.debug { "intercept pass pkg=$packageName user=$userId comp=${activityInfo.name}" }
+        return false
+    }
+    Logger.debug {
+        "intercept gating pkg=$packageName user=$userId comp=${activityInfo.name} " +
+            "action=${intent?.action}"
+    }
+    return tryRedirect(interceptor, packageName, activityInfo.name)
+}
+
+// launcher path: swaps the launch for the prompt and replays the original once auth passes
 private fun XposedModule.hookLaunchIntercept(classLoader: ClassLoader) {
     runCatching {
         val method =
@@ -122,18 +173,14 @@ private fun XposedModule.hookLaunchIntercept(classLoader: ClassLoader) {
                 "intercept",
                 11,
             )
-        // grab the arg indices once up front, the framework likes to shuffle them between versions
+        // grabs the arg indices once up front since the framework shuffles them between versions
         val intentIdx = method.firstArgIndexOfType("Intent").let { if (it >= 0) it else 0 }
         val actInfoIdx = method.firstArgIndexOfType("ActivityInfo").let { if (it >= 0) it else 2 }
         Logger.info(
             "intercept indices intent=$intentIdx aInfo=$actInfoIdx args=${method.parameterCount}",
         )
         hook(method).intercept { chain ->
-            if (atmsRef == null) {
-                atmsRef = captureAtms(chain.thisObject)
-                ensurePackageEventsRegistered()
-                postBootPrefsRefresh()
-            }
+            if (atmsRef == null) bootstrapFromIntercept(chain.thisObject)
 
             val intent = chain.args[intentIdx] as? Intent
             val activityInfo = chain.args[actInfoIdx] as? ActivityInfo
@@ -142,12 +189,10 @@ private fun XposedModule.hookLaunchIntercept(classLoader: ClassLoader) {
 
             val auth = resolveAuthToken(intent, packageName, userId)
             if (auth != null) {
-                if (auth.launch != null) {
-                    Logger.debug { "resume original pkg=$packageName user=$userId" }
-                    resumeOriginalLaunch(auth)
-                    return@intercept true
-                }
-                return@intercept chain.proceed()
+                if (auth.launch == null) return@intercept chain.proceed()
+                Logger.debug { "resume original pkg=$packageName user=$userId" }
+                resumeOriginalLaunch(auth)
+                return@intercept true
             }
 
             // skips relock since a null keep key wipes every unlock
@@ -155,52 +200,16 @@ private fun XposedModule.hookLaunchIntercept(classLoader: ClassLoader) {
 
             val result = chain.proceed()
             if (result == true) return@intercept true
-            if (packageName == null) return@intercept false
+            if (activityInfo == null || packageName == null) return@intercept false
             if (isSystemHandler(packageName)) {
-                if (!shouldInterceptSystemHandler(intent?.action)) {
-                    Logger.debug {
-                        "intercept skip system-handler pkg=$packageName action=${intent?.action}"
-                    }
-                    return@intercept false
-                }
-                if (isSystemHandlerGrantFresh(intent?.action)) {
-                    Logger.debug {
-                        "intercept pass system-handler pkg=$packageName action=${intent?.action}"
-                    }
-                    return@intercept false
-                }
-                Logger.debug {
-                    "intercept gating system-handler pkg=$packageName action=${intent?.action}"
-                }
-                return@intercept tryRedirect(chain.thisObject, packageName, activityInfo.name)
-            }
-            val pkgKey = "$packageName:$userId"
-            if (pkgKey !in lockedPackages) return@intercept false
-            if (intent?.hasCategory(Intent.CATEGORY_HOME) == true) return@intercept false
-            if (isActivityAllowed(
+                return@intercept interceptSystemHandlerLaunch(
+                    chain.thisObject,
                     packageName,
-                    userId,
                     activityInfo.name,
-                    activityInfo.targetActivity,
+                    intent?.action,
                 )
-            ) {
-                Logger.debug {
-                    "intercept allowlisted pkg=$packageName user=$userId comp=${activityInfo.name}"
-                }
-                return@intercept false
             }
-            if (isUnlocked(packageName, userId)) {
-                refreshUnlock(packageName, userId)
-                Logger.debug {
-                    "intercept pass pkg=$packageName user=$userId comp=${activityInfo.name}"
-                }
-                return@intercept false
-            }
-
-            Logger.debug {
-                "intercept gating pkg=$packageName user=$userId comp=${activityInfo.name} action=${intent?.action}"
-            }
-            tryRedirect(chain.thisObject, packageName, activityInfo.name)
+            interceptLockedLaunch(chain.thisObject, intent, activityInfo, userId)
         }
         Logger.info("hooked intercept args=${method.parameterCount}")
     }.onFailure { Logger.error("hookLaunchIntercept failed: ${it.message}", it) }
@@ -268,60 +277,41 @@ private fun XposedModule.hookRecentsLaunch(classLoader: ClassLoader) {
                 4,
             )
         hook(method).intercept { chain ->
-            val callingPid = chain.args[0] as? Int
-            val callingUid = chain.args[1] as? Int
             val taskId = chain.args[2] as? Int
-            val entry = taskId?.let { resolveTaskEntry(chain.thisObject, it) }
+            // don't touch unknown tasks since a null keep key wipes the resumed app's unlock
+            val entry =
+                taskId?.let { resolveTaskEntry(chain.thisObject, it) }
+                    ?: return@intercept chain.proceed()
 
-            // skips relock since a null keep key wipes the resumed app's unlock
-            if (entry != null) relockOtherPackages(entry.packageName, entry.userId)
+            relockOtherPackages(entry.packageName, entry.userId)
 
-            if (entry != null && !isUnlocked(entry.packageName, entry.userId)) {
-                val opaque = shouldUseOpaqueUnlockPrompt()
-                Logger.debug {
-                    "recents gate pkg=${entry.packageName} user=${entry.userId} taskId=$taskId " +
-                        "pid=$callingPid uid=$callingUid ${
-                            recentsGesture(
-                                chain.args.getOrNull(3),
-                            )
-                        } " + "mode=${if (opaque) "block" else "surface"}"
-                }
-                if (opaque) {
-                    // don't surface the task or it steals focus from the solid prompt.
-                    // a quick switch still backgrounds the prompt though, so it self-cancels there
-                    runCatching {
-                        postAuthLaunch(
-                            chain.thisObject,
-                            entry,
-                        )
-                    }.onFailure { Logger.error("recents auth failed: ${it.message}", it) }
-                    return@intercept 0
-                }
-                val result = chain.proceed()
-                runCatching {
-                    postAuthLaunch(
-                        chain.thisObject,
-                        entry,
-                    )
-                }.onFailure { Logger.error("recents auth failed: ${it.message}", it) }
-                return@intercept result
-            }
-            if (entry != null) {
+            if (isUnlocked(entry.packageName, entry.userId)) {
                 refreshUnlock(entry.packageName, entry.userId)
                 Logger.debug {
-                    "recents pass pkg=${entry.packageName} user=${entry.userId} taskId=$taskId " +
-                        recentsGesture(
-                            chain.args.getOrNull(3),
-                        )
+                    "recents pass pkg=${entry.packageName} user=${entry.userId} " +
+                        "taskId=$taskId ${recentsGesture(chain.args.getOrNull(3))}"
                 }
+                return@intercept chain.proceed()
             }
-            chain.proceed()
+
+            val opaque = shouldUseOpaqueUnlockPrompt()
+            Logger.debug {
+                "recents gate pkg=${entry.packageName} user=${entry.userId} taskId=$taskId " +
+                    "pid=${chain.args[0]} uid=${chain.args[1]} " +
+                    "${recentsGesture(chain.args.getOrNull(3))} " +
+                    "mode=${if (opaque) "block" else "surface"}"
+            }
+            // opaque returns START_SUCCESS without surfacing the task so the prompt keeps focus
+            val result = if (opaque) 0 else chain.proceed()
+            runCatching { postAuthLaunch(chain.thisObject, entry) }
+                .onFailure { Logger.error("recents auth failed: ${it.message}", it) }
+            result
         }
         Logger.info("hooked startActivityFromRecents args=${method.parameterCount}")
     }.onFailure { Logger.error("hookRecentsLaunch failed: ${it.message}", it) }
 }
 
-// drop the unlock when a locked task gets swiped off recents
+// drops the unlock when a locked task gets swiped off recents
 private fun XposedModule.hookTaskRemoved(classLoader: ClassLoader) {
     runCatching {
         val supervisorClass =
@@ -341,9 +331,9 @@ private fun XposedModule.hookTaskRemoved(classLoader: ClassLoader) {
                 .apply { isAccessible = true }
         hook(method).intercept { chain ->
             val result = chain.proceed()
-            // do this after proceed and off the lock, mGlobalLock is held in here
+            // runs after proceed since mGlobalLock is held in here
             runCatching {
-                // always evict the dead taskId so the cache can't go stale or grow unbounded
+                // always evicts the dead taskId so the cache can't go stale or grow unbounded
                 val taskId = chain.args.getOrNull(0)?.let { taskIdField.getInt(it) }
                 val entry = taskId?.let { taskCache.remove(it) } ?: return@runCatching
                 if (!shouldRelockOnTaskRemoved()) return@runCatching
@@ -358,7 +348,7 @@ private fun XposedModule.hookTaskRemoved(classLoader: ClassLoader) {
     }
 }
 
-// screen off wipes unlock state, screen on relocks whatever's past its delay
+// screen off wipes unlock state and screen on relocks whatever's past its delay
 private fun XposedModule.hookScreenAwake(classLoader: ClassLoader) {
     runCatching {
         val method =
@@ -370,7 +360,7 @@ private fun XposedModule.hookScreenAwake(classLoader: ClassLoader) {
         hook(method).intercept { chain ->
             val awake = chain.args[0] as? Boolean
             if (awake == false) {
-                // screen went off, wipe everything so locked apps ask again next time
+                // wipes everything so locked apps ask again next time
                 if (shouldRelockOnScreenOff() && unlockedPackages.isNotEmpty()) {
                     val cleared = unlockedPackages.size
                     clearUnlocked()
@@ -379,22 +369,14 @@ private fun XposedModule.hookScreenAwake(classLoader: ClassLoader) {
                 return@intercept chain.proceed()
             }
             if (awake == true && unlockedPackages.isNotEmpty()) {
-                // back awake, only relock the ones past their delay
-                val now = SystemClock.elapsedRealtime()
-                val toRelock =
-                    unlockedPackages
-                        .filter { key ->
-                            val pkg = key.substringBeforeLast(':')
-                            val uid = key.substringAfterLast(':').toIntOrNull() ?: 0
-                            shouldRelockOnTransition(pkg, uid, now)
-                        }.toSet()
-                if (toRelock.isNotEmpty()) removeFromUnlocked(toRelock)
+                // relocks only the ones past their delay
+                val relocked = relockElapsedUnlocks()
                 Logger.debug {
                     val topPkg =
                         runCatching {
                             reflection?.findTopResumedPackageKey(chain.thisObject)
                         }.getOrNull()
-                    "screen on relocked=${toRelock.size} topPkg=$topPkg"
+                    "screen on relocked=$relocked topPkg=$topPkg"
                 }
             }
             chain.proceed()
@@ -422,13 +404,7 @@ private fun XposedModule.hookFlagSecure(classLoader: ClassLoader) {
             val ar = activityRecordField.get(chain.thisObject) ?: return@intercept chain.proceed()
             val pkg = packageNameField.get(ar) as? String ?: return@intercept chain.proceed()
             val userId = userIdField.get(ar) as? Int ?: 0
-            val pkgKey = "$pkg:$userId"
-            if (pkgKey in lockedPackages && isUnlocked(pkg, userId) &&
-                shouldBlockScreenshots(
-                    pkg,
-                    userId,
-                )
-            ) {
+            if (shouldForceSecure(pkg, userId)) {
                 Logger.debug { "flagsecure force-block pkg=$pkg user=$userId" }
                 return@intercept true
             }
@@ -448,7 +424,7 @@ private fun XposedModule.hookUninstall(classLoader: ClassLoader) {
                 5,
             )
         hook(method).intercept { chain ->
-            // fail open: if the args shifted, let the delete run instead of crashing system_server
+            // fails open: shifted args let the delete run instead of crashing system_server
             val packageName = runCatching { chain.args.getOrNull(0) as? String }.getOrNull()
             val removedBySystem =
                 runCatching { chain.args.getOrNull(4) as? Boolean }.getOrDefault(false)
@@ -463,8 +439,7 @@ private fun XposedModule.hookUninstall(classLoader: ClassLoader) {
                 return@intercept -1
             }
 
-            // backstop for deletes that never show the system dialog (pm/adb, silent callers).
-            // blocked attempts prompt, the grant lets the user's retry through
+            // backstops silent deletes (pm, adb) and lets a fresh auth grant pass the retry
             val needsBiometric =
                 removedBySystem == false && requireBiometricForUninstall() &&
                     !packageName.isNullOrEmpty() &&

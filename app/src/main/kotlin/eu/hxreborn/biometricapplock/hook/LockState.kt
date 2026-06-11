@@ -163,6 +163,20 @@ internal fun relockOtherPackages(
     }
 }
 
+// relocks every unlocked package whose delay elapsed and reports how many got dropped
+internal fun relockElapsedUnlocks(): Int {
+    val now = SystemClock.elapsedRealtime()
+    var relocked = 0
+    unlockedMap.keys.removeIf { key ->
+        val pkg = key.substringBeforeLast(':')
+        val uid = key.substringAfterLast(':').toIntOrNull() ?: 0
+        val due = shouldRelockOnTransition(pkg, uid, now)
+        if (due) relocked++
+        due
+    }
+    return relocked
+}
+
 // prefs cache are loaded once at boot, read-only in hook interceptors
 
 @Volatile
@@ -210,6 +224,14 @@ internal fun shouldBlockScreenshots(
     pkg: String,
     userId: Int,
 ): Boolean = appBlockScreenshotsOverrides[packageKey(pkg, userId)] ?: globalBlockScreenshots
+
+internal fun shouldForceSecure(
+    pkg: String,
+    userId: Int,
+): Boolean =
+    packageKey(pkg, userId) in lockedPackages &&
+        isUnlocked(pkg, userId) &&
+        shouldBlockScreenshots(pkg, userId)
 
 internal fun isActivityAllowed(
     pkg: String,
