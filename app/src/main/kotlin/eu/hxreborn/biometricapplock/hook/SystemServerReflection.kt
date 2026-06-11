@@ -66,7 +66,10 @@ internal class SystemServerReflection(
     private val taskInfoClass = cl.loadClass("android.app.TaskInfo")
     val taskInfoUserIdField: Field = taskInfoClass.getField("userId")
 
-    val taskLookup: TaskLookup? = runCatching { TaskLookup(cl) }.getOrNull()
+    val taskLookup: TaskLookup? =
+        runCatching { TaskLookup(cl) }
+            .onFailure { Logger.warn("task lookup init failed: ${it.message}") }
+            .getOrNull()
 
     val intentField: Field = activityStartInterceptorClass.getField("mIntent")
     val resolvedInfoField: Field = activityStartInterceptorClass.getField("mRInfo")
