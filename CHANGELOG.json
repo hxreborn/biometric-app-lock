@@ -3,6 +3,16 @@
   "entries": [
     {
       "type": "fix",
+      "title": "warn when task lookup init fails",
+      "description": null,
+      "version": "1.5.2",
+      "date": "2026-06-11",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/9330637ed4c69296c1136b839128156cefc248dc",
+      "scope": "hook",
+      "breaking": false
+    },
+    {
+      "type": "fix",
       "title": "relock swiped tasks without cache entry",
       "description": "Swiping a locked app from recents now re-locks it on OneUI.",
       "version": "1.5.2",
