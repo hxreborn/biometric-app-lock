@@ -1,6 +1,16 @@
 {
-  "version": "1.5.1",
+  "version": "1.5.2",
   "entries": [
+    {
+      "type": "fix",
+      "title": "relock swiped tasks without cache entry",
+      "description": "Swiping a locked app from recents now re-locks it on OneUI.",
+      "version": "1.5.2",
+      "date": "2026-06-11",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/bef628234975e9535815bc22a652d19779ee9d61",
+      "scope": "hook",
+      "breaking": false
+    },
     {
       "type": "refactor",
       "title": "extract launch and relock helpers",
@@ -288,66 +298,6 @@
       "version": "1.3.0",
       "date": "2026-06-03",
       "url": "https://github.com/hxreborn/biometric-app-lock/commit/fcbaf2acca7e2223b06f3198c40f806be882a8a5",
-      "scope": "ui",
-      "breaking": false
-    },
-    {
-      "type": "perf",
-      "title": "skip unchanged keys on remote sync",
-      "description": "Syncing prefs to the hook now writes only changed values, so a routine app launch no longer wakes the hook once per key.",
-      "version": "1.2.1",
-      "date": "2026-06-03",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/ab55240fa879e1ed722413943d50ea62d0c25c8d",
-      "scope": "prefs",
-      "breaking": false
-    },
-    {
-      "type": "feat",
-      "title": "add module-process logcat to log export",
-      "description": "The export now includes the app process's own logs, so biometric prompt failures show up next to the system hook activity.",
-      "version": "1.2.1",
-      "date": "2026-06-03",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/453704068a69d93ba264f6b6335ec74992d1065d",
-      "scope": null,
-      "breaking": false
-    },
-    {
-      "type": "refactor",
-      "title": "move log sharing into settings",
-      "description": null,
-      "version": "1.2.1",
-      "date": "2026-06-02",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/5282de527f410aa506c243152da7008219762c1d",
-      "scope": "ui",
-      "breaking": false
-    },
-    {
-      "type": "perf",
-      "title": "cache root status in the scope viewmodel",
-      "description": null,
-      "version": "1.2.1",
-      "date": "2026-06-02",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/3b589850385df0443e6b0e5c4074e77e11b862c7",
-      "scope": "ui",
-      "breaking": false
-    },
-    {
-      "type": "refactor",
-      "title": "regroup lock settings into behavior and privacy sections",
-      "description": null,
-      "version": "1.2.1",
-      "date": "2026-06-02",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/14211be43f65eeffcf22277bd8dad6d8d769a033",
-      "scope": "ui",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "announce disabled preference rows to accessibility",
-      "description": null,
-      "version": "1.2.1",
-      "date": "2026-06-02",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/70db77173d3af96968c85edc15ba25a3ea89d7e4",
       "scope": "ui",
       "breaking": false
     }
