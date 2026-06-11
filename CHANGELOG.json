@@ -1,6 +1,26 @@
 {
-  "version": "1.5.2",
+  "version": "1.5.3",
   "entries": [
+    {
+      "type": "fix",
+      "title": "resolve task package without optional framework methods",
+      "description": "Swiping a locked app from recents re-locks it on Samsung OneUI.",
+      "version": "1.5.3",
+      "date": "2026-06-11",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/52c3527e1b0d6ca6a86ddc1c9c855f118c7bf7c6",
+      "scope": "hook",
+      "breaking": false
+    },
+    {
+      "type": "fix",
+      "title": "normalize legacy locked-package keys",
+      "description": "Apps locked before 1.5 stay locked after a version downgrade and reinstall.",
+      "version": "1.5.3",
+      "date": "2026-06-11",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/5a19246538aedada1a31cbf54793f52036d6ca87",
+      "scope": "module",
+      "breaking": false
+    },
     {
       "type": "fix",
       "title": "warn when task lookup init fails",
@@ -199,116 +219,6 @@
       "date": "2026-06-04",
       "url": "https://github.com/hxreborn/biometric-app-lock/commit/b8a4573e2701ef69ee2cd131e9ee85b876490b4d",
       "scope": null,
-      "breaking": false
-    },
-    {
-      "type": "refactor",
-      "title": "move log export to its own section",
-      "description": "Moves the log export option into its own Diagnostics section so it is easier to find.",
-      "version": "1.3.0",
-      "date": "2026-06-03",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/2191252c880d0daba00f898ca150c8948b7bf1ff",
-      "scope": "ui",
-      "breaking": false
-    },
-    {
-      "type": "feat",
-      "title": "make debug builds obvious at a glance",
-      "description": "Debug builds now show a marker in the header so they are easy to tell apart.",
-      "version": "1.3.0",
-      "date": "2026-06-03",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/e6af8b5b3829e4c85c3867a7d5f8e59b6c6e801f",
-      "scope": "ui",
-      "breaking": false
-    },
-    {
-      "type": "feat",
-      "title": "unlock locked apps with screen lock",
-      "description": "A locked app now falls back to the device PIN, pattern, or password when biometrics are unavailable, and can optionally require a confirmation tap after face unlock.",
-      "version": "1.3.0",
-      "date": "2026-06-03",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/dd9d4d6d508b6b569be6a68471c401342fe18410",
-      "scope": "auth",
-      "breaking": false
-    },
-    {
-      "type": "feat",
-      "title": "require biometric to open settings",
-      "description": "The app can now require fingerprint, face, or device credential before it opens, and shows an error or lockout message when authentication fails.",
-      "version": "1.3.0",
-      "date": "2026-06-03",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/06e647c4344ab18b3c1d8c3a7c192c73b1c5419a",
-      "scope": "ui",
-      "breaking": false
-    },
-    {
-      "type": "feat",
-      "title": "add confirm before hiding launcher icon",
-      "description": "Hiding the app icon now asks you to confirm first.",
-      "version": "1.3.0",
-      "date": "2026-06-03",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/997c6cc32bcdf7f2d39e1866bf65d6527405073f",
-      "scope": "ui",
-      "breaking": false
-    },
-    {
-      "type": "refactor",
-      "title": "rework the locked-app unlock flow",
-      "description": "Simplifies the internal flow that reopens a locked app after authentication.",
-      "version": "1.3.0",
-      "date": "2026-06-03",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/88499223b0eaf057c6d0f39daa0e4467975bf849",
-      "scope": "auth",
-      "breaking": false
-    },
-    {
-      "type": "feat",
-      "title": "relock when a task is removed",
-      "description": "Swiping a locked app off the recents screen drops its unlock, so the next launch asks for authentication again.",
-      "version": "1.3.0",
-      "date": "2026-06-03",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/7c02081ff559be14d639960fe1b2df750e5f4f4b",
-      "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "reopen locked apps on the right screen",
-      "description": "Locked apps now reopen on the exact screen that was tapped, including deep links and non-exported notification targets, instead of restarting at the launcher.",
-      "version": "1.3.0",
-      "date": "2026-06-03",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/31e81291091509a69dbaa1bb51ed079264a19f23",
-      "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "improve OEM and version compatibility",
-      "description": "Locked apps now prompt more reliably across different Android versions and OEM ROMs.",
-      "version": "1.3.0",
-      "date": "2026-06-03",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/43c98a75aaefad5a0300dff2654fc1ca167f8597",
-      "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "feat",
-      "title": "capture more detail in log export",
-      "description": "The log header now records build type, ROM, and capture time.",
-      "version": "1.3.0",
-      "date": "2026-06-03",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/664a69265edb5dfb9ce081f098247615824048eb",
-      "scope": "ui",
-      "breaking": false
-    },
-    {
-      "type": "feat",
-      "title": "save logs to a file",
-      "description": "Logs can now be saved to the device in addition to sharing.",
-      "version": "1.3.0",
-      "date": "2026-06-03",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/fcbaf2acca7e2223b06f3198c40f806be882a8a5",
-      "scope": "ui",
       "breaking": false
     }
   ]
