@@ -2,9 +2,7 @@
 
 package eu.hxreborn.biometricapplock.ui
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -73,10 +72,12 @@ fun MainScaffold(viewModel: ScopeViewModel) {
 
     Scaffold(
         bottomBar = {
-            AnimatedVisibility(
-                visible = isTopLevel,
-                enter = slideInVertically { it },
-                exit = slideOutVertically { it },
+            val slide by animateFloatAsState(
+                targetValue = if (isTopLevel) 0f else 1f,
+                label = "bottomBarSlide",
+            )
+            Box(
+                modifier = Modifier.graphicsLayer { translationY = size.height * slide },
             ) {
                 if (prefs.floatingNavBar) {
                     BottomNav(
