@@ -1,6 +1,26 @@
 {
-  "version": "1.5.3",
+  "version": "1.5.4",
   "entries": [
+    {
+      "type": "feat",
+      "title": "hot reload the module on update",
+      "description": "App updates apply with no reboot, if your framework supports it.",
+      "version": "1.5.4",
+      "date": "2026-06-13",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/68c5d4a1d2b57c11e1f1428f6003d550f04fe664",
+      "scope": null,
+      "breaking": false
+    },
+    {
+      "type": "fix",
+      "title": "preserve list scroll on sub-screen nav",
+      "description": "Slide the nav bar with a graphicsLayer instead of removing it from layout, so the Scaffold bottom inset stays constant.",
+      "version": "1.5.4",
+      "date": "2026-06-12",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/95525e5a416b4ec7d9570ec7e27e431c451ca006",
+      "scope": "ui",
+      "breaking": false
+    },
     {
       "type": "fix",
       "title": "resolve task package without optional framework methods",
@@ -198,26 +218,6 @@
       "version": "1.5.0",
       "date": "2026-06-07",
       "url": "https://github.com/hxreborn/biometric-app-lock/pull/15",
-      "scope": null,
-      "breaking": false
-    },
-    {
-      "type": "feat",
-      "title": "add activity whitelist",
-      "description": "Adds an option to whitelist activities from any app.",
-      "version": "1.4.0",
-      "date": "2026-06-04",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/a0e429192229f7e146fd2b65f4e8506a70479ab1",
-      "scope": null,
-      "breaking": false
-    },
-    {
-      "type": "feat",
-      "title": "add solid unlock screen",
-      "description": "Adds an option for a solid unlock screen on phones where the see-through one closes by itself.",
-      "version": "1.4.0",
-      "date": "2026-06-04",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/b8a4573e2701ef69ee2cd131e9ee85b876490b4d",
       "scope": null,
       "breaking": false
     }
