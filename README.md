@@ -11,7 +11,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Android-13%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android 13+">
-  <img src="https://img.shields.io/badge/libxposed-API_101-ff69b4?style=for-the-badge" alt="libxposed API 101">
+  <img src="https://img.shields.io/badge/libxposed-API_101%2B-ff69b4?style=for-the-badge" alt="libxposed API 101+">
   <img src="https://img.shields.io/github/downloads/hxreborn/biometric-app-lock/total?style=for-the-badge&logo=github&label=Downloads&cacheSeconds=600" alt="Downloads">
 </p>
 
@@ -24,12 +24,12 @@ Stock Android never had a native per-app lock, and [Private Space](https://sourc
 
 This module intercepts activity launches at the system framework level before the target app starts. The Activity is never created until auth succeeds. Tapping a locked app from the recents screen is intercepted too.
 
-A reboot is required after install or update because framework hooks only load at boot (for now 😉). Changing which apps are locked takes effect immediately.
+Enabling the module needs one reboot so it loads at boot. After that, if your framework supports hot reload, app updates apply with no reboot. If not, you still reboot after each update. Changing which apps are locked is always instant.
 
 ## Requirements
 
 - Android 13+ with an enrolled biometric
-- Xposed manager with libxposed API 101 support
+- Xposed manager with libxposed API 101 or newer (102 enables hot reload)
 
 ## Install
 

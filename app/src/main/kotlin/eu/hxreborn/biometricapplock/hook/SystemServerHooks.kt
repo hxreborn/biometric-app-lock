@@ -9,6 +9,7 @@ import android.os.Handler
 import android.widget.Toast
 import eu.hxreborn.biometricapplock.BiometricAuthActivity
 import eu.hxreborn.biometricapplock.R
+import eu.hxreborn.biometricapplock.receiver.packageEventsReceiver
 import eu.hxreborn.biometricapplock.receiver.registerPackageEvents
 import eu.hxreborn.biometricapplock.util.Logger
 import io.github.libxposed.api.XposedModule
@@ -41,6 +42,14 @@ private fun ensurePackageEventsRegistered() {
     val handler = atmsHandler() ?: return
     if (!packageEventsRegistered.compareAndSet(false, true)) return
     registerPackageEvents(ctx, handler)
+}
+
+// unregister before reload so its strong ref does not pin the old module classloader
+internal fun unregisterPackageEvents() {
+    if (!packageEventsRegistered.compareAndSet(true, false)) return
+    val ctx = atmsContext() ?: return
+    runCatching { ctx.unregisterReceiver(packageEventsReceiver) }
+        .onFailure { Logger.warn("unregister package events failed: ${it.message}") }
 }
 
 // replays loadHookPrefs once the system is up since the install/uninstall handler resolve

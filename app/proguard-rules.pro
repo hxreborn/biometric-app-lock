@@ -5,6 +5,7 @@
 }
 
 -dontwarn io.github.libxposed.api.**
+-dontwarn io.github.libxposed.annotation.**
 
 -keep class io.github.libxposed.service.XposedProvider { *; }
 

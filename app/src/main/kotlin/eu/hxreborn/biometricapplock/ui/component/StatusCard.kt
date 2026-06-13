@@ -78,7 +78,10 @@ fun StatusCard(
                         DateUtils.SECOND_IN_MILLIS,
                         DateUtils.FORMAT_ABBREV_RELATIVE,
                     ).toString()
-            stringResource(R.string.status_loaded_at_boot, relative)
+            when (serviceLoadEvent) {
+                is ServiceLoadEvent.Boot -> stringResource(R.string.status_loaded_at_boot, relative)
+                is ServiceLoadEvent.HotReload -> stringResource(R.string.status_loaded_via_hot_reload, relative)
+            }
         } else {
             null
         }

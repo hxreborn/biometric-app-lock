@@ -8,7 +8,7 @@ import android.os.Handler
 import eu.hxreborn.biometricapplock.hook.clearRuntimeStateForPackage
 import eu.hxreborn.biometricapplock.util.Logger
 
-private val packageEventsReceiver =
+internal val packageEventsReceiver =
     object : BroadcastReceiver() {
         override fun onReceive(
             context: Context,

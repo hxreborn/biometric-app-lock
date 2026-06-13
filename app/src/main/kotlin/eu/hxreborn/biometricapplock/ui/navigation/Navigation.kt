@@ -257,6 +257,7 @@ fun MainNavDisplay(
                     AboutScreen(
                         framework = framework,
                         onBack = dropUnlessResumed { backStack.removeLastOrNull() },
+                        onTriggerHotReload = viewModel::triggerHotReload,
                         contentPadding = contentPadding,
                     )
                 }

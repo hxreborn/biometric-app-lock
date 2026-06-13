@@ -8,7 +8,8 @@ val cfgModuleId: String = providers.gradleProperty("module.id").get()
 val cfgModuleName: String = providers.gradleProperty("module.name").get()
 val cfgModuleAuthor: String = providers.gradleProperty("module.author").get()
 val cfgModuleDescription: String = providers.gradleProperty("module.description").get()
-val cfgXposedApi: Int = providers.gradleProperty("xposed.api").get().toInt()
+val cfgXposedApiMin: Int = providers.gradleProperty("xposed.api.min").get().toInt()
+val cfgXposedApiTarget: Int = providers.gradleProperty("xposed.api.target").get().toInt()
 
 android {
     namespace = "eu.hxreborn.biometricapplock"
@@ -22,7 +23,7 @@ android {
         versionCode = project.property("version.code").toString().toInt()
         versionName = project.property("version.name").toString()
 
-        buildConfigField("int", "LIBXPOSED_API_VERSION", "$cfgXposedApi")
+        buildConfigField("int", "LIBXPOSED_API_VERSION", "$cfgXposedApiTarget")
     }
 
     buildFeatures {
@@ -189,7 +190,10 @@ abstract class GenerateXposedModuleProp : DefaultTask() {
     abstract val moduleVersionCode: Property<Int>
 
     @get:Input
-    abstract val moduleApiVersion: Property<Int>
+    abstract val moduleMinApiVersion: Property<Int>
+
+    @get:Input
+    abstract val moduleTargetApiVersion: Property<Int>
 
     @get:OutputDirectory
     abstract val outputDir: DirectoryProperty
@@ -206,10 +210,11 @@ abstract class GenerateXposedModuleProp : DefaultTask() {
             versionCode=${moduleVersionCode.get()}
             author=${moduleAuthor.get()}
             description=${moduleDescription.get()}
-            minApiVersion=${moduleApiVersion.get()}
-            targetApiVersion=${moduleApiVersion.get()}
+            minApiVersion=${moduleMinApiVersion.get()}
+            targetApiVersion=${moduleTargetApiVersion.get()}
             staticScope=true
             exceptionMode=protective
+            autoHotReload=true
             """.trimIndent() + "\n",
         )
         xposedDir.resolve("scope.list").writeText("system\n")
@@ -223,7 +228,8 @@ val generateXposedModuleProp by tasks.registering(GenerateXposedModuleProp::clas
     moduleDescription.set(cfgModuleDescription)
     moduleVersionName.set(project.property("version.name").toString())
     moduleVersionCode.set(project.property("version.code").toString().toInt())
-    moduleApiVersion.set(cfgXposedApi)
+    moduleMinApiVersion.set(cfgXposedApiMin)
+    moduleTargetApiVersion.set(cfgXposedApiTarget)
 }
 
 androidComponents {

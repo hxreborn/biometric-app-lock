@@ -25,6 +25,7 @@ import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Memory
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LargeTopAppBar
@@ -71,6 +72,7 @@ private val BlobIconSize: Dp = 72.dp
 fun AboutScreen(
     framework: FrameworkInfo?,
     onBack: () -> Unit,
+    onTriggerHotReload: () -> Unit = {},
     contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
     val context = LocalContext.current
@@ -209,6 +211,18 @@ fun AboutScreen(
                     summary = framework?.let { "${it.name} ${it.version}" } ?: stringResource(R.string.settings_lsposed_framework_unbound),
                     position = SectionPosition.Bottom,
                 )
+            }
+
+            if (BuildConfig.DEBUG) {
+                item { SettingsSectionHeader(title = stringResource(R.string.about_section_debug)) }
+                item {
+                    PreferenceRow(
+                        icon = Icons.Outlined.Refresh,
+                        title = stringResource(R.string.about_debug_hot_reload_title),
+                        summary = stringResource(R.string.about_debug_hot_reload_summary),
+                        onClick = onTriggerHotReload,
+                    )
+                }
             }
         }
     }

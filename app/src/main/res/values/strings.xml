@@ -27,6 +27,7 @@
         <item quantity="other">%1$d apps locked</item>
     </plurals>
     <string name="status_loaded_at_boot">System server hooks loaded at boot %1$s</string>
+    <string name="status_loaded_via_hot_reload">System server hooks loaded via hot reload %1$s</string>
 
     <string name="dashboard_biometric_title">Hardware</string>
     <string name="dashboard_biometric_fingerprint">Fingerprint</string>
@@ -144,6 +145,9 @@
     <string name="about_section_links">Links</string>
     <string name="about_section_versions">Versions</string>
     <string name="about_section_release">Release</string>
+    <string name="about_section_debug">Debug</string>
+    <string name="about_debug_hot_reload_title">Trigger hot reload</string>
+    <string name="about_debug_hot_reload_summary">Reload the module in system_server without a reboot</string>
 
     <string name="app_detail_title">App details</string>
 

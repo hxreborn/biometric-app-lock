@@ -6,9 +6,12 @@ import eu.hxreborn.biometricapplock.hook.loadHookPrefs
 import eu.hxreborn.biometricapplock.hook.lockedPackages
 import eu.hxreborn.biometricapplock.hook.refreshSecureSurfaces
 import eu.hxreborn.biometricapplock.hook.registerSystemServerHooks
+import eu.hxreborn.biometricapplock.hook.unregisterPackageEvents
 import eu.hxreborn.biometricapplock.prefs.Prefs
 import eu.hxreborn.biometricapplock.util.Logger
 import io.github.libxposed.api.XposedModule
+import io.github.libxposed.api.XposedModuleInterface.HotReloadedParam
+import io.github.libxposed.api.XposedModuleInterface.HotReloadingParam
 import io.github.libxposed.api.XposedModuleInterface.ModuleLoadedParam
 import io.github.libxposed.api.XposedModuleInterface.SystemServerStartingParam
 
@@ -46,19 +49,50 @@ class BiometricAppLockModule : XposedModule() {
             }
         }
 
+    private var systemServerClassLoader: ClassLoader? = null
+
     override fun onModuleLoaded(param: ModuleLoadedParam) {
         module = this
         Logger.info("loaded in ${param.processName}")
     }
 
     override fun onSystemServerStarting(param: SystemServerStartingParam) {
+        systemServerClassLoader = param.classLoader
+        installSystemServerHooks(param.classLoader, reloaded = false)
+    }
+
+    override fun onHotReloading(param: HotReloadingParam): Boolean {
+        Logger.debug { "hot reloading pid=${Process.myPid()}" }
+        unregisterPackageEvents()
+        systemServerClassLoader?.let { param.setSavedInstanceState(it) }
+        return true
+    }
+
+    override fun onHotReloaded(param: HotReloadedParam) {
+        module = this
+        Logger.info("hot reload unhooking old=${param.oldHookHandles.size}")
+        param.oldHookHandles.forEach { runCatching { it.unhook() } }
+        val classLoader = param.savedInstanceState as? ClassLoader
+        if (classLoader == null) {
+            Logger.error("hot reload aborted, system_server classLoader unavailable")
+            return
+        }
+        systemServerClassLoader = classLoader
+        installSystemServerHooks(classLoader, reloaded = true)
+    }
+
+    private fun installSystemServerHooks(
+        classLoader: ClassLoader,
+        reloaded: Boolean,
+    ) {
         val prefs = getRemotePreferences(Prefs.GROUP)
         val locked = parseLockedPackages(Prefs.LOCKED_PACKAGES.read(prefs))
-        Logger.info("system_server starting pid=${Process.myPid()} locked=${locked.size}")
+        val phase = if (reloaded) "hot reloaded" else "starting"
+        Logger.info("system_server $phase pid=${Process.myPid()} locked=${locked.size}")
         Logger.debug { "locked=$locked" }
         loadHookPrefs(prefs)
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
-        registerSystemServerHooks(param.classLoader, locked)
+        registerSystemServerHooks(classLoader, locked)
     }
 
     private fun parseLockedPackages(raw: String): Set<String> =
