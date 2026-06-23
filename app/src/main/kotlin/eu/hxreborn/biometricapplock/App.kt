@@ -8,6 +8,7 @@ import eu.hxreborn.biometricapplock.prefs.Migration
 import eu.hxreborn.biometricapplock.prefs.Prefs
 import eu.hxreborn.biometricapplock.prefs.PrefsRepository
 import eu.hxreborn.biometricapplock.updates.UpdateRepository
+import eu.hxreborn.biometricapplock.util.RootShell
 import io.github.libxposed.service.XposedService
 import io.github.libxposed.service.XposedServiceHelper
 import java.util.concurrent.CopyOnWriteArrayList
@@ -43,6 +44,13 @@ class App :
                 runCatching { mService?.getRemotePreferences(Prefs.GROUP) }.getOrNull()
             }
         XposedServiceHelper.registerListener(this)
+        if (BuildConfig.DEBUG) raiseLogBuffers()
+    }
+
+    private fun raiseLogBuffers() {
+        Thread {
+            runCatching { RootShell.exec("logcat -b main -G 8M", "logcat -b crash -G 4M") }
+        }.apply { isDaemon = true }.start()
     }
 
     override fun onServiceBind(service: XposedService) {
