@@ -28,6 +28,8 @@ object DiagnosticsExporter {
 
     private const val LOGCAT_COMMAND = "logcat -d -b all -s ${Logger.TAG} 2>/dev/null"
 
+    private const val CRASH_LOG_COMMAND = "logcat -d -b crash 2>/dev/null"
+
     class NoLogsException : Exception()
 
     suspend fun export(
@@ -37,11 +39,15 @@ object DiagnosticsExporter {
         withContext(Dispatchers.IO) {
             val hookLog = RootShell.exec(HOOK_LOG_COMMAND)
             val appLog = RootShell.exec(LOGCAT_COMMAND)
-            if (hookLog.out.isEmpty() && appLog.out.isEmpty()) throw NoLogsException()
+            val crashRaw = RootShell.exec(CRASH_LOG_COMMAND)
+            val crashLog = crashRaw.copy(out = ownCrashes(crashRaw.out))
+            if (hookLog.out.isEmpty() && appLog.out.isEmpty() && crashLog.out.isEmpty()) {
+                throw NoLogsException()
+            }
             val dir = File(context.cacheDir, "diagnostics").apply { mkdirs() }
             val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
             File(dir, "biometricapplock-$stamp.log").apply {
-                writeText(body(framework, hookLog, appLog))
+                writeText(body(framework, hookLog, appLog, crashLog))
             }
         }
 
@@ -82,6 +88,7 @@ object DiagnosticsExporter {
         framework: String?,
         hookLog: RootShell.Result,
         appLog: RootShell.Result,
+        crashLog: RootShell.Result,
     ): String =
         buildString {
             val capturedAt = SimpleDateFormat("yyyy-MM-dd HH:mm:ss zzz", Locale.US).format(Date())
@@ -95,9 +102,19 @@ object DiagnosticsExporter {
             appendLine("android ${Build.VERSION.RELEASE} sdk ${Build.VERSION.SDK_INT}")
             appendLine("build ${Build.FINGERPRINT}")
             appendLine("xposed framework: ${framework ?: "unknown"}")
+            appendSection("module process crashes", crashLog)
             appendSection("system_server hooks (LSPosed log)", hookLog)
             appendSection("module process (logcat)", appLog)
         }
+
+    private fun ownCrashes(lines: List<String>): List<String> {
+        val starts = lines.indices.filter { lines[it].contains("FATAL EXCEPTION") }
+        val bounds = starts + lines.size
+        return starts.indices
+            .map { lines.subList(bounds[it], bounds[it + 1]) }
+            .filter { block -> block.any { it.contains(BuildConfig.APPLICATION_ID) } }
+            .flatten()
+    }
 
     private fun StringBuilder.appendSection(
         title: String,
