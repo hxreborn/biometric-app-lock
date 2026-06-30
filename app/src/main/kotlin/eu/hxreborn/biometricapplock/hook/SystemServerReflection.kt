@@ -47,10 +47,14 @@ internal fun ClassLoader.anyClassFromNames(vararg names: String): Class<*> {
     error("no class from ${names.toList()} sdk=${Build.VERSION.SDK_INT}")
 }
 
-// Optional framework symbols: resolve where present, null where an OEM stripped or renamed them,
-// and log one capability line per miss so an unfamiliar ROM names exactly what it lacks. Use these
-// for anything not every build carries, keep the non-optional getField/getMethod for the load-
-// bearing symbols whose absence should fail the hook loud.
+// these framework members are package-private in AOSP so getField and getMethod miss them
+internal fun Class<*>.requiredField(name: String): Field =
+    getDeclaredField(name).apply { isAccessible = true }
+
+internal fun Class<*>.requiredMethod(
+    name: String,
+    vararg params: Class<*>?,
+): Method = getDeclaredMethod(name, *params).apply { isAccessible = true }
 
 internal fun Class<*>.optionalField(vararg names: String): Field? {
     for (name in names) {
@@ -96,28 +100,28 @@ internal class SystemServerReflection(
         cl.loadClass("com.android.server.wm.ActivityTaskManagerService")
     private val activityRecordClass = cl.loadClass("com.android.server.wm.ActivityRecord")
 
-    val activityRecordPackageNameField: Field = activityRecordClass.getField("packageName")
-    val activityRecordUserIdField: Field = activityRecordClass.getField("mUserId")
+    val activityRecordPackageNameField: Field = activityRecordClass.requiredField("packageName")
+    val activityRecordUserIdField: Field = activityRecordClass.requiredField("mUserId")
 
     private val taskInfoClass = cl.loadClass("android.app.TaskInfo")
-    val taskInfoUserIdField: Field = taskInfoClass.getField("userId")
+    val taskInfoUserIdField: Field = taskInfoClass.requiredField("userId")
 
     val taskLookup: TaskLookup? =
         runCatching { TaskLookup(cl) }
             .onFailure { Logger.warn("task lookup init failed: ${it.message}") }
             .getOrNull()
 
-    val intentField: Field = activityStartInterceptorClass.getField("mIntent")
-    val resolvedInfoField: Field = activityStartInterceptorClass.getField("mRInfo")
-    val activityInfoField: Field = activityStartInterceptorClass.getField("mAInfo")
-    val callingPidField: Field = activityStartInterceptorClass.getField("mCallingPid")
-    val callingUidField: Field = activityStartInterceptorClass.getField("mCallingUid")
-    val realCallingPidField: Field = activityStartInterceptorClass.getField("mRealCallingPid")
-    val realCallingUidField: Field = activityStartInterceptorClass.getField("mRealCallingUid")
-    val resolvedTypeField: Field = activityStartInterceptorClass.getField("mResolvedType")
-    val supervisorField: Field = activityStartInterceptorClass.getField("mSupervisor")
-    val userIdField: Field = activityStartInterceptorClass.getField("mUserId")
-    val startFlagsField: Field = activityStartInterceptorClass.getField("mStartFlags")
+    val intentField: Field = activityStartInterceptorClass.requiredField("mIntent")
+    val resolvedInfoField: Field = activityStartInterceptorClass.requiredField("mRInfo")
+    val activityInfoField: Field = activityStartInterceptorClass.requiredField("mAInfo")
+    val callingPidField: Field = activityStartInterceptorClass.requiredField("mCallingPid")
+    val callingUidField: Field = activityStartInterceptorClass.requiredField("mCallingUid")
+    val realCallingPidField: Field = activityStartInterceptorClass.requiredField("mRealCallingPid")
+    val realCallingUidField: Field = activityStartInterceptorClass.requiredField("mRealCallingUid")
+    val resolvedTypeField: Field = activityStartInterceptorClass.requiredField("mResolvedType")
+    val supervisorField: Field = activityStartInterceptorClass.requiredField("mSupervisor")
+    val userIdField: Field = activityStartInterceptorClass.requiredField("mUserId")
+    val startFlagsField: Field = activityStartInterceptorClass.requiredField("mStartFlags")
 
     // resolveIntent is 5 args on A13 and 6 on A14+ (added callingPid), match by name
     val resolveIntent: Method =
@@ -127,7 +131,7 @@ internal class SystemServerReflection(
             ?: error("ActivityTaskSupervisor.resolveIntent not found")
 
     val resolveActivity: Method =
-        activityTaskSupervisorClass.getMethod(
+        activityTaskSupervisorClass.requiredMethod(
             "resolveActivity",
             Intent::class.java,
             cl.loadClass("android.content.pm.ResolveInfo"),
@@ -135,8 +139,9 @@ internal class SystemServerReflection(
             cl.loadClass("android.app.ProfilerInfo"),
         )
 
-    val activityTaskManagerServiceField: Field = activityTaskSupervisorClass.getField("mService")
-    val contextField: Field = activityTaskManagerServiceClass.getField("mContext")
+    val activityTaskManagerServiceField: Field =
+        activityTaskSupervisorClass.requiredField("mService")
+    val contextField: Field = activityTaskManagerServiceClass.requiredField("mContext")
     val startActivityAsUser: Method by lazy {
         contextField.type.getMethod(
             "startActivityAsUser",
@@ -175,18 +180,18 @@ internal class SystemServerReflection(
         activityTaskManagerServiceClass.getDeclaredField("mH").apply { isAccessible = true }
 
     val rootWindowContainerField: Field =
-        activityTaskManagerServiceClass.getField("mRootWindowContainer")
+        activityTaskManagerServiceClass.requiredField("mRootWindowContainer")
     private val getTopResumedActivity: Method by lazy {
-        rootWindowContainerField.type.getMethod("getTopResumedActivity")
+        rootWindowContainerField.type.requiredMethod("getTopResumedActivity")
     }
     private val packageNameField: Field by lazy {
-        getTopResumedActivity.returnType.getField("packageName")
+        getTopResumedActivity.returnType.requiredField("packageName")
     }
     private val userIdFieldTop: Field by lazy {
-        getTopResumedActivity.returnType.getField("mUserId")
+        getTopResumedActivity.returnType.requiredField("mUserId")
     }
     val refreshSecureSurfaceState: Method by lazy {
-        rootWindowContainerField.type.getMethod("refreshSecureSurfaceState")
+        rootWindowContainerField.type.requiredMethod("refreshSecureSurfaceState")
     }
 
     fun findTopResumedPackageKey(activityTaskManagerService: Any): String? {
