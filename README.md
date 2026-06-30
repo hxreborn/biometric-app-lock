@@ -6,7 +6,7 @@
 </h1>
 
 <p align="center">
-  Xposed module that intercepts the launches of a user-defined list of apps at the System Framework level. Those activities are never created until you authenticate via fingerprint or face unlock.
+  Xposed module that locks apps you choose behind fingerprint or face unlock. It intercepts launches at the System Framework level, so a locked app's activities are never created until you authenticate.
 </p>
 
 <p align="center">
@@ -16,13 +16,11 @@
 </p>
 
 > [!NOTE]
-> Built for AOSP and Pixel. Other Android flavors may work if not heavily modified, such as One UI 8+, but others are untested. If you're on HyperOS, OxygenOS, ColorOS, etc. your device already includes a built-in app lock and you probably don't need this.
+> Built for AOSP and Pixel. Lightly modified flavors like One UI 8+ may work but are untested. HyperOS, OxygenOS, and ColorOS already ship a built-in app lock, so you probably don't need this there.
 
 ## About this module
 
-Stock Android never had a native per-app lock, and [Private Space](https://source.android.com/docs/security/features/private-space) (available since Android 15 Beta 2) is a secondary isolated profile where apps run as separate installs with their own data.
-
-This module intercepts activity launches at the system framework level before the target app starts. The Activity is never created until auth succeeds. Tapping a locked app from the recents screen is intercepted too.
+Stock Android has no native per-app lock. This module adds one. A locked app opens normally once you authenticate, including when you tap it from the recents screen.
 
 Enabling the module needs one reboot so it loads at boot. After that, if your framework supports hot reload, app updates apply with no reboot. If not, you still reboot after each update. Changing which apps are locked is always instant.
 

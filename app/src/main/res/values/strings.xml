@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Biometric App Locker</string>
-    <string name="module_description">Blocks access to selected apps at the System Framework level until you authenticate via fingerprint or face unlock</string>
+    <string name="module_description">Locks apps you choose behind fingerprint or face unlock at the System Framework level</string>
 
     <string name="app_bar_title">Biometric App Locker</string>
 
