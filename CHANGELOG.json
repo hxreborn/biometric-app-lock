@@ -1,6 +1,26 @@
 {
-  "version": "1.5.4",
+  "version": "1.5.5",
   "entries": [
+    {
+      "type": "fix",
+      "title": "find framework members by declaration",
+      "description": "Improves framework compatibility so locked apps and screenshot blocking work on more devices.",
+      "version": "1.5.5",
+      "date": "2026-06-30",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/4d926c517dec5977b2be2cf1798fa85f165e07d0",
+      "scope": "hook",
+      "breaking": false
+    },
+    {
+      "type": "fix",
+      "title": "include app crashes in diagnostic logs",
+      "description": null,
+      "version": "1.5.5",
+      "date": "2026-06-23",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/7818db470c3dba6e3a03b84301e731468339379c",
+      "scope": null,
+      "breaking": false
+    },
     {
       "type": "feat",
       "title": "hot reload the module on update",
@@ -89,136 +109,6 @@
       "date": "2026-06-11",
       "url": "https://github.com/hxreborn/biometric-app-lock/commit/88ddce0d09bf4d15a39f605664d98c837f86b6ce",
       "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "regrant content uris on auth replay",
-      "description": "Installing a downloaded APK no longer crashes the installer after the biometric prompt.",
-      "version": "1.5.0",
-      "date": "2026-06-10",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/8389496164d8f421697ba9d72b8c4d52d2a3f45b",
-      "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "refactor",
-      "title": "adopt shared BackButton across nav screens",
-      "description": null,
-      "version": "1.5.0",
-      "date": "2026-06-10",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/52c12a4ce4c9f0291733d644deb13cf10f3b54f1",
-      "scope": "ui",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "always evict a removed task from the cache",
-      "description": null,
-      "version": "1.5.0",
-      "date": "2026-06-10",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/81878a93f216bc7d5868b96a32ecaa01f15fbe05",
-      "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "feat",
-      "title": "require biometric to install or remove apps",
-      "description": null,
-      "version": "1.5.0",
-      "date": "2026-06-10",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/dc3ad67d8553a3e8e2858af5e26edf409aa30e39",
-      "scope": null,
-      "breaking": false
-    },
-    {
-      "type": "refactor",
-      "title": "wire ViewModel into service listener bus",
-      "description": null,
-      "version": "1.5.0",
-      "date": "2026-06-08",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/865c95315b8bbd5313ee831efbf3dc0ef3adeacd",
-      "scope": null,
-      "breaking": false
-    },
-    {
-      "type": "perf",
-      "title": "branch prefs listener by key",
-      "description": null,
-      "version": "1.5.0",
-      "date": "2026-06-07",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/3af611a381df01516900b607464bbdf67efac63d",
-      "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "perf",
-      "title": "load SelfLockScreen icon off main via shared cache",
-      "description": null,
-      "version": "1.5.0",
-      "date": "2026-06-07",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/19fb1eefa3932501f5fdb81e748c30bb6b27b913",
-      "scope": "ui",
-      "breaking": false
-    },
-    {
-      "type": "perf",
-      "title": "use MotionScheme effects spec for mechanical fades",
-      "description": null,
-      "version": "1.5.0",
-      "date": "2026-06-07",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/ad368ada2fb6c1dce12789692a509c0a6ee63d62",
-      "scope": "ui",
-      "breaking": false
-    },
-    {
-      "type": "perf",
-      "title": "add contentType to lazy list items for pool reuse",
-      "description": null,
-      "version": "1.5.0",
-      "date": "2026-06-07",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/25747ce4f77c05cda2d76f105843752a09fbbf0b",
-      "scope": "ui",
-      "breaking": false
-    },
-    {
-      "type": "refactor",
-      "title": "consolidate biometric class into one row",
-      "description": null,
-      "version": "1.5.0",
-      "date": "2026-06-07",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/e8251d13a57d51a80b567f781ff509315392e71e",
-      "scope": "ui",
-      "breaking": false
-    },
-    {
-      "type": "refactor",
-      "title": "drop silent fallbacks in module startup",
-      "description": null,
-      "version": "1.5.0",
-      "date": "2026-06-07",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/f046efcad013353f355a12ee67d5f54e18055df0",
-      "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "refactor",
-      "title": "rename boundService to mService",
-      "description": null,
-      "version": "1.5.0",
-      "date": "2026-06-07",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/0adc6f616b7140fe5b8d574f520dd07cfb87575e",
-      "scope": null,
-      "breaking": false
-    },
-    {
-      "type": "feat",
-      "title": "add work profile support",
-      "description": null,
-      "version": "1.5.0",
-      "date": "2026-06-07",
-      "url": "https://github.com/hxreborn/biometric-app-lock/pull/15",
-      "scope": null,
       "breaking": false
     }
   ]
