@@ -11,6 +11,7 @@ object Prefs {
     val RELOCK_ON_TASK_REMOVED = BoolPref("relock_on_task_removed", true)
     val BLOCK_SCREENSHOTS = BoolPref("block_screenshots", false)
     val UNLOCK_REQUIRE_CONFIRMATION = BoolPref("unlock_require_confirmation", false)
+    val CRED_FALLBACK = BoolPref("cred_fallback", true)
 
     // compat fallback for OEMs (e.g. HyperOS) where the translucent prompt loses focus and
     // self-cancels. AOSP is fine with translucent, so this stays off by default
@@ -51,6 +52,7 @@ object Prefs {
             RELOCK_ON_TASK_REMOVED,
             BLOCK_SCREENSHOTS,
             UNLOCK_REQUIRE_CONFIRMATION,
+            CRED_FALLBACK,
             USE_OPAQUE_UNLOCK_PROMPT,
             PREVENT_MODULE_UNINSTALL,
             SELF_LOCK,

@@ -18,6 +18,7 @@ data class AppPrefs(
     val relockOnTaskRemoved: Boolean,
     val blockScreenshots: Boolean,
     val unlockRequireConfirmation: Boolean,
+    val credFallback: Boolean,
     val useOpaqueUnlockPrompt: Boolean,
     val preventModuleUninstall: Boolean,
     val selfLock: Boolean,
@@ -37,6 +38,7 @@ data class AppPrefs(
                 relockOnTaskRemoved = true,
                 blockScreenshots = false,
                 unlockRequireConfirmation = false,
+                credFallback = true,
                 useOpaqueUnlockPrompt = false,
                 preventModuleUninstall = false,
                 selfLock = false,
@@ -65,6 +67,7 @@ class PrefsRepository(
                         relockOnTaskRemoved = Prefs.RELOCK_ON_TASK_REMOVED.read(local),
                         blockScreenshots = Prefs.BLOCK_SCREENSHOTS.read(local),
                         unlockRequireConfirmation = Prefs.UNLOCK_REQUIRE_CONFIRMATION.read(local),
+                        credFallback = Prefs.CRED_FALLBACK.read(local),
                         useOpaqueUnlockPrompt = Prefs.USE_OPAQUE_UNLOCK_PROMPT.read(local),
                         preventModuleUninstall = Prefs.PREVENT_MODULE_UNINSTALL.read(local),
                         selfLock = Prefs.SELF_LOCK.read(local),
@@ -109,6 +112,7 @@ class PrefsRepository(
                     if (spec === Prefs.LAST_REMOTE_WRITE) return@forEach
                     if (spec === Prefs.SELF_LOCK) return@forEach
                     if (spec === Prefs.UNLOCK_REQUIRE_CONFIRMATION) return@forEach
+                    if (spec === Prefs.CRED_FALLBACK) return@forEach
                     if (spec.copyIfChanged(local, remote, this)) changed = true
                 }
 

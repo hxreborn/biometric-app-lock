@@ -82,7 +82,11 @@ open class BiometricAuthActivity : Activity() {
 
     private fun showPrompt(title: String) {
         val bm = getSystemService(BiometricManager::class.java)
-        val authenticators = pickAuthenticators(bm)
+        val authenticators =
+            pickAuthenticators(
+                bm,
+                allowCredential = App.from(this).prefsRepository.read(Prefs.CRED_FALLBACK),
+            )
         if (authenticators == null) {
             Log.w(TAG, "no enrolled authenticator, keeping $targetPkg locked")
             onResult(AUTH_CANCELLED)

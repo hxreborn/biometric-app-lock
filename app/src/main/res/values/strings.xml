@@ -90,6 +90,8 @@
     <string name="settings_unlock_prompt">Unlock prompt</string>
     <string name="settings_unlock_confirmation_title">Require confirmation</string>
     <string name="settings_unlock_confirmation_summary">After a passive unlock such as face unlock, tap Confirm before the app opens. Matches Android\'s default</string>
+    <string name="settings_biometric_only_title">Allow screen lock fallback</string>
+    <string name="settings_biometric_only_summary">When enabled, the screen lock (PIN, pattern, or password) can unlock apps if biometrics fail. Disable to require fingerprint or face only</string>
     <string name="settings_opaque_unlock_prompt_title">Compatibility mode</string>
     <string name="settings_opaque_unlock_prompt_summary">Helps on some non-AOSP ROMs where the prompt closes itself or loses focus. Leave it off on stock Android, where it hides the screen behind the prompt</string>
     <string name="settings_prevent_uninstall_title">Prevent uninstall</string>

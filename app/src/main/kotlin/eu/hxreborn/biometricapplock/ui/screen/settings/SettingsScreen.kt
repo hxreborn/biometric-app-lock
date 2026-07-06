@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AppBlocking
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.outlined.Dialpad
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.FormatPaint
@@ -296,6 +297,23 @@ fun SettingsScreen(
                     },
                     trailing = {
                         LockSwitch(checked = prefs.unlockRequireConfirmation, onCheckedChange = null)
+                    },
+                )
+            }
+            item {
+                PreferenceRow(
+                    icon = Icons.Outlined.Dialpad,
+                    title = stringResource(R.string.settings_biometric_only_title),
+                    summary = stringResource(R.string.settings_biometric_only_summary),
+                    position = SectionPosition.Middle,
+                    onClick = {
+                        app.prefsRepository.save(
+                            Prefs.CRED_FALLBACK,
+                            !prefs.credFallback,
+                        )
+                    },
+                    trailing = {
+                        LockSwitch(checked = prefs.credFallback, onCheckedChange = null)
                     },
                 )
             }

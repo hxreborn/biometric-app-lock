@@ -3,14 +3,16 @@ package eu.hxreborn.biometricapplock.util
 import android.hardware.biometrics.BiometricManager
 import android.hardware.biometrics.BiometricManager.Authenticators
 
-fun pickAuthenticators(bm: BiometricManager): Int? {
-    val strongAndCred = Authenticators.BIOMETRIC_STRONG or Authenticators.DEVICE_CREDENTIAL
+fun pickAuthenticators(
+    bm: BiometricManager,
+    allowCredential: Boolean = true,
+): Int? {
+    val strong = Authenticators.BIOMETRIC_STRONG
     val weak = Authenticators.BIOMETRIC_WEAK
     val cred = Authenticators.DEVICE_CREDENTIAL
-    return when (BiometricManager.BIOMETRIC_SUCCESS) {
-        bm.canAuthenticate(strongAndCred) -> strongAndCred
-        bm.canAuthenticate(weak) -> weak
-        bm.canAuthenticate(cred) -> cred
-        else -> null
-    }
+    return listOfNotNull(
+        if (allowCredential) strong or cred else strong,
+        weak,
+        cred.takeIf { allowCredential },
+    ).firstOrNull { bm.canAuthenticate(it) == BiometricManager.BIOMETRIC_SUCCESS }
 }
