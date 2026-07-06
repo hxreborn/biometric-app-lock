@@ -1,6 +1,56 @@
 {
-  "version": "1.5.6",
+  "version": "1.6.0",
   "entries": [
+    {
+      "type": "refactor",
+      "title": "trim hot reload status text",
+      "description": null,
+      "version": "1.6.0",
+      "date": "2026-07-06",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/fc1dd9685fbe28cdcb07868873c7301d3c498fb6",
+      "scope": "ui",
+      "breaking": false
+    },
+    {
+      "type": "feat",
+      "title": "add screen lock fallback toggle",
+      "description": "Adds a toggle to unlock apps with the screen lock (PIN, pattern, or password) when biometrics fail, on by default.",
+      "version": "1.6.0",
+      "date": "2026-07-06",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/56743dc59eefb037038014021045f817cd0ab86f",
+      "scope": "auth",
+      "breaking": false
+    },
+    {
+      "type": "fix",
+      "title": "reflect manual hot reload in dashboard",
+      "description": "Show the system hook reload time after a hot reload if triggered manually from the debug build.",
+      "version": "1.6.0",
+      "date": "2026-07-06",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/4184a1586062f14a80dabe2fc6ce46ad8b423a4e",
+      "scope": "ui",
+      "breaking": false
+    },
+    {
+      "type": "refactor",
+      "title": "clarify app management coverage text",
+      "description": null,
+      "version": "1.6.0",
+      "date": "2026-07-06",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/b952d3e4c3b82a49936a00ed9a438e11ee28e2e0",
+      "scope": "ui",
+      "breaking": false
+    },
+    {
+      "type": "fix",
+      "title": "cap app icon bitmap size",
+      "description": "The app list no longer crashes while scrolling on certain ROMs.",
+      "version": "1.6.0",
+      "date": "2026-07-06",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/63a7e8879fb6e3c7e624fb938239e3252a98fe54",
+      "scope": "ui",
+      "breaking": false
+    },
     {
       "type": "fix",
       "title": "dedupe app list by package and user",
@@ -69,26 +119,6 @@
       "date": "2026-06-11",
       "url": "https://github.com/hxreborn/biometric-app-lock/commit/5a19246538aedada1a31cbf54793f52036d6ca87",
       "scope": "module",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "warn when task lookup init fails",
-      "description": null,
-      "version": "1.5.2",
-      "date": "2026-06-11",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/9330637ed4c69296c1136b839128156cefc248dc",
-      "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "relock swiped tasks without cache entry",
-      "description": "Swiping a locked app from recents now re-locks it on OneUI.",
-      "version": "1.5.2",
-      "date": "2026-06-11",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/bef628234975e9535815bc22a652d19779ee9d61",
-      "scope": "hook",
       "breaking": false
     }
   ]
