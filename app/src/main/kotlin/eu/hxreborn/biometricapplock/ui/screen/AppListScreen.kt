@@ -142,15 +142,13 @@ private suspend fun loadApps(
         val userManager = context.getSystemService(Context.USER_SERVICE) as UserManager
         val profiles = userManager.userProfiles
 
-        val entries = mutableListOf<Pair<LauncherActivityInfo, Int>>()
-        for (user in profiles) {
-            val userId = getUserId(user)
-            launcherApps.getActivityList(null, user).forEach { info ->
-                if (info.applicationInfo.packageName != ownPackage) {
-                    entries.add(info to userId)
-                }
-            }
-        }
+        val entries =
+            profiles
+                .flatMap { user ->
+                    val userId = getUserId(user)
+                    launcherApps.getActivityList(null, user).map { it to userId }
+                }.filter { (info, _) -> info.applicationInfo.packageName != ownPackage }
+                .distinctBy { (info, userId) -> "${info.applicationInfo.packageName}:$userId" }
 
         coroutineScope {
             entries
