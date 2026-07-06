@@ -1,6 +1,6 @@
 [versions]
 agp = "9.2.1"
-kotlin = "2.3.21"
+kotlin = "2.4.0"
 kotlinxCoroutines = "1.11.0"
 libxposedApi = "102.0.0-SNAPSHOT"
 libxposedService = "102.0.0-SNAPSHOT"
