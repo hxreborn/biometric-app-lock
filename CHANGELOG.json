@@ -1,6 +1,16 @@
 {
-  "version": "1.5.5",
+  "version": "1.5.6",
   "entries": [
+    {
+      "type": "fix",
+      "title": "dedupe app list by package and user",
+      "description": "Apps that show more than one launcher icon no longer crash the apps screen.",
+      "version": "1.5.6",
+      "date": "2026-07-06",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/d50a60161da21b6369d2cd604f8a209e74082f7f",
+      "scope": "ui",
+      "breaking": false
+    },
     {
       "type": "fix",
       "title": "find framework members by declaration",
@@ -78,36 +88,6 @@
       "version": "1.5.2",
       "date": "2026-06-11",
       "url": "https://github.com/hxreborn/biometric-app-lock/commit/bef628234975e9535815bc22a652d19779ee9d61",
-      "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "refactor",
-      "title": "extract launch and relock helpers",
-      "description": "Adds small helpers for maintainability with no behavior change.",
-      "version": "1.5.1",
-      "date": "2026-06-11",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/e14b53e41982bf59dc5ba301e48e1e8943d3916b",
-      "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "stop recents tap relocking resumed app",
-      "description": "Recents no longer relocks the app being resumed and locked apps now prompt from recents on OneUI.",
-      "version": "1.5.1",
-      "date": "2026-06-11",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/2ad25f4bd5c9a86d00e25ac74d7de4c79ccb0e78",
-      "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "skip uri regrant on stripped ROMs",
-      "description": "Avoids failing on ROMs where the URI grant methods are absent.",
-      "version": "1.5.1",
-      "date": "2026-06-11",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/88ddce0d09bf4d15a39f605664d98c837f86b6ce",
       "scope": "hook",
       "breaking": false
     }
