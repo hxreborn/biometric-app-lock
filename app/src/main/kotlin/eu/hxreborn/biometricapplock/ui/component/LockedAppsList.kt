@@ -29,17 +29,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.core.graphics.drawable.toBitmap
 import eu.hxreborn.biometricapplock.R
 import eu.hxreborn.biometricapplock.ui.screen.settings.SettingsSectionHeader
 import eu.hxreborn.biometricapplock.ui.theme.Tokens
+import eu.hxreborn.biometricapplock.ui.util.rememberAppIcon
 import eu.hxreborn.biometricapplock.util.getUserHandle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -161,17 +159,7 @@ private fun AppChip(
                 }.getOrDefault(packageName.substringAfterLast('.'))
             }
     }
-    val icon by produceState<ImageBitmap?>(initialValue = null, key1 = packageKey) {
-        value =
-            withContext(Dispatchers.IO) {
-                runCatching {
-                    val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
-                    val userHandle = getUserHandle(userId)
-                    val info = launcherApps.getActivityList(packageName, userHandle).firstOrNull()
-                    info?.getIcon(0)?.toBitmap()?.asImageBitmap()
-                }.getOrNull()
-            }
-    }
+    val icon = rememberAppIcon(packageName, userId)
 
     Column(
         modifier = modifier.clickable(onClick = onClick).padding(vertical = Tokens.SpacingXs),

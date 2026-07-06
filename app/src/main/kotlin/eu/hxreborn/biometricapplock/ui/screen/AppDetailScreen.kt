@@ -45,12 +45,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
-import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.hxreborn.biometricapplock.App
 import eu.hxreborn.biometricapplock.R
@@ -62,6 +60,7 @@ import eu.hxreborn.biometricapplock.ui.screen.settings.PreferenceRow
 import eu.hxreborn.biometricapplock.ui.screen.settings.SettingsSectionHeader
 import eu.hxreborn.biometricapplock.ui.theme.Tokens
 import eu.hxreborn.biometricapplock.ui.util.openAppInfo
+import eu.hxreborn.biometricapplock.ui.util.rememberAppIcon
 import eu.hxreborn.biometricapplock.util.getUserHandle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -92,17 +91,7 @@ fun AppDetailScreen(
             }
     }
 
-    val icon by produceState<ImageBitmap?>(initialValue = null, key1 = packageKey) {
-        value =
-            withContext(Dispatchers.IO) {
-                runCatching {
-                    val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
-                    val userHandle = getUserHandle(userId)
-                    val info = launcherApps.getActivityList(packageName, userHandle).firstOrNull()
-                    info?.getIcon(0)?.toBitmap()?.asImageBitmap()
-                }.getOrNull()
-            }
-    }
+    val icon = rememberAppIcon(packageName, userId)
 
     val versionName by produceState<String?>(initialValue = null, key1 = packageKey) {
         value =

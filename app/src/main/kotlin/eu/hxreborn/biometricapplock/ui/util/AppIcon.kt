@@ -8,7 +8,9 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.core.graphics.drawable.toBitmap
+import eu.hxreborn.biometricapplock.ui.theme.Tokens
 import eu.hxreborn.biometricapplock.util.getUserHandle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -21,7 +23,8 @@ fun rememberAppIcon(
     userId: Int = 0,
 ): ImageBitmap? {
     val context = LocalContext.current
-    val key = "$packageName:$userId"
+    val iconSizePx = with(LocalDensity.current) { Tokens.AppIconSize.roundToPx() * 2 }
+    val key = "$packageName:$userId:$iconSizePx"
     return produceState<ImageBitmap?>(initialValue = iconCache.get(key), key1 = key) {
         if (value != null) return@produceState
         value =
@@ -30,7 +33,7 @@ fun rememberAppIcon(
                     val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
                     val userHandle = getUserHandle(userId)
                     val info = launcherApps.getActivityList(packageName, userHandle).firstOrNull()
-                    info?.getIcon(0)?.toBitmap()?.asImageBitmap()
+                    info?.getIcon(0)?.toBitmap(iconSizePx, iconSizePx)?.asImageBitmap()
                 }.getOrNull()?.also { iconCache.put(key, it) }
             }
     }.value
