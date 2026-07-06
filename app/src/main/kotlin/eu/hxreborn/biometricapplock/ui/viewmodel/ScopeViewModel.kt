@@ -14,6 +14,7 @@ import eu.hxreborn.biometricapplock.App
 import eu.hxreborn.biometricapplock.BuildConfig
 import eu.hxreborn.biometricapplock.prefs.Prefs
 import eu.hxreborn.biometricapplock.util.RootShell
+import io.github.libxposed.service.HotReloadResult
 import io.github.libxposed.service.XposedService
 import io.github.libxposed.service.XposedServiceHelper
 import kotlinx.coroutines.Dispatchers
@@ -161,6 +162,9 @@ class ScopeViewModel(
                 targets.forEach { target ->
                     service.hotReloadModule(target, null) { reloaded, result ->
                         Log.i(TAG, "hot reload pkg=${reloaded.processName} status=${result.status()} msg=${result.message()}")
+                        if (result.status() == HotReloadResult.Status.SUCCEEDED) {
+                            _serviceLoadEvent.value = ServiceLoadEvent.HotReload(System.currentTimeMillis())
+                        }
                         toast("hot reload ${reloaded.processName}: ${result.status()}")
                     }
                 }
