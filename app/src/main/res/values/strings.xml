@@ -27,7 +27,7 @@
         <item quantity="other">%1$d apps locked</item>
     </plurals>
     <string name="status_loaded_at_boot">System server hooks loaded at boot %1$s</string>
-    <string name="status_loaded_via_hot_reload">System server hooks loaded via hot reload %1$s</string>
+    <string name="status_loaded_via_hot_reload">System server hooks hot reloaded %1$s</string>
 
     <string name="dashboard_biometric_title">Hardware</string>
     <string name="dashboard_biometric_fingerprint">Fingerprint</string>
