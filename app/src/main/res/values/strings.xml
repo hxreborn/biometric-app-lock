@@ -103,11 +103,11 @@
     <string name="settings_app_management_summary">Require biometric to install, update, or uninstall apps</string>
 
     <string name="app_management_title">App management</string>
-    <string name="app_management_description">Installs and updates are intercepted only when the system installer screen appears, whichever app started them. Silent installers that skip that screen, like the Play Store or adb, aren\'t covered. The system server catches uninstalls from the launcher, Settings, and adb. One approval covers the same kind of action for any app in any profile, for a short time</string>
+    <string name="app_management_description">Install and update prompts show up only when Android\'s installer screen appears, whichever app opened it. Silent installers that skip that screen, like the Play Store or adb, slip through. Uninstalls get caught deeper in the system server, so removing an app from the launcher, Settings, Play Store, or adb is blocked even without that screen. One approval clears that kind of action across every app and profile, then expires after a short while</string>
     <string name="app_management_install_title">Require biometric to install apps</string>
     <string name="app_management_install_summary">Protect APK installs and app updates before Android shows the installer</string>
     <string name="app_management_uninstall_title">Require biometric to uninstall apps</string>
-    <string name="app_management_uninstall_summary">Protect app removals from the launcher, Settings, and adb</string>
+    <string name="app_management_uninstall_summary">Protect app removals from the launcher, Settings, Play Store, and adb</string>
 
     <string name="biometric_prompt_uninstall_title">Uninstall %1$s</string>
     <string name="biometric_prompt_default_target">app</string>
