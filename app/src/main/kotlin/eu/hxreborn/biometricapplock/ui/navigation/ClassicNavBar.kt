@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalMaterial3ComponentOverrideApi::class)
-
 package eu.hxreborn.biometricapplock.ui.navigation
 
 import androidx.compose.animation.Crossfade
@@ -10,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,17 +19,14 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.ExperimentalMaterial3ComponentOverrideApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalNavigationBarOverride
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.NavigationBarOverride
-import androidx.compose.material3.NavigationBarOverrideScope
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -56,69 +52,76 @@ internal val LocalSelectedIndex: ProvidableCompositionLocal<Int> = compositionLo
 
 internal val LocalItemCount: ProvidableCompositionLocal<Int> = compositionLocalOf { 0 }
 
-private object StretchingPillOverride : NavigationBarOverride {
-    @Composable
-    override fun NavigationBarOverrideScope.NavigationBar() {
-        val selectedIndex = LocalSelectedIndex.current
-        val itemCount = LocalItemCount.current.coerceAtLeast(1)
-        val motionScheme = MaterialTheme.motionScheme
-        val pillColor = MaterialTheme.colorScheme.secondaryContainer
+// standalone nav bar with an animated selection pill, replacing material3's NavigationBar since
+// it no longer exposes a component-override hook to inject one
+@Composable
+private fun StretchingPillNavigationBar(
+    modifier: Modifier = Modifier,
+    content: @Composable RowScope.() -> Unit,
+) {
+    val selectedIndex = LocalSelectedIndex.current
+    val itemCount = LocalItemCount.current.coerceAtLeast(1)
+    val motionScheme = MaterialTheme.motionScheme
+    val pillColor = MaterialTheme.colorScheme.secondaryContainer
+    val containerColor = NavigationBarDefaults.containerColor
 
-        Surface(
-            color = containerColor,
-            contentColor = contentColor,
-            tonalElevation = tonalElevation,
-            modifier = modifier,
+    Surface(
+        color = containerColor,
+        contentColor = MaterialTheme.colorScheme.contentColorFor(containerColor),
+        tonalElevation = NavigationBarDefaults.Elevation,
+        modifier = modifier,
+    ) {
+        BoxWithConstraints(
+            modifier =
+                Modifier.fillMaxWidth().windowInsetsPadding(NavigationBarDefaults.windowInsets).height(
+                    Tokens.ClassicNavBarHeight,
+                ),
         ) {
-            BoxWithConstraints(
-                modifier = Modifier.fillMaxWidth().windowInsetsPadding(windowInsets).height(Tokens.ClassicNavBarHeight),
-            ) {
-                val totalWidth = maxWidth
-                val totalSpacing = Tokens.ClassicNavBarItemSpacing * (itemCount - 1)
-                val itemWidth = (totalWidth - totalSpacing) / itemCount
+            val totalWidth = maxWidth
+            val totalSpacing = Tokens.ClassicNavBarItemSpacing * (itemCount - 1)
+            val itemWidth = (totalWidth - totalSpacing) / itemCount
 
-                fun pillStartFor(index: Int): Dp =
-                    (itemWidth + Tokens.ClassicNavBarItemSpacing) * index + (itemWidth - Tokens.ClassicNavBarPillWidth) / 2
+            fun pillStartFor(index: Int): Dp =
+                (itemWidth + Tokens.ClassicNavBarItemSpacing) * index + (itemWidth - Tokens.ClassicNavBarPillWidth) / 2
 
-                fun pillEndFor(index: Int): Dp = pillStartFor(index) + Tokens.ClassicNavBarPillWidth
+            fun pillEndFor(index: Int): Dp = pillStartFor(index) + Tokens.ClassicNavBarPillWidth
 
-                val initialIndex = remember { selectedIndex }
-                val startEdge = remember { Animatable(pillStartFor(initialIndex), Dp.VectorConverter) }
-                val endEdge = remember { Animatable(pillEndFor(initialIndex), Dp.VectorConverter) }
+            val initialIndex = remember { selectedIndex }
+            val startEdge = remember { Animatable(pillStartFor(initialIndex), Dp.VectorConverter) }
+            val endEdge = remember { Animatable(pillEndFor(initialIndex), Dp.VectorConverter) }
 
-                LaunchedEffect(selectedIndex, itemWidth) {
-                    val newStart = pillStartFor(selectedIndex)
-                    val newEnd = pillEndFor(selectedIndex)
-                    val movingRight = newStart > startEdge.targetValue
-                    val fast = motionScheme.fastSpatialSpec<Dp>()
-                    val slow = motionScheme.slowSpatialSpec<Dp>()
-                    launch { startEdge.animateTo(newStart, if (movingRight) slow else fast) }
-                    launch { endEdge.animateTo(newEnd, if (movingRight) fast else slow) }
-                }
-
-                Box(
-                    modifier =
-                        Modifier
-                            .offset {
-                                IntOffset(
-                                    startEdge.value.roundToPx(),
-                                    Tokens.ClassicNavBarPillTopOffset.roundToPx(),
-                                )
-                            }.width((endEdge.value - startEdge.value).coerceAtLeast(0.dp))
-                            .height(Tokens.ClassicNavBarPillHeight)
-                            .background(
-                                color = pillColor,
-                                shape = RoundedCornerShape(50),
-                            ),
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxSize().selectableGroup(),
-                    horizontalArrangement = Arrangement.spacedBy(Tokens.ClassicNavBarItemSpacing),
-                    verticalAlignment = Alignment.CenterVertically,
-                    content = content,
-                )
+            LaunchedEffect(selectedIndex, itemWidth) {
+                val newStart = pillStartFor(selectedIndex)
+                val newEnd = pillEndFor(selectedIndex)
+                val movingRight = newStart > startEdge.targetValue
+                val fast = motionScheme.fastSpatialSpec<Dp>()
+                val slow = motionScheme.slowSpatialSpec<Dp>()
+                launch { startEdge.animateTo(newStart, if (movingRight) slow else fast) }
+                launch { endEdge.animateTo(newEnd, if (movingRight) fast else slow) }
             }
+
+            Box(
+                modifier =
+                    Modifier
+                        .offset {
+                            IntOffset(
+                                startEdge.value.roundToPx(),
+                                Tokens.ClassicNavBarPillTopOffset.roundToPx(),
+                            )
+                        }.width((endEdge.value - startEdge.value).coerceAtLeast(0.dp))
+                        .height(Tokens.ClassicNavBarPillHeight)
+                        .background(
+                            color = pillColor,
+                            shape = RoundedCornerShape(50),
+                        ),
+            )
+
+            Row(
+                modifier = Modifier.fillMaxSize().selectableGroup(),
+                horizontalArrangement = Arrangement.spacedBy(Tokens.ClassicNavBarItemSpacing),
+                verticalAlignment = Alignment.CenterVertically,
+                content = content,
+            )
         }
     }
 }
@@ -137,9 +140,8 @@ fun ClassicBottomNav(
     CompositionLocalProvider(
         LocalSelectedIndex provides selectedIndex,
         LocalItemCount provides bottomNavItems.size,
-        LocalNavigationBarOverride provides StretchingPillOverride,
     ) {
-        NavigationBar(modifier = modifier) {
+        StretchingPillNavigationBar(modifier = modifier) {
             bottomNavItems.forEach { item ->
                 val selected = currentKey == item.key
                 NavigationBarItem(
