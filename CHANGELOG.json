@@ -1,6 +1,16 @@
 {
-  "version": "1.6.1",
+  "version": "1.7.0",
   "entries": [
+    {
+      "type": "feat",
+      "title": "add screen lock fallback to self-lock",
+      "description": "Adds a setting to let the screen lock open the app's own settings when biometrics fail.",
+      "version": "1.7.0",
+      "date": "2026-07-10",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/462ed1a10980f41ae968d2adb263b85897db2cdc",
+      "scope": "auth",
+      "breaking": false
+    },
     {
       "type": "fix",
       "title": "rebuild nav bar without removed override API",
@@ -109,26 +119,6 @@
       "date": "2026-06-23",
       "url": "https://github.com/hxreborn/biometric-app-lock/commit/7818db470c3dba6e3a03b84301e731468339379c",
       "scope": null,
-      "breaking": false
-    },
-    {
-      "type": "feat",
-      "title": "hot reload the module on update",
-      "description": "App updates apply with no reboot, if your framework supports it.",
-      "version": "1.5.4",
-      "date": "2026-06-13",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/68c5d4a1d2b57c11e1f1428f6003d550f04fe664",
-      "scope": null,
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "preserve list scroll on sub-screen nav",
-      "description": "Slide the nav bar with a graphicsLayer instead of removing it from layout, so the Scaffold bottom inset stays constant.",
-      "version": "1.5.4",
-      "date": "2026-06-12",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/95525e5a416b4ec7d9570ec7e27e431c451ca006",
-      "scope": "ui",
       "breaking": false
     }
   ]
