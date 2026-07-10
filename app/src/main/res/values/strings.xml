@@ -98,6 +98,8 @@
     <string name="settings_prevent_uninstall_summary">Blocks attempts to uninstall this app. To remove it, disable the module in your Xposed manager and reboot</string>
     <string name="settings_self_lock_title">Require biometric unlock</string>
     <string name="settings_self_lock_summary">Open the app\'s own settings only after biometric or screen lock</string>
+    <string name="settings_self_lock_credential_title">Allow screen lock fallback</string>
+    <string name="settings_self_lock_credential_summary">When enabled, the screen lock (PIN, pattern, or password) can open the app\'s settings if biometrics fail. Disable to require fingerprint or face only</string>
     <string name="uninstall_blocked_toast">This app is protected and can\'t be uninstalled</string>
 
     <string name="settings_app_management">App management</string>

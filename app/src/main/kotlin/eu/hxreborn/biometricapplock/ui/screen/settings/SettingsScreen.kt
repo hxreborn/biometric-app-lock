@@ -386,6 +386,23 @@ fun SettingsScreen(
             }
             item {
                 PreferenceRow(
+                    icon = Icons.Outlined.Dialpad,
+                    title = stringResource(R.string.settings_self_lock_credential_title),
+                    summary = stringResource(R.string.settings_self_lock_credential_summary),
+                    position = SectionPosition.Middle,
+                    onClick = {
+                        app.prefsRepository.save(
+                            Prefs.SELF_LOCK_CRED_FALLBACK,
+                            !prefs.selfLockCredFallback,
+                        )
+                    },
+                    trailing = {
+                        LockSwitch(checked = prefs.selfLockCredFallback, onCheckedChange = null)
+                    },
+                )
+            }
+            item {
+                PreferenceRow(
                     icon = Icons.Outlined.VisibilityOff,
                     title = stringResource(R.string.settings_hide_launcher),
                     summary = stringResource(R.string.settings_hide_launcher_summary),

@@ -18,6 +18,7 @@ object Prefs {
     val USE_OPAQUE_UNLOCK_PROMPT = BoolPref("use_opaque_unlock_prompt", false)
     val PREVENT_MODULE_UNINSTALL = BoolPref("prevent_module_uninstall", false)
     val SELF_LOCK = BoolPref("self_lock", false)
+    val SELF_LOCK_CRED_FALLBACK = BoolPref("self_lock_cred_fallback", true)
 
     // require biometric before the system install/uninstall dialogs, regardless of which app or
     // source started the action. uninstall is also backstopped at the binder delete path
@@ -56,6 +57,7 @@ object Prefs {
             USE_OPAQUE_UNLOCK_PROMPT,
             PREVENT_MODULE_UNINSTALL,
             SELF_LOCK,
+            SELF_LOCK_CRED_FALLBACK,
             REQUIRE_BIOMETRIC_INSTALL,
             REQUIRE_BIOMETRIC_UNINSTALL,
             UNINSTALL_AUTH_GRANT_MS,

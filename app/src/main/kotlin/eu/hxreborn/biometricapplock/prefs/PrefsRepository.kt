@@ -22,6 +22,7 @@ data class AppPrefs(
     val useOpaqueUnlockPrompt: Boolean,
     val preventModuleUninstall: Boolean,
     val selfLock: Boolean,
+    val selfLockCredFallback: Boolean,
     val requireBiometricInstall: Boolean,
     val requireBiometricUninstall: Boolean,
     val autoCheckUpdate: Boolean,
@@ -42,6 +43,7 @@ data class AppPrefs(
                 useOpaqueUnlockPrompt = false,
                 preventModuleUninstall = false,
                 selfLock = false,
+                selfLockCredFallback = true,
                 requireBiometricInstall = false,
                 requireBiometricUninstall = false,
                 autoCheckUpdate = true,
@@ -71,6 +73,7 @@ class PrefsRepository(
                         useOpaqueUnlockPrompt = Prefs.USE_OPAQUE_UNLOCK_PROMPT.read(local),
                         preventModuleUninstall = Prefs.PREVENT_MODULE_UNINSTALL.read(local),
                         selfLock = Prefs.SELF_LOCK.read(local),
+                        selfLockCredFallback = Prefs.SELF_LOCK_CRED_FALLBACK.read(local),
                         requireBiometricInstall = Prefs.REQUIRE_BIOMETRIC_INSTALL.read(local),
                         requireBiometricUninstall = Prefs.REQUIRE_BIOMETRIC_UNINSTALL.read(local),
                         autoCheckUpdate = Prefs.AUTO_CHECK_UPDATE.read(local),
@@ -111,6 +114,7 @@ class PrefsRepository(
                 Prefs.all.forEach { spec ->
                     if (spec === Prefs.LAST_REMOTE_WRITE) return@forEach
                     if (spec === Prefs.SELF_LOCK) return@forEach
+                    if (spec === Prefs.SELF_LOCK_CRED_FALLBACK) return@forEach
                     if (spec === Prefs.UNLOCK_REQUIRE_CONFIRMATION) return@forEach
                     if (spec === Prefs.CRED_FALLBACK) return@forEach
                     if (spec.copyIfChanged(local, remote, this)) changed = true
