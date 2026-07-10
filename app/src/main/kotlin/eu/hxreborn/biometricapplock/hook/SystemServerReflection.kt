@@ -128,6 +128,7 @@ internal class SystemServerReflection(
         activityTaskSupervisorClass.declaredMethods
             .filter { it.name == "resolveIntent" }
             .maxByOrNull { it.parameterCount }
+            ?.apply { isAccessible = true }
             ?: error("ActivityTaskSupervisor.resolveIntent not found")
 
     val resolveActivity: Method =
@@ -171,11 +172,13 @@ internal class SystemServerReflection(
         uriGrantsManagerInternalClass.declaredMethods
             .filter { it.name == "checkGrantUriPermissionFromIntent" }
             .minByOrNull { it.parameterCount }
+            ?.apply { isAccessible = true }
 
     val grantUriPermissionUncheckedFromIntent: Method? =
         uriGrantsManagerInternalClass.declaredMethods
             .filter { it.name == "grantUriPermissionUncheckedFromIntent" }
             .minByOrNull { it.parameterCount }
+            ?.apply { isAccessible = true }
     val handlerField: Field =
         activityTaskManagerServiceClass.getDeclaredField("mH").apply { isAccessible = true }
 
