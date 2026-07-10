@@ -1,6 +1,36 @@
 {
-  "version": "1.6.0",
+  "version": "1.6.1",
   "entries": [
+    {
+      "type": "fix",
+      "title": "rebuild nav bar without removed override API",
+      "description": null,
+      "version": "1.6.1",
+      "date": "2026-07-10",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/623a8ab0efabdbeb36b2710a4cf410a60218c0d1",
+      "scope": "ui",
+      "breaking": false
+    },
+    {
+      "type": "fix",
+      "title": "mark reflected methods accessible",
+      "description": "Locked apps no longer open without authentication on devices where the unlock prompt failed to appear.",
+      "version": "1.6.1",
+      "date": "2026-07-10",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/1c3e18ed4c2e3302b42e279733c284f105c7172f",
+      "scope": "hook",
+      "breaking": false
+    },
+    {
+      "type": "fix",
+      "title": "use surface colors in floating navbar",
+      "description": "The floating navigation bar now matches the surface colors used elsewhere in the app.",
+      "version": "1.6.1",
+      "date": "2026-07-10",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/7b20f9ab6f2e388ee162da512c4a1077bf887646",
+      "scope": "ui",
+      "breaking": false
+    },
     {
       "type": "refactor",
       "title": "trim hot reload status text",
@@ -99,26 +129,6 @@
       "date": "2026-06-12",
       "url": "https://github.com/hxreborn/biometric-app-lock/commit/95525e5a416b4ec7d9570ec7e27e431c451ca006",
       "scope": "ui",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "resolve task package without optional framework methods",
-      "description": "Swiping a locked app from recents re-locks it on Samsung OneUI.",
-      "version": "1.5.3",
-      "date": "2026-06-11",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/52c3527e1b0d6ca6a86ddc1c9c855f118c7bf7c6",
-      "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "normalize legacy locked-package keys",
-      "description": "Apps locked before 1.5 stay locked after a version downgrade and reinstall.",
-      "version": "1.5.3",
-      "date": "2026-06-11",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/5a19246538aedada1a31cbf54793f52036d6ca87",
-      "scope": "module",
       "breaking": false
     }
   ]
