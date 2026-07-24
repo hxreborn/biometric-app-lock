@@ -7,11 +7,11 @@ fun pickAuthenticators(
     bm: BiometricManager,
     allowCredential: Boolean = true,
 ): Int? {
-    val strong = Authenticators.BIOMETRIC_STRONG
+    // Weak includes Class 3 sensors
     val weak = Authenticators.BIOMETRIC_WEAK
     val cred = Authenticators.DEVICE_CREDENTIAL
     return listOfNotNull(
-        if (allowCredential) strong or cred else strong,
+        if (allowCredential) weak or cred else weak,
         weak,
         cred.takeIf { allowCredential },
     ).firstOrNull { bm.canAuthenticate(it) == BiometricManager.BIOMETRIC_SUCCESS }
