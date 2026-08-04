@@ -10,6 +10,7 @@ import android.hardware.biometrics.BiometricManager.Authenticators
 import android.hardware.biometrics.BiometricPrompt
 import android.os.Bundle
 import android.os.CancellationSignal
+import android.os.SystemClock
 import android.util.Log
 import eu.hxreborn.biometricapplock.prefs.Prefs
 import eu.hxreborn.biometricapplock.util.getUserHandle
@@ -27,6 +28,9 @@ open class BiometricAuthActivity : Activity() {
     private var authToken: String? = null
     private var uninstallAuth = false
     private var replied = false
+    private var stopped = false
+    private var retriedPrompt = false
+    private var promptStartedAt = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -109,6 +113,7 @@ open class BiometricAuthActivity : Activity() {
                 onResult(AUTH_CANCELLED)
             }
         }
+        promptStartedAt = SystemClock.elapsedRealtime()
         builder.build().authenticate(
             cancellation,
             executor,
@@ -126,14 +131,32 @@ open class BiometricAuthActivity : Activity() {
                     errString: CharSequence,
                 ) {
                     Log.w(TAG, "auth error code=$errorCode msg=$errString pkg=$targetPkg")
+                    if (isSelfCancel(errorCode)) {
+                        retriedPrompt = true
+                        Log.i(TAG, "retrying prompt pkg=$targetPkg")
+                        window.decorView.postDelayed({
+                            if (!replied && !stopped) showPrompt(title)
+                        }, RETRY_DELAY_MS)
+                        return
+                    }
                     onResult(AUTH_ERROR)
                 }
             },
         )
     }
 
+    // the launch transition can cancel the session before the window settles, a fresh prompt holds
+    private fun isSelfCancel(errorCode: Int): Boolean =
+        errorCode == BiometricPrompt.BIOMETRIC_ERROR_CANCELED &&
+            !retriedPrompt &&
+            !replied &&
+            !stopped &&
+            !isFinishing &&
+            SystemClock.elapsedRealtime() - promptStartedAt < SELF_CANCEL_WINDOW_MS
+
     override fun onStop() {
         super.onStop()
+        stopped = true
         Log.d(TAG, "onStop replied=$replied pkg=$targetPkg")
         // the system prompt steals focus and stops this activity, so only finish once there is a
         // result, or the prompt dies before the user can answer
@@ -232,6 +255,9 @@ open class BiometricAuthActivity : Activity() {
 
         // uninstall backstop mode: no token, a good auth writes the grant pref instead of resuming
         const val EXTRA_UNINSTALL_AUTH = "$MODULE_PACKAGE.UNINSTALL_AUTH"
+
+        private const val SELF_CANCEL_WINDOW_MS = 1000L
+        private const val RETRY_DELAY_MS = 300L
 
         private const val AUTH_OK = 1
         private const val AUTH_CANCELLED = 2
