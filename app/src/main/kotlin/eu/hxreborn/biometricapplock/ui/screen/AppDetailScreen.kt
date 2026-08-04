@@ -5,6 +5,7 @@ package eu.hxreborn.biometricapplock.ui.screen
 
 import android.content.Context
 import android.content.pm.LauncherApps
+import android.hardware.biometrics.BiometricManager
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +23,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Apps
+import androidx.compose.material.icons.outlined.Dialpad
+import androidx.compose.material.icons.outlined.Face
+import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.Screenshot
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Tune
@@ -45,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -53,15 +58,24 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.hxreborn.biometricapplock.App
 import eu.hxreborn.biometricapplock.R
 import eu.hxreborn.biometricapplock.prefs.AppOverrides
+import eu.hxreborn.biometricapplock.prefs.Prefs
 import eu.hxreborn.biometricapplock.ui.component.BackButton
 import eu.hxreborn.biometricapplock.ui.component.ExpandedTitle
 import eu.hxreborn.biometricapplock.ui.component.LockSwitch
+import eu.hxreborn.biometricapplock.ui.component.SectionPosition
 import eu.hxreborn.biometricapplock.ui.screen.settings.PreferenceRow
 import eu.hxreborn.biometricapplock.ui.screen.settings.SettingsSectionHeader
 import eu.hxreborn.biometricapplock.ui.theme.Tokens
 import eu.hxreborn.biometricapplock.ui.util.openAppInfo
 import eu.hxreborn.biometricapplock.ui.util.rememberAppIcon
+import eu.hxreborn.biometricapplock.util.METHOD_BIOMETRIC
+import eu.hxreborn.biometricapplock.util.METHOD_CREDENTIAL
+import eu.hxreborn.biometricapplock.util.biometricChoice
 import eu.hxreborn.biometricapplock.util.getUserHandle
+import eu.hxreborn.biometricapplock.util.methodAuthenticators
+import eu.hxreborn.biometricapplock.util.normalizeMethods
+import eu.hxreborn.biometricapplock.util.withBiometricChoice
+import eu.hxreborn.biometricapplock.util.withCredential
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -105,7 +119,29 @@ fun AppDetailScreen(
     val hasOverrides = overrides.relockDelaySeconds != null || overrides.blockScreenshots != null
     val disabledModifier = if (hasOverrides) Modifier else Modifier.alpha(Tokens.DISABLED_ALPHA)
 
+    val bm = remember { context.getSystemService(BiometricManager::class.java) }
+    val defaultMethods = remember { normalizeMethods(app.prefsRepository.read(Prefs.UNLOCK_METHODS)) }
+    val methods = overrides.authMethods ?: defaultMethods
+    val credentialAvailable = remember { bm.canAuthenticate(methodAuthenticators(METHOD_CREDENTIAL)) == BiometricManager.BIOMETRIC_SUCCESS }
+    val credentialToggleable = credentialAvailable && methods and METHOD_BIOMETRIC != 0
+
+    var showBiometricDialog by remember { mutableStateOf(false) }
     var showRelockDialog by remember { mutableStateOf(false) }
+
+    if (showBiometricDialog) {
+        BiometricChoiceDialog(
+            current = overrides.authMethods?.let(::biometricChoice),
+            allowDefault = true,
+            onSelect = { choice ->
+                app.appOverridesRepository.setAuthMethods(
+                    packageKey,
+                    choice?.let { withBiometricChoice(methods, it) },
+                )
+                showBiometricDialog = false
+            },
+            onDismiss = { showBiometricDialog = false },
+        )
+    }
 
     if (showRelockDialog) {
         RelockDelayDialog(
@@ -145,6 +181,60 @@ fun AppDetailScreen(
                     packageName = if (userId == 0) packageName else "$packageName (${stringResource(R.string.apps_user_id, userId)})",
                     versionName = versionName,
                     icon = icon,
+                )
+            }
+
+            item { SettingsSectionHeader(title = stringResource(R.string.unlock_section)) }
+
+            item {
+                PreferenceRow(
+                    icon = Icons.Outlined.Fingerprint,
+                    title = stringResource(R.string.unlock_biometrics_title),
+                    summary =
+                        if (overrides.authMethods == null) {
+                            stringResource(
+                                R.string.unlock_biometrics_default_resolved,
+                                biometricChoiceLabel(biometricChoice(defaultMethods)),
+                            )
+                        } else {
+                            biometricChoiceLabel(biometricChoice(methods))
+                        },
+                    position = SectionPosition.Top,
+                    onClick = { showBiometricDialog = true },
+                )
+            }
+
+            item {
+                PreferenceRow(
+                    icon = Icons.Outlined.Dialpad,
+                    title = stringResource(R.string.unlock_screen_lock_title),
+                    summary =
+                        stringResource(
+                            if (credentialAvailable) {
+                                R.string.unlock_screen_lock_summary
+                            } else {
+                                R.string.unlock_screen_lock_unset
+                            },
+                        ),
+                    position = SectionPosition.Bottom,
+                    onClick =
+                        if (credentialToggleable) {
+                            {
+                                app.appOverridesRepository.setAuthMethods(
+                                    packageKey,
+                                    withCredential(methods, methods and METHOD_CREDENTIAL == 0),
+                                )
+                            }
+                        } else {
+                            null
+                        },
+                    trailing = {
+                        LockSwitch(
+                            checked = methods and METHOD_CREDENTIAL != 0,
+                            onCheckedChange = null,
+                            enabled = credentialToggleable,
+                        )
+                    },
                 )
             }
 

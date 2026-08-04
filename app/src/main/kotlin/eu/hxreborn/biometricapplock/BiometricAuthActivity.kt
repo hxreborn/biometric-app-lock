@@ -13,6 +13,7 @@ import android.os.CancellationSignal
 import android.os.SystemClock
 import android.util.Log
 import eu.hxreborn.biometricapplock.prefs.Prefs
+import eu.hxreborn.biometricapplock.util.METHODS_ALL
 import eu.hxreborn.biometricapplock.util.getUserHandle
 import eu.hxreborn.biometricapplock.util.normalizeMethods
 import eu.hxreborn.biometricapplock.util.usableAuthenticators
@@ -71,7 +72,7 @@ open class BiometricAuthActivity : Activity() {
                 // installer handlers have no launcher activities, fall back to the app label
                 info?.label?.toString() ?: loadLabel(pkg)
             }.getOrDefault(pkg)
-        showPrompt(getString(R.string.biometric_prompt_unlock_title, label))
+        showPrompt(getString(R.string.biometric_prompt_unlock_title, label), "$pkg:$userId")
     }
 
     private fun loadLabel(pkg: String): String =
@@ -85,9 +86,13 @@ open class BiometricAuthActivity : Activity() {
         super.onDestroy()
     }
 
-    private fun showPrompt(title: String) {
+    private fun showPrompt(
+        title: String,
+        packageKey: String? = null,
+    ) {
         val bm = getSystemService(BiometricManager::class.java)
-        val methods = globalMethods()
+        // an unusable per-app policy keeps the app locked, never widens to the global one
+        val methods = packageKey?.let(::appMethods) ?: globalMethods()
         val authenticators = usableAuthenticators(bm, methods)
         if (authenticators == null) {
             Log.w(TAG, "no usable auth method methods=$methods pkg=$targetPkg")
@@ -133,7 +138,7 @@ open class BiometricAuthActivity : Activity() {
                         retriedPrompt = true
                         Log.i(TAG, "retrying prompt pkg=$targetPkg")
                         window.decorView.postDelayed({
-                            if (!replied && !stopped) showPrompt(title)
+                            if (!replied && !stopped) showPrompt(title, packageKey)
                         }, RETRY_DELAY_MS)
                         return
                     }
@@ -142,6 +147,11 @@ open class BiometricAuthActivity : Activity() {
             },
         )
     }
+
+    private fun appMethods(packageKey: String): Int? =
+        runCatching { App.from(this).appOverridesRepository.authMethods(packageKey) }
+            .getOrNull()
+            ?.takeIf { it and METHODS_ALL != 0 }
 
     private fun globalMethods(): Int =
         normalizeMethods(App.from(this).prefsRepository.read(Prefs.UNLOCK_METHODS))

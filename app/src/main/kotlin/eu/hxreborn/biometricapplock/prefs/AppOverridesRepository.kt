@@ -10,6 +10,7 @@ data class AppOverrides(
     val relockDelaySeconds: Int?,
     val blockScreenshots: Boolean?,
     val allowedActivities: Set<String> = emptySet(),
+    val authMethods: Int? = null,
 )
 
 data class RecentActivity(
@@ -51,6 +52,8 @@ class AppOverridesRepository(
 
     private fun allowedActivitiesKey(pkg: String) = "app_override:$pkg:allowed_activities"
 
+    private fun authMethodsKey(pkg: String) = "app_override:$pkg:auth_methods"
+
     private fun recentsKey(pkg: String) = "recents:$pkg"
 
     private fun prefix(pkg: String) = "app_override:$pkg:"
@@ -60,7 +63,10 @@ class AppOverridesRepository(
             relockDelaySeconds = local.getIntOrNull(relockKey(pkg)),
             blockScreenshots = local.getBooleanOrNull(blockScreenshotsKey(pkg)),
             allowedActivities = parseActivities(local.getString(allowedActivitiesKey(pkg), null)),
+            authMethods = local.getIntOrNull(authMethodsKey(pkg)),
         )
+
+    fun authMethods(pkg: String): Int? = local.getIntOrNull(authMethodsKey(pkg))
 
     fun observe(pkg: String): Flow<AppOverrides> =
         callbackFlow {
@@ -111,6 +117,15 @@ class AppOverridesRepository(
         editLocalAndRemote { if (blocked == null) remove(key) else putBoolean(key, blocked) }
     }
 
+    fun setAuthMethods(
+        pkg: String,
+        mask: Int?,
+    ) {
+        val key = authMethodsKey(pkg)
+        // module-process only, the hook never reads it
+        local.edit { if (mask == null) remove(key) else putInt(key, mask) }
+    }
+
     fun setAllowedActivities(
         pkg: String,
         activities: Set<String>,
@@ -139,6 +154,7 @@ class AppOverridesRepository(
         editLocalAndRemote {
             remove(relockKey(pkg))
             remove(blockScreenshotsKey(pkg))
+            remove(authMethodsKey(pkg))
         }
 
     fun prune(installedPackageKeys: Set<String>) {
