@@ -11,9 +11,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -86,11 +87,14 @@ fun StatusCard(
             null
         }
 
-    Surface(
+    ElevatedCard(
         modifier = modifier.fillMaxWidth().padding(horizontal = Tokens.SectionHorizontalMargin, vertical = Tokens.SectionItemSpacing),
         shape = MaterialTheme.shapes.large,
-        color = visual.container,
-        contentColor = visual.content,
+        colors =
+            CardDefaults.elevatedCardColors(
+                containerColor = visual.container,
+                contentColor = visual.content,
+            ),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(Tokens.SpacingLg),
@@ -133,8 +137,8 @@ private fun statusVisual(status: ModuleStatus): StatusVisual {
         ModuleStatus.Enabled -> {
             StatusVisual(
                 icon = Icons.Filled.CheckCircle,
-                container = scheme.primaryContainer,
-                content = scheme.onPrimaryContainer,
+                container = scheme.primary,
+                content = scheme.onPrimary,
             )
         }
 
