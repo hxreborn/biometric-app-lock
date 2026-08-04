@@ -12,7 +12,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -29,22 +28,25 @@ import eu.hxreborn.biometricapplock.R
 import eu.hxreborn.biometricapplock.ui.screen.settings.PreferenceRow
 import eu.hxreborn.biometricapplock.ui.screen.settings.SettingsSectionHeader
 import eu.hxreborn.biometricapplock.ui.theme.Tokens
+import eu.hxreborn.biometricapplock.util.BiometricClass
+import eu.hxreborn.biometricapplock.util.MODALITY_FACE
+import eu.hxreborn.biometricapplock.util.MODALITY_FINGERPRINT
+import eu.hxreborn.biometricapplock.util.inferredFaceClass
+import eu.hxreborn.biometricapplock.util.sensorClasses
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 private enum class ChipKind { Enrolled, NotEnrolled, NoSensor, Unavailable, UpdateRequired }
 
-private enum class ClassLabel { STRONG, WEAK }
-
 private data class ModalityState(
     val chip: ChipKind,
     val enrolledCount: Int? = null,
+    val classLabel: BiometricClass? = null,
 )
 
 private data class BiometricState(
     val fingerprint: ModalityState,
     val face: ModalityState,
-    val strongestClass: ClassLabel? = null,
     val lastAuthAgo: String? = null,
 )
 
@@ -78,16 +80,6 @@ fun BiometricHardwareSection(modifier: Modifier = Modifier) {
             }
             add { position ->
                 ModalityRow(Icons.Outlined.Face, stringResource(R.string.dashboard_biometric_face), state.face, position)
-            }
-            state.strongestClass?.let { strongest ->
-                add { position ->
-                    PreferenceRow(
-                        icon = Icons.Outlined.Security,
-                        title = stringResource(R.string.dashboard_biometric_class_label),
-                        summary = classLabelText(strongest),
-                        position = position,
-                    )
-                }
             }
             state.lastAuthAgo?.let { ago ->
                 add { position ->
@@ -125,18 +117,18 @@ private fun ModalityRow(
     PreferenceRow(
         icon = icon,
         title = name,
-        summary = null,
+        summary = state.classLabel?.let { classLabelText(it) },
         position = position,
         trailing = { ChipBadge(kind = state.chip, count = state.enrolledCount) },
     )
 }
 
 @Composable
-private fun classLabelText(classLabel: ClassLabel): String =
+private fun classLabelText(classLabel: BiometricClass): String =
     stringResource(
         when (classLabel) {
-            ClassLabel.STRONG -> R.string.dashboard_biometric_class_strong
-            ClassLabel.WEAK -> R.string.dashboard_biometric_class_weak
+            BiometricClass.STRONG -> R.string.dashboard_biometric_class_strong
+            BiometricClass.WEAK -> R.string.dashboard_biometric_class_weak
         },
     )
 
@@ -212,12 +204,10 @@ private fun readBiometricState(context: Context): BiometricState {
     val weakStatus =
         runCatching { bm?.canAuthenticate(Authenticators.BIOMETRIC_WEAK) }.getOrNull() ?: BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE
 
-    val strongestClass: ClassLabel? =
-        when {
-            strongStatus == BiometricManager.BIOMETRIC_SUCCESS -> ClassLabel.STRONG
-            weakStatus == BiometricManager.BIOMETRIC_SUCCESS -> ClassLabel.WEAK
-            else -> null
-        }
+    val classes = sensorClasses()
+    // every shipped fingerprint HAL is Class 3
+    val fpClass = classes[MODALITY_FINGERPRINT] ?: BiometricClass.STRONG.takeIf { hasFingerprint }
+    val faceClass = classes[MODALITY_FACE] ?: inferredFaceClass(context)
 
     val fpEnrolled = readFingerprintCount(context)
     val lastAuthAgo = readLastAuthAgo(bm)
@@ -229,6 +219,7 @@ private fun readBiometricState(context: Context): BiometricState {
                 weakStatus = weakStatus,
                 strongStatus = strongStatus,
                 explicitCount = fpEnrolled,
+                classLabel = fpClass,
             ),
         face =
             modalityState(
@@ -236,8 +227,8 @@ private fun readBiometricState(context: Context): BiometricState {
                 weakStatus = weakStatus,
                 strongStatus = strongStatus,
                 explicitCount = null,
+                classLabel = faceClass,
             ),
-        strongestClass = strongestClass,
         lastAuthAgo = lastAuthAgo,
     )
 }
@@ -247,6 +238,7 @@ private fun modalityState(
     weakStatus: Int,
     strongStatus: Int,
     explicitCount: Int?,
+    classLabel: BiometricClass?,
 ): ModalityState {
     if (!hasHardware) {
         return ModalityState(ChipKind.NoSensor)
@@ -267,7 +259,7 @@ private fun modalityState(
 
             else -> ChipKind.NotEnrolled
         }
-    return ModalityState(chip = chip, enrolledCount = explicitCount)
+    return ModalityState(chip = chip, enrolledCount = explicitCount, classLabel = classLabel)
 }
 
 @SuppressLint("MissingPermission")
@@ -289,7 +281,9 @@ private fun readLastAuthAgo(bm: BiometricManager?): String? {
     if (bm == null || android.os.Build.VERSION.SDK_INT < 34) return null
     return try {
         val method = bm.javaClass.getMethod("getLastAuthenticationTime", Int::class.javaPrimitiveType)
-        val elapsedMs = method.invoke(bm, Authenticators.BIOMETRIC_STRONG) as Long
+        // the framework rejects any other class, so a Class 2 unlock never lands here
+        val tracked = Authenticators.BIOMETRIC_STRONG or Authenticators.DEVICE_CREDENTIAL
+        val elapsedMs = method.invoke(bm, tracked) as Long
         if (elapsedMs <= 0) return null
         val agoMs = SystemClock.elapsedRealtime() - elapsedMs
         formatDuration(agoMs)
