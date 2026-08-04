@@ -323,6 +323,25 @@ private fun resolveSystemActionHandlers(): Set<String> {
     return handlers
 }
 
+internal fun parseLockedPackages(raw: String): Set<String> =
+    if (raw.isEmpty()) {
+        emptySet()
+    } else {
+        // pre-1.5 entries carry no userId and a downgrade can write them back, key them to user 0
+        raw.split("|").mapTo(mutableSetOf()) { if (':' in it) it else "$it:0" }
+    }
+
+internal fun applyHookConfig(prefs: SharedPreferences) {
+    val locked = parseLockedPackages(Prefs.LOCKED_PACKAGES.read(prefs))
+    val changed = locked != lockedPackages
+    lockedPackages = locked
+    loadHookPrefs(prefs)
+    if (changed) {
+        Logger.info("config applied locked=${locked.size}")
+        refreshSecureSurfaces()
+    }
+}
+
 internal fun loadHookPrefs(prefs: SharedPreferences) {
     hookPrefs = prefs
     globalRelockDelaySeconds = Prefs.RELOCK_DELAY_SECONDS.read(prefs)

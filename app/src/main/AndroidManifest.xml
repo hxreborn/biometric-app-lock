@@ -11,6 +11,11 @@
         tools:ignore="QueryAllPackagesPermission" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
+    <permission
+        android:name="eu.hxreborn.biometricapplock.permission.CONFIG_SYNC"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="eu.hxreborn.biometricapplock.permission.CONFIG_SYNC" />
+
     <application
         android:name=".App"
         android:allowBackup="false"

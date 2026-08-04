@@ -2,11 +2,17 @@ package eu.hxreborn.biometricapplock
 
 import android.app.Application
 import android.content.Context
+import android.content.Intent
+import android.content.SharedPreferences
 import android.util.Log
 import eu.hxreborn.biometricapplock.prefs.AppOverridesRepository
 import eu.hxreborn.biometricapplock.prefs.Migration
 import eu.hxreborn.biometricapplock.prefs.Prefs
 import eu.hxreborn.biometricapplock.prefs.PrefsRepository
+import eu.hxreborn.biometricapplock.receiver.ACTION_CONFIG_SYNC
+import eu.hxreborn.biometricapplock.receiver.CONFIG_SYNC_PERMISSION
+import eu.hxreborn.biometricapplock.receiver.EXTRA_CONFIG
+import eu.hxreborn.biometricapplock.receiver.buildConfigBundle
 import eu.hxreborn.biometricapplock.updates.UpdateRepository
 import eu.hxreborn.biometricapplock.util.RootShell
 import io.github.libxposed.service.XposedService
@@ -43,9 +49,23 @@ class App :
             AppOverridesRepository(localPrefs) {
                 runCatching { mService?.getRemotePreferences(Prefs.GROUP) }.getOrNull()
             }
+        localPrefs.registerOnSharedPreferenceChangeListener(configPushListener)
         XposedServiceHelper.registerListener(this)
         if (BuildConfig.DEBUG) raiseLogBuffers()
     }
+
+    private val configPushListener =
+        SharedPreferences.OnSharedPreferenceChangeListener { prefs, _ ->
+            runCatching {
+                val intent =
+                    Intent(ACTION_CONFIG_SYNC).putExtra(
+                        EXTRA_CONFIG,
+                        buildConfigBundle(prefs.all),
+                    )
+                sendBroadcast(intent, CONFIG_SYNC_PERMISSION)
+                Log.d(TAG, "config push sent keys=${prefs.all.size}")
+            }.onFailure { Log.w(TAG, "config push failed", it) }
+        }
 
     private fun raiseLogBuffers() {
         Thread {

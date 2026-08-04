@@ -4,6 +4,7 @@ import android.content.SharedPreferences
 import android.os.Process
 import eu.hxreborn.biometricapplock.hook.loadHookPrefs
 import eu.hxreborn.biometricapplock.hook.lockedPackages
+import eu.hxreborn.biometricapplock.hook.parseLockedPackages
 import eu.hxreborn.biometricapplock.hook.refreshSecureSurfaces
 import eu.hxreborn.biometricapplock.hook.registerSystemServerHooks
 import eu.hxreborn.biometricapplock.hook.unregisterPackageEvents
@@ -94,12 +95,4 @@ class BiometricAppLockModule : XposedModule() {
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
         registerSystemServerHooks(classLoader, locked)
     }
-
-    private fun parseLockedPackages(raw: String): Set<String> =
-        if (raw.isEmpty()) {
-            emptySet()
-        } else {
-            // pre-1.5 entries carry no userId and a downgrade can write them back, key them to user 0
-            raw.split("|").mapTo(mutableSetOf()) { if (':' in it) it else "$it:0" }
-        }
 }
