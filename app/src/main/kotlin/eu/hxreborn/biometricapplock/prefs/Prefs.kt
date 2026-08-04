@@ -1,5 +1,7 @@
 package eu.hxreborn.biometricapplock.prefs
 
+import eu.hxreborn.biometricapplock.util.METHODS_DEFAULT
+
 object Prefs {
     const val GROUP = "biometric_app_lock_prefs"
 
@@ -11,14 +13,16 @@ object Prefs {
     val RELOCK_ON_TASK_REMOVED = BoolPref("relock_on_task_removed", true)
     val BLOCK_SCREENSHOTS = BoolPref("block_screenshots", false)
     val UNLOCK_REQUIRE_CONFIRMATION = BoolPref("unlock_require_confirmation", false)
-    val CRED_FALLBACK = BoolPref("cred_fallback", true)
+
+    // METHOD_* mask the unlock prompt offers for apps with no per-app override
+    val UNLOCK_METHODS = IntPref("unlock_methods", METHODS_DEFAULT)
 
     // compat fallback for OEMs (e.g. HyperOS) where the translucent prompt loses focus and
     // self-cancels. AOSP is fine with translucent, so this stays off by default
     val USE_OPAQUE_UNLOCK_PROMPT = BoolPref("use_opaque_unlock_prompt", false)
     val PREVENT_MODULE_UNINSTALL = BoolPref("prevent_module_uninstall", false)
     val SELF_LOCK = BoolPref("self_lock", false)
-    val SELF_LOCK_CRED_FALLBACK = BoolPref("self_lock_cred_fallback", true)
+    val SELF_LOCK_METHODS = IntPref("self_lock_methods", METHODS_DEFAULT)
 
     // require biometric before the system install/uninstall dialogs, regardless of which app or
     // source started the action. uninstall is also backstopped at the binder delete path
@@ -53,11 +57,11 @@ object Prefs {
             RELOCK_ON_TASK_REMOVED,
             BLOCK_SCREENSHOTS,
             UNLOCK_REQUIRE_CONFIRMATION,
-            CRED_FALLBACK,
+            UNLOCK_METHODS,
             USE_OPAQUE_UNLOCK_PROMPT,
             PREVENT_MODULE_UNINSTALL,
             SELF_LOCK,
-            SELF_LOCK_CRED_FALLBACK,
+            SELF_LOCK_METHODS,
             REQUIRE_BIOMETRIC_INSTALL,
             REQUIRE_BIOMETRIC_UNINSTALL,
             UNINSTALL_AUTH_GRANT_MS,

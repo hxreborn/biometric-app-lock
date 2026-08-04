@@ -14,7 +14,8 @@ import android.os.SystemClock
 import android.util.Log
 import eu.hxreborn.biometricapplock.prefs.Prefs
 import eu.hxreborn.biometricapplock.util.getUserHandle
-import eu.hxreborn.biometricapplock.util.pickAuthenticators
+import eu.hxreborn.biometricapplock.util.normalizeMethods
+import eu.hxreborn.biometricapplock.util.usableAuthenticators
 
 private const val TAG = "BiometricAppLock"
 
@@ -86,13 +87,10 @@ open class BiometricAuthActivity : Activity() {
 
     private fun showPrompt(title: String) {
         val bm = getSystemService(BiometricManager::class.java)
-        val authenticators =
-            pickAuthenticators(
-                bm,
-                allowCredential = App.from(this).prefsRepository.read(Prefs.CRED_FALLBACK),
-            )
+        val methods = globalMethods()
+        val authenticators = usableAuthenticators(bm, methods)
         if (authenticators == null) {
-            Log.w(TAG, "no enrolled authenticator, keeping $targetPkg locked")
+            Log.w(TAG, "no usable auth method methods=$methods pkg=$targetPkg")
             onResult(AUTH_CANCELLED)
             return
         }
@@ -144,6 +142,9 @@ open class BiometricAuthActivity : Activity() {
             },
         )
     }
+
+    private fun globalMethods(): Int =
+        normalizeMethods(App.from(this).prefsRepository.read(Prefs.UNLOCK_METHODS))
 
     // the launch transition can cancel the session before the window settles, a fresh prompt holds
     private fun isSelfCancel(errorCode: Int): Boolean =

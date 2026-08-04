@@ -3,6 +3,7 @@
 
 package eu.hxreborn.biometricapplock.ui.screen.settings
 
+import android.hardware.biometrics.BiometricManager
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -20,6 +21,7 @@ import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Dialpad
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.FormatPaint
 import androidx.compose.material.icons.outlined.Info
@@ -45,6 +47,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -69,7 +72,9 @@ import eu.hxreborn.biometricapplock.ui.component.LogActionsSheet
 import eu.hxreborn.biometricapplock.ui.component.SectionPosition
 import eu.hxreborn.biometricapplock.ui.component.WhatsNewSheet
 import eu.hxreborn.biometricapplock.ui.component.changeTypeLabelRes
+import eu.hxreborn.biometricapplock.ui.screen.BiometricChoiceDialog
 import eu.hxreborn.biometricapplock.ui.screen.RelockDelayDialog
+import eu.hxreborn.biometricapplock.ui.screen.biometricChoiceLabel
 import eu.hxreborn.biometricapplock.ui.screen.relockDelaySummary
 import eu.hxreborn.biometricapplock.ui.theme.Tokens
 import eu.hxreborn.biometricapplock.ui.util.LauncherIconHelper
@@ -77,6 +82,13 @@ import eu.hxreborn.biometricapplock.ui.viewmodel.FrameworkInfo
 import eu.hxreborn.biometricapplock.updates.ChangeType
 import eu.hxreborn.biometricapplock.updates.UpdateSheetState
 import eu.hxreborn.biometricapplock.util.DiagnosticsExporter
+import eu.hxreborn.biometricapplock.util.METHOD_BIOMETRIC
+import eu.hxreborn.biometricapplock.util.METHOD_CREDENTIAL
+import eu.hxreborn.biometricapplock.util.biometricChoice
+import eu.hxreborn.biometricapplock.util.methodAuthenticators
+import eu.hxreborn.biometricapplock.util.normalizeMethods
+import eu.hxreborn.biometricapplock.util.withBiometricChoice
+import eu.hxreborn.biometricapplock.util.withCredential
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import java.io.File
@@ -103,6 +115,39 @@ fun SettingsScreen(
     var pendingSaveFile by remember { mutableStateOf<File?>(null) }
     var launcherIconHidden by remember { mutableStateOf(!LauncherIconHelper.isLauncherIconVisible(context)) }
     var showHideLauncherConfirm by remember { mutableStateOf(false) }
+
+    val bm = remember { context.getSystemService(BiometricManager::class.java) }
+    val unlockMethods = normalizeMethods(prefs.unlockMethods)
+    val credentialAvailable = remember { bm.canAuthenticate(methodAuthenticators(METHOD_CREDENTIAL)) == BiometricManager.BIOMETRIC_SUCCESS }
+    val unlockCredentialToggleable = credentialAvailable && unlockMethods and METHOD_BIOMETRIC != 0
+    val selfLockMethods = normalizeMethods(prefs.selfLockMethods)
+    val selfLockCredentialToggleable = credentialAvailable && selfLockMethods and METHOD_BIOMETRIC != 0
+    var showBiometricDialog by remember { mutableStateOf(false) }
+    var showSelfLockDialog by remember { mutableStateOf(false) }
+
+    if (showBiometricDialog) {
+        BiometricChoiceDialog(
+            current = biometricChoice(unlockMethods),
+            allowDefault = false,
+            onSelect = { choice ->
+                choice?.let { app.prefsRepository.save(Prefs.UNLOCK_METHODS, withBiometricChoice(unlockMethods, it)) }
+                showBiometricDialog = false
+            },
+            onDismiss = { showBiometricDialog = false },
+        )
+    }
+
+    if (showSelfLockDialog) {
+        BiometricChoiceDialog(
+            current = biometricChoice(selfLockMethods),
+            allowDefault = false,
+            onSelect = { choice ->
+                choice?.let { app.prefsRepository.save(Prefs.SELF_LOCK_METHODS, withBiometricChoice(selfLockMethods, it)) }
+                showSelfLockDialog = false
+            },
+            onDismiss = { showSelfLockDialog = false },
+        )
+    }
 
     val saveLogsLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
@@ -302,18 +347,43 @@ fun SettingsScreen(
             }
             item {
                 PreferenceRow(
-                    icon = Icons.Outlined.Dialpad,
-                    title = stringResource(R.string.settings_biometric_only_title),
-                    summary = stringResource(R.string.settings_biometric_only_summary),
+                    icon = Icons.Outlined.Fingerprint,
+                    title = stringResource(R.string.unlock_biometrics_title),
+                    summary = biometricChoiceLabel(biometricChoice(unlockMethods)),
                     position = SectionPosition.Middle,
-                    onClick = {
-                        app.prefsRepository.save(
-                            Prefs.CRED_FALLBACK,
-                            !prefs.credFallback,
-                        )
-                    },
+                    onClick = { showBiometricDialog = true },
+                )
+            }
+            item {
+                PreferenceRow(
+                    icon = Icons.Outlined.Dialpad,
+                    title = stringResource(R.string.unlock_screen_lock_title),
+                    summary =
+                        stringResource(
+                            if (credentialAvailable) {
+                                R.string.unlock_screen_lock_summary
+                            } else {
+                                R.string.unlock_screen_lock_unset
+                            },
+                        ),
+                    position = SectionPosition.Middle,
+                    onClick =
+                        if (unlockCredentialToggleable) {
+                            {
+                                app.prefsRepository.save(
+                                    Prefs.UNLOCK_METHODS,
+                                    withCredential(unlockMethods, unlockMethods and METHOD_CREDENTIAL == 0),
+                                )
+                            }
+                        } else {
+                            null
+                        },
                     trailing = {
-                        LockSwitch(checked = prefs.credFallback, onCheckedChange = null)
+                        LockSwitch(
+                            checked = unlockMethods and METHOD_CREDENTIAL != 0,
+                            onCheckedChange = null,
+                            enabled = unlockCredentialToggleable,
+                        )
                     },
                 )
             }
@@ -372,37 +442,6 @@ fun SettingsScreen(
             }
             item {
                 PreferenceRow(
-                    icon = Icons.Outlined.Fingerprint,
-                    title = stringResource(R.string.settings_self_lock_title),
-                    summary = stringResource(R.string.settings_self_lock_summary),
-                    position = SectionPosition.Middle,
-                    onClick = {
-                        app.prefsRepository.save(Prefs.SELF_LOCK, !prefs.selfLock)
-                    },
-                    trailing = {
-                        LockSwitch(checked = prefs.selfLock, onCheckedChange = null)
-                    },
-                )
-            }
-            item {
-                PreferenceRow(
-                    icon = Icons.Outlined.Dialpad,
-                    title = stringResource(R.string.settings_self_lock_credential_title),
-                    summary = stringResource(R.string.settings_self_lock_credential_summary),
-                    position = SectionPosition.Middle,
-                    onClick = {
-                        app.prefsRepository.save(
-                            Prefs.SELF_LOCK_CRED_FALLBACK,
-                            !prefs.selfLockCredFallback,
-                        )
-                    },
-                    trailing = {
-                        LockSwitch(checked = prefs.selfLockCredFallback, onCheckedChange = null)
-                    },
-                )
-            }
-            item {
-                PreferenceRow(
                     icon = Icons.Outlined.VisibilityOff,
                     title = stringResource(R.string.settings_hide_launcher),
                     summary = stringResource(R.string.settings_hide_launcher_summary),
@@ -419,6 +458,66 @@ fun SettingsScreen(
                         LockSwitch(checked = launcherIconHidden, onCheckedChange = null)
                     },
                 )
+            }
+
+            item { SettingsSectionHeader(title = stringResource(R.string.settings_self_lock_section)) }
+            item {
+                PreferenceRow(
+                    icon = Icons.Outlined.ScreenLockPortrait,
+                    title = stringResource(R.string.settings_self_lock_title),
+                    summary = stringResource(R.string.settings_self_lock_summary),
+                    position = if (prefs.selfLock) SectionPosition.Top else SectionPosition.Single,
+                    onClick = {
+                        app.prefsRepository.save(Prefs.SELF_LOCK, !prefs.selfLock)
+                    },
+                    trailing = {
+                        LockSwitch(checked = prefs.selfLock, onCheckedChange = null)
+                    },
+                )
+            }
+            if (prefs.selfLock) {
+                item {
+                    PreferenceRow(
+                        icon = Icons.Outlined.Fingerprint,
+                        title = stringResource(R.string.settings_self_lock_biometrics_title),
+                        summary = biometricChoiceLabel(biometricChoice(selfLockMethods)),
+                        position = SectionPosition.Middle,
+                        onClick = { showSelfLockDialog = true },
+                    )
+                }
+                item {
+                    PreferenceRow(
+                        icon = Icons.Outlined.Dialpad,
+                        title = stringResource(R.string.settings_self_lock_credential_title),
+                        summary =
+                            stringResource(
+                                if (credentialAvailable) {
+                                    R.string.settings_self_lock_credential_summary
+                                } else {
+                                    R.string.unlock_screen_lock_unset
+                                },
+                            ),
+                        position = SectionPosition.Bottom,
+                        onClick =
+                            if (selfLockCredentialToggleable) {
+                                {
+                                    app.prefsRepository.save(
+                                        Prefs.SELF_LOCK_METHODS,
+                                        withCredential(selfLockMethods, selfLockMethods and METHOD_CREDENTIAL == 0),
+                                    )
+                                }
+                            } else {
+                                null
+                            },
+                        trailing = {
+                            LockSwitch(
+                                checked = selfLockMethods and METHOD_CREDENTIAL != 0,
+                                onCheckedChange = null,
+                                enabled = selfLockCredentialToggleable,
+                            )
+                        },
+                    )
+                }
             }
 
             item { SettingsSectionHeader(title = stringResource(R.string.settings_app_management)) }

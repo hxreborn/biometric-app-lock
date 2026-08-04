@@ -62,6 +62,14 @@ object Tokens {
 
     val NavSlideDistance: Dp = 96.dp
 
+    val DialogContentPadding: Dp = 24.dp
+    val DialogTitleSpacing: Dp = 16.dp
+    val DialogListItemVerticalPadding: Dp = 12.dp
+
+    val RadioSize: Dp = 20.dp
+
+    val RadioTitleTopOffset: Dp = 2.dp
+
     val SheetContentPadding: Dp = 24.dp
     val SheetSectionSpacing: Dp = 20.dp
     val SheetItemSpacing: Dp = 12.dp

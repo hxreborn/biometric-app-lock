@@ -33,7 +33,9 @@ import eu.hxreborn.biometricapplock.ui.theme.BiometricAppLockTheme
 import eu.hxreborn.biometricapplock.ui.viewmodel.ScopeViewModel
 import eu.hxreborn.biometricapplock.ui.viewmodel.SelfLockState
 import eu.hxreborn.biometricapplock.ui.viewmodel.SelfLockViewModel
-import eu.hxreborn.biometricapplock.util.pickAuthenticators
+import eu.hxreborn.biometricapplock.util.METHOD_CREDENTIAL
+import eu.hxreborn.biometricapplock.util.normalizeMethods
+import eu.hxreborn.biometricapplock.util.usableAuthenticators
 import io.github.libxposed.service.XposedService
 import io.github.libxposed.service.XposedServiceHelper
 
@@ -129,9 +131,13 @@ class MainActivity :
     private fun promptUnlock(credentialOnly: Boolean = false) {
         if (promptInFlight) return
         val bm = getSystemService(BiometricManager::class.java)
-        val allowCredential = App.from(this).prefsRepository.read(Prefs.SELF_LOCK_CRED_FALLBACK)
-        val authenticators =
-            if (credentialOnly) Authenticators.DEVICE_CREDENTIAL else pickAuthenticators(bm, allowCredential)
+        val methods =
+            if (credentialOnly) {
+                METHOD_CREDENTIAL
+            } else {
+                normalizeMethods(App.from(this).prefsRepository.read(Prefs.SELF_LOCK_METHODS))
+            }
+        val authenticators = usableAuthenticators(bm, methods)
         if (authenticators == null) {
             // allow if no security enrolled for module settings app
             selfLock.setUnlocked()

@@ -89,16 +89,33 @@
     <string name="settings_unlock_prompt">Unlock prompt</string>
     <string name="settings_unlock_confirmation_title">Require confirmation</string>
     <string name="settings_unlock_confirmation_summary">After a passive unlock such as face unlock, tap Confirm before the app opens. Matches Android\'s default</string>
-    <string name="settings_biometric_only_title">Allow screen lock fallback</string>
-    <string name="settings_biometric_only_summary">When enabled, the screen lock (PIN, pattern, or password) can unlock apps if biometrics fail. Disable to require fingerprint or face only</string>
+    <string name="unlock_section">Unlock</string>
+    <string name="unlock_biometrics_title">Biometrics</string>
+    <string name="unlock_biometrics_default">Default</string>
+    <string name="unlock_biometrics_default_summary">Follow the global setting</string>
+    <string name="unlock_biometrics_any">Any enrolled</string>
+    <string name="unlock_biometrics_strongest">Strongest only</string>
+    <string name="unlock_biometrics_none">None</string>
+    <string name="unlock_biometrics_any_summary">Class 2 (Weak) and above</string>
+    <string name="unlock_biometrics_any_summary_face">Class 2 (Weak) and above, includes face unlock</string>
+    <string name="unlock_biometrics_strongest_summary">Class 3 (Strong) only</string>
+    <string name="unlock_biometrics_strongest_summary_face">Class 3 (Strong) only, excludes face unlock</string>
+    <string name="unlock_biometrics_strongest_summary_same">Class 3 (Strong) only, no change on this device</string>
+    <string name="unlock_biometrics_none_summary">Screen lock only</string>
+    <string name="unlock_biometrics_default_resolved">Default (%1$s)</string>
+    <string name="unlock_screen_lock_title">Allow screen lock fallback</string>
+    <string name="unlock_screen_lock_summary">When enabled, the screen lock (PIN, pattern, or password) can unlock a locked app if biometrics fail. Disable to require fingerprint or face only</string>
+    <string name="unlock_screen_lock_unset">No screen lock set</string>
     <string name="settings_opaque_unlock_prompt_title">Compatibility mode</string>
     <string name="settings_opaque_unlock_prompt_summary">Helps on some non-AOSP ROMs where the prompt closes itself or loses focus. Leave it off on stock Android, where it hides the screen behind the prompt</string>
     <string name="settings_prevent_uninstall_title">Prevent uninstall</string>
     <string name="settings_prevent_uninstall_summary">Blocks attempts to uninstall this app. To remove it, disable the module in your Xposed manager and reboot</string>
+    <string name="settings_self_lock_section">App settings lock</string>
     <string name="settings_self_lock_title">Require biometric unlock</string>
     <string name="settings_self_lock_summary">Open the app\'s own settings only after biometric or screen lock</string>
+    <string name="settings_self_lock_biometrics_title">Biometrics</string>
     <string name="settings_self_lock_credential_title">Allow screen lock fallback</string>
-    <string name="settings_self_lock_credential_summary">When enabled, the screen lock (PIN, pattern, or password) can open the app\'s settings if biometrics fail. Disable to require fingerprint or face only</string>
+    <string name="settings_self_lock_credential_summary">When enabled, the screen lock (PIN, pattern, or password) can open this app\'s own settings if biometrics fail. Disable to require fingerprint or face only</string>
     <string name="uninstall_blocked_toast">This app is protected and can\'t be uninstalled</string>
 
     <string name="settings_app_management">App management</string>
@@ -166,6 +183,7 @@
 
     <string name="app_detail_block_screenshots_title">Block screenshots</string>
     <string name="app_detail_block_screenshots_summary">Blocks screenshots, screen recording, and the recents preview inside selected apps. May not apply if another module bypasses FLAG_SECURE</string>
+
 
     <string name="app_detail_allowed_section">Allowed activities</string>
     <string name="app_detail_allowed_row_empty">Choose activities that skip the unlock prompt</string>
