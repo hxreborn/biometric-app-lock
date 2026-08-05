@@ -156,7 +156,7 @@ open class BiometricAuthActivity : Activity() {
     private fun globalMethods(): Int =
         normalizeMethods(App.from(this).prefsRepository.read(Prefs.UNLOCK_METHODS))
 
-    // the launch transition can cancel the session before the window settles, a fresh prompt holds
+    // the launch transition can cancel the session before the window settles
     private fun isSelfCancel(errorCode: Int): Boolean =
         errorCode == BiometricPrompt.BIOMETRIC_ERROR_CANCELED &&
             !retriedPrompt &&
