@@ -1,0 +1,31 @@
+name: Bug report
+description: Report a problem with Biometric App Lock
+labels: [bug]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened
+      description: What did you do, what did you expect, what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Device and versions
+      description: Device, Android version/ROM, module version, LSPosed version.
+      placeholder: Pixel 8, Android 16, module 1.7.0, LSPosed 1.10.1
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (required)
+      description: >-
+        Reproduce the issue, then immediately export logs via
+        Settings → About → Share logs and attach the file here as
+        .zip or .txt (drag and drop into this field).
+        Issues without logs will be closed.
+      placeholder: Drag and drop the exported log file here.
+    validations:
+      required: true
