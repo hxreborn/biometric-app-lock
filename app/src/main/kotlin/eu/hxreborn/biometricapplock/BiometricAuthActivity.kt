@@ -10,7 +10,6 @@ import android.hardware.biometrics.BiometricManager.Authenticators
 import android.hardware.biometrics.BiometricPrompt
 import android.os.Bundle
 import android.os.CancellationSignal
-import android.os.SystemClock
 import android.util.Log
 import eu.hxreborn.biometricapplock.prefs.Prefs
 import eu.hxreborn.biometricapplock.util.METHODS_ALL
@@ -30,9 +29,9 @@ open class BiometricAuthActivity : Activity() {
     private var authToken: String? = null
     private var uninstallAuth = false
     private var replied = false
-    private var stopped = false
-    private var retriedPrompt = false
-    private var promptStartedAt = 0L
+
+    // the launch transition cancels a prompt started before the window gains focus
+    private var pendingPrompt: (() -> Unit)? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,7 +43,9 @@ open class BiometricAuthActivity : Activity() {
             Log.i(TAG, "uninstall auth pkg=$targetPkg")
             val label =
                 targetPkg?.let(::loadLabel) ?: getString(R.string.biometric_prompt_default_target)
-            showPrompt(getString(R.string.biometric_prompt_uninstall_title, label))
+            pendingPrompt = {
+                showPrompt(getString(R.string.biometric_prompt_uninstall_title, label))
+            }
             return
         }
 
@@ -72,7 +73,16 @@ open class BiometricAuthActivity : Activity() {
                 // installer handlers have no launcher activities, fall back to the app label
                 info?.label?.toString() ?: loadLabel(pkg)
             }.getOrDefault(pkg)
-        showPrompt(getString(R.string.biometric_prompt_unlock_title, label), "$pkg:$userId")
+        pendingPrompt = {
+            showPrompt(getString(R.string.biometric_prompt_unlock_title, label), "$pkg:$userId")
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (!hasFocus) return
+        pendingPrompt?.invoke()
+        pendingPrompt = null
     }
 
     private fun loadLabel(pkg: String): String =
@@ -116,7 +126,6 @@ open class BiometricAuthActivity : Activity() {
                 onResult(AUTH_CANCELLED)
             }
         }
-        promptStartedAt = SystemClock.elapsedRealtime()
         builder.build().authenticate(
             cancellation,
             executor,
@@ -134,14 +143,6 @@ open class BiometricAuthActivity : Activity() {
                     errString: CharSequence,
                 ) {
                     Log.w(TAG, "auth error code=$errorCode msg=$errString pkg=$targetPkg")
-                    if (isSelfCancel(errorCode)) {
-                        retriedPrompt = true
-                        Log.i(TAG, "retrying prompt pkg=$targetPkg")
-                        window.decorView.postDelayed({
-                            if (!replied && !stopped) showPrompt(title, packageKey)
-                        }, RETRY_DELAY_MS)
-                        return
-                    }
                     onResult(AUTH_ERROR)
                 }
             },
@@ -156,18 +157,8 @@ open class BiometricAuthActivity : Activity() {
     private fun globalMethods(): Int =
         normalizeMethods(App.from(this).prefsRepository.read(Prefs.UNLOCK_METHODS))
 
-    // the launch transition can cancel the session before the window settles
-    private fun isSelfCancel(errorCode: Int): Boolean =
-        errorCode == BiometricPrompt.BIOMETRIC_ERROR_CANCELED &&
-            !retriedPrompt &&
-            !replied &&
-            !stopped &&
-            !isFinishing &&
-            SystemClock.elapsedRealtime() - promptStartedAt < SELF_CANCEL_WINDOW_MS
-
     override fun onStop() {
         super.onStop()
-        stopped = true
         Log.d(TAG, "onStop replied=$replied pkg=$targetPkg")
         // the system prompt steals focus and stops this activity, so only finish once there is a
         // result, or the prompt dies before the user can answer
@@ -266,9 +257,6 @@ open class BiometricAuthActivity : Activity() {
 
         // uninstall backstop mode: no token, a good auth writes the grant pref instead of resuming
         const val EXTRA_UNINSTALL_AUTH = "$MODULE_PACKAGE.UNINSTALL_AUTH"
-
-        private const val SELF_CANCEL_WINDOW_MS = 1000L
-        private const val RETRY_DELAY_MS = 300L
 
         private const val AUTH_OK = 1
         private const val AUTH_CANCELLED = 2
