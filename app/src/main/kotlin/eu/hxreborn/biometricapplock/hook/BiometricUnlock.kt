@@ -23,11 +23,15 @@ internal fun resolveAuthToken(
 ): PendingAuth? {
     val token = intent?.getStringExtra(BiometricAuthActivity.EXTRA_AUTH_TOKEN) ?: return null
     val pkg = packageName ?: return null
-    val entry = consumeToken(token) ?: return null
-    if (entry.packageName != pkg) {
-        Logger.warn("token package mismatch: expected=${entry.packageName} actual=$pkg")
+    val peeked = peekToken(token) ?: return null
+    if (peeked.packageName != pkg) {
+        // the auth activity launch itself carries the token through this intercept pass
+        if (pkg != BiometricAuthActivity.MODULE_PACKAGE) {
+            Logger.warn("token package mismatch: expected=${peeked.packageName} actual=$pkg")
+        }
         return null
     }
+    val entry = consumeToken(token) ?: return null
     intent.removeExtra(BiometricAuthActivity.EXTRA_AUTH_TOKEN)
     // install/uninstall handlers get the action-keyed grant, not the per-pkg unlock map, so an
     // install auth can't silently authorize an uninstall

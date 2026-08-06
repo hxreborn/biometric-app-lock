@@ -54,6 +54,10 @@ internal fun consumeToken(token: String): PendingAuth? {
     return entry.takeIf { SystemClock.elapsedRealtime() - it.issuedAt <= TOKEN_TTL_MS }
 }
 
+// reads without removing so a non-matching launch cannot burn the token
+internal fun peekToken(token: String): PendingAuth? =
+    pending[token]?.takeIf { SystemClock.elapsedRealtime() - it.issuedAt <= TOKEN_TTL_MS }
+
 private fun removeExpiredTokens() {
     val cutoff = SystemClock.elapsedRealtime() - TOKEN_TTL_MS
     pending.entries.removeIf { it.value.issuedAt < cutoff }
