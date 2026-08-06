@@ -26,6 +26,9 @@ private fun packageKey(
     userId: Int?,
 ): String = "$pkg:$userId"
 
+// pkg:userId being surfaced from recents on this thread with a posted auth already covering it
+internal val recentsSurfaceKey = ThreadLocal<String?>()
+
 // pkg:userId -> elapsedRealtime of last interaction, present only while that pkg is unlocked
 private val unlockedMap = ConcurrentHashMap<String, Long>()
 

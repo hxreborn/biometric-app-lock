@@ -175,6 +175,10 @@ private fun interceptLockedLaunch(
         Logger.debug { "intercept pass pkg=$packageName user=$userId comp=${activityInfo.name}" }
         return false
     }
+    if (recentsSurfaceKey.get() == "$packageName:$userId") {
+        Logger.debug { "intercept pass pkg=$packageName user=$userId reason=recents-auth" }
+        return false
+    }
     Logger.debug {
         "intercept gating pkg=$packageName user=$userId comp=${activityInfo.name} " +
             "action=${intent?.action}"
@@ -324,7 +328,17 @@ private fun XposedModule.hookRecentsLaunch(classLoader: ClassLoader): Boolean =
                     "mode=${if (opaque) "block" else "surface"}"
             }
             // opaque returns START_SUCCESS without surfacing the task so the prompt keeps focus
-            val result = if (opaque) 0 else chain.proceed()
+            val result =
+                if (opaque) {
+                    0
+                } else {
+                    recentsSurfaceKey.set("${entry.packageName}:${entry.userId}")
+                    try {
+                        chain.proceed()
+                    } finally {
+                        recentsSurfaceKey.remove()
+                    }
+                }
             runCatching { postAuthLaunch(chain.thisObject, entry) }
                 .onFailure { Logger.error("recents auth failed: ${it.message}", it) }
             result
