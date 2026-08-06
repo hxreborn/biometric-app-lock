@@ -1,6 +1,36 @@
 {
-  "version": "1.8.0",
+  "version": "1.8.1",
   "entries": [
+    {
+      "type": "fix",
+      "title": "skip redirect when a recents launch already has a posted auth",
+      "description": "Reopening a locked app from recents no longer stacks a second unlock prompt behind the one already on screen.",
+      "version": "1.8.1",
+      "date": "2026-08-06",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/12554f5ce72eccac1e2e646c57712db54088a033",
+      "scope": "hook",
+      "breaking": false
+    },
+    {
+      "type": "fix",
+      "title": "validate token package before consuming a pending unlock",
+      "description": "Unlocking an app from recents no longer asks for a second authentication right after the first one succeeds.",
+      "version": "1.8.1",
+      "date": "2026-08-06",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/35e40ed80262c3cf571c470264bf4076da6207fd",
+      "scope": "hook",
+      "breaking": false
+    },
+    {
+      "type": "fix",
+      "title": "start the unlock prompt on first window focus",
+      "description": "The unlock prompt no longer cancels itself the moment a locked app launches, which sent you home before you could authenticate.",
+      "version": "1.8.1",
+      "date": "2026-08-06",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/36ccdf2e01755081d385c2247d4f46f468bced66",
+      "scope": "auth",
+      "breaking": false
+    },
     {
       "type": "fix",
       "title": "apply setting changes without a reboot on all Xposed builds",
@@ -148,16 +178,6 @@
       "version": "1.6.0",
       "date": "2026-07-06",
       "url": "https://github.com/hxreborn/biometric-app-lock/commit/63a7e8879fb6e3c7e624fb938239e3252a98fe54",
-      "scope": "ui",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "dedupe app list by package and user",
-      "description": "Apps that show more than one launcher icon no longer crash the apps screen.",
-      "version": "1.5.6",
-      "date": "2026-07-06",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/d50a60161da21b6369d2cd604f8a209e74082f7f",
       "scope": "ui",
       "breaking": false
     }
