@@ -16,6 +16,7 @@ internal const val RELOCK_DELAY_NEVER = -1
 internal data class TaskEntry(
     val packageName: String,
     val userId: Int,
+    val topActivity: String? = null,
 )
 
 @Volatile
@@ -216,7 +217,9 @@ private val appRelockOverrides = ConcurrentHashMap<String, Int>()
 
 private val appBlockScreenshotsOverrides = ConcurrentHashMap<String, Boolean>()
 
-private val appAllowedActivities = ConcurrentHashMap<String, Set<String>>()
+private val appListedActivities = ConcurrentHashMap<String, Set<String>>()
+
+private val appLockListedOnly = ConcurrentHashMap.newKeySet<String>()
 
 internal fun getEffectiveRelockDelay(
     pkg: String,
@@ -236,15 +239,20 @@ internal fun shouldForceSecure(
         isUnlocked(pkg, userId) &&
         shouldBlockScreenshots(pkg, userId)
 
-internal fun isActivityAllowed(
+internal fun isActivityExempt(
     pkg: String,
     userId: Int,
     className: String?,
     targetActivity: String?,
 ): Boolean {
-    val allowed = appAllowedActivities[packageKey(pkg, userId)] ?: return false
-    if (className != null && className in allowed) return true
-    return targetActivity != null && targetActivity in allowed
+    val key = packageKey(pkg, userId)
+    val listed = appListedActivities[key] ?: return false
+    // an unresolved name never proves exemption in either mode
+    if (className == null && targetActivity == null) return false
+    val inList =
+        (className != null && className in listed) ||
+            (targetActivity != null && targetActivity in listed)
+    return if (key in appLockListedOnly) !inList else inList
 }
 
 internal fun shouldRelockOnScreenOff(): Boolean = globalRelockOnScreenOff
@@ -357,7 +365,8 @@ internal fun loadHookPrefs(prefs: SharedPreferences) {
     globalRequireBiometricUninstall = Prefs.REQUIRE_BIOMETRIC_UNINSTALL.read(prefs)
     appRelockOverrides.clear()
     appBlockScreenshotsOverrides.clear()
-    appAllowedActivities.clear()
+    appListedActivities.clear()
+    appLockListedOnly.clear()
     prefs.all.keys.forEach { key ->
         if (!key.startsWith("app_override:")) return@forEach
         when {
@@ -379,7 +388,13 @@ internal fun loadHookPrefs(prefs: SharedPreferences) {
                         ?.split('\n')
                         ?.filterTo(mutableSetOf()) { it.isNotBlank() }
                         .orEmpty()
-                if (activities.isNotEmpty()) appAllowedActivities[pkgKey] = activities
+                if (activities.isNotEmpty()) appListedActivities[pkgKey] = activities
+            }
+
+            key.endsWith(":lock_listed_activities") -> {
+                val pkgKey =
+                    key.removePrefix("app_override:").removeSuffix(":lock_listed_activities")
+                if (prefs.getBoolean(key, false)) appLockListedOnly += pkgKey
             }
         }
     }
@@ -396,6 +411,7 @@ internal fun loadHookPrefs(prefs: SharedPreferences) {
             "systemHandlers=${systemHandlers.size} " +
             "relockOverrides=${appRelockOverrides.size} " +
             "blockOverrides=${appBlockScreenshotsOverrides.size} " +
-            "allowActivityOverrides=${appAllowedActivities.size}"
+            "activityOverrides=${appListedActivities.size} " +
+            "lockListedOnly=${appLockListedOnly.size}"
     }
 }

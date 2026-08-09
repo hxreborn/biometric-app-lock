@@ -9,7 +9,8 @@ import kotlinx.coroutines.flow.callbackFlow
 data class AppOverrides(
     val relockDelaySeconds: Int?,
     val blockScreenshots: Boolean?,
-    val allowedActivities: Set<String> = emptySet(),
+    val listedActivities: Set<String> = emptySet(),
+    val lockListedActivities: Boolean = false,
     val authMethods: Int? = null,
 )
 
@@ -50,7 +51,9 @@ class AppOverridesRepository(
 
     private fun blockScreenshotsKey(pkg: String) = "app_override:$pkg:block_screenshots"
 
-    private fun allowedActivitiesKey(pkg: String) = "app_override:$pkg:allowed_activities"
+    private fun listedActivitiesKey(pkg: String) = "app_override:$pkg:allowed_activities"
+
+    private fun lockListedActivitiesKey(pkg: String) = "app_override:$pkg:lock_listed_activities"
 
     private fun authMethodsKey(pkg: String) = "app_override:$pkg:auth_methods"
 
@@ -62,7 +65,8 @@ class AppOverridesRepository(
         AppOverrides(
             relockDelaySeconds = local.getIntOrNull(relockKey(pkg)),
             blockScreenshots = local.getBooleanOrNull(blockScreenshotsKey(pkg)),
-            allowedActivities = parseActivities(local.getString(allowedActivitiesKey(pkg), null)),
+            listedActivities = parseActivities(local.getString(listedActivitiesKey(pkg), null)),
+            lockListedActivities = local.getBoolean(lockListedActivitiesKey(pkg), false),
             authMethods = local.getIntOrNull(authMethodsKey(pkg)),
         )
 
@@ -126,14 +130,22 @@ class AppOverridesRepository(
         local.edit { if (mask == null) remove(key) else putInt(key, mask) }
     }
 
-    fun setAllowedActivities(
+    fun setListedActivities(
         pkg: String,
         activities: Set<String>,
     ) {
-        val key = allowedActivitiesKey(pkg)
+        val key = listedActivitiesKey(pkg)
         editLocalAndRemote {
             if (activities.isEmpty()) remove(key) else putString(key, activities.joinToString("\n"))
         }
+    }
+
+    fun setLockListedActivities(
+        pkg: String,
+        enabled: Boolean,
+    ) {
+        val key = lockListedActivitiesKey(pkg)
+        editLocalAndRemote { if (enabled) putBoolean(key, true) else remove(key) }
     }
 
     fun recordRecentActivity(

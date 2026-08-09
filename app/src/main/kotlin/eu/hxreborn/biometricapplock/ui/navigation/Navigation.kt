@@ -72,7 +72,7 @@ import androidx.navigation3.ui.NavDisplay
 import eu.hxreborn.biometricapplock.App
 import eu.hxreborn.biometricapplock.R
 import eu.hxreborn.biometricapplock.ui.screen.AboutScreen
-import eu.hxreborn.biometricapplock.ui.screen.AllowedActivitiesScreen
+import eu.hxreborn.biometricapplock.ui.screen.ActivitiesScreen
 import eu.hxreborn.biometricapplock.ui.screen.AppDetailScreen
 import eu.hxreborn.biometricapplock.ui.screen.AppListScreen
 import eu.hxreborn.biometricapplock.ui.screen.AppManagementScreen
@@ -106,7 +106,7 @@ sealed interface Screen : NavKey {
     ) : Screen
 
     @Serializable
-    data class AllowedActivities(
+    data class Activities(
         val packageKey: String,
     ) : Screen
 }
@@ -222,13 +222,13 @@ fun MainNavDisplay(
                         packageKey = appDetail.packageKey,
                         onBack = dropUnlessResumed { backStack.removeLastOrNull() },
                         contentPadding = contentPadding,
-                        onNavigateToAllowedActivities = { key ->
-                            backStack.add(Screen.AllowedActivities(key))
+                        onNavigateToActivities = { key ->
+                            backStack.add(Screen.Activities(key))
                         },
                     )
                 }
-                entry<Screen.AllowedActivities> { key ->
-                    AllowedActivitiesScreen(
+                entry<Screen.Activities> { key ->
+                    ActivitiesScreen(
                         packageKey = key.packageKey,
                         onBack = dropUnlessResumed { backStack.removeLastOrNull() },
                         contentPadding = contentPadding,

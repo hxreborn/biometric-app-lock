@@ -164,9 +164,9 @@ private fun interceptLockedLaunch(
     val packageName = activityInfo.packageName
     if ("$packageName:$userId" !in lockedPackages) return false
     if (intent?.hasCategory(Intent.CATEGORY_HOME) == true) return false
-    if (isActivityAllowed(packageName, userId, activityInfo.name, activityInfo.targetActivity)) {
+    if (isActivityExempt(packageName, userId, activityInfo.name, activityInfo.targetActivity)) {
         Logger.debug {
-            "intercept allowlisted pkg=$packageName user=$userId comp=${activityInfo.name}"
+            "intercept exempt pkg=$packageName user=$userId comp=${activityInfo.name}"
         }
         return false
     }
@@ -252,7 +252,7 @@ private fun XposedModule.hookActivityLaunched(classLoader: ClassLoader): Boolean
             val userId = reflection?.taskInfoUserIdField?.get(taskInfo) as? Int ?: 0
             val pkgKey = "$packageName:$userId"
             if (pkgKey in lockedPackages) {
-                taskCache[taskInfo.taskId] = TaskEntry(packageName, userId)
+                taskCache[taskInfo.taskId] = TaskEntry(packageName, userId, topActivity.className)
                 Logger.debug {
                     "launched pkg=$packageName user=$userId taskId=${taskInfo.taskId} top=${topActivity.shortClassName}"
                 }
@@ -310,6 +310,14 @@ private fun XposedModule.hookRecentsLaunch(classLoader: ClassLoader): Boolean =
                     ?: return@intercept chain.proceed()
 
             relockOtherPackages(entry.packageName, entry.userId)
+
+            if (isActivityExempt(entry.packageName, entry.userId, entry.topActivity, null)) {
+                Logger.debug {
+                    "recents pass pkg=${entry.packageName} user=${entry.userId} " +
+                        "top=${entry.topActivity} reason=exempt"
+                }
+                return@intercept chain.proceed()
+            }
 
             if (isUnlocked(entry.packageName, entry.userId)) {
                 refreshUnlock(entry.packageName, entry.userId)

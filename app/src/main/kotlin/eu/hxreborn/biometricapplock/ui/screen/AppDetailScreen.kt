@@ -84,7 +84,7 @@ fun AppDetailScreen(
     packageKey: String,
     onBack: () -> Unit,
     contentPadding: PaddingValues,
-    onNavigateToAllowedActivities: (String) -> Unit,
+    onNavigateToActivities: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -307,17 +307,34 @@ fun AppDetailScreen(
             item {
                 PreferenceRow(
                     icon = Icons.Outlined.Apps,
-                    title = stringResource(R.string.app_detail_allowed_section),
+                    title = stringResource(R.string.app_detail_activities_section),
                     summary =
-                        if (overrides.allowedActivities.isEmpty()) {
-                            stringResource(R.string.app_detail_allowed_row_empty)
-                        } else {
-                            stringResource(
-                                R.string.app_detail_allowed_count,
-                                overrides.allowedActivities.size,
-                            )
+                        when {
+                            overrides.listedActivities.isEmpty() -> {
+                                stringResource(
+                                    if (overrides.lockListedActivities) {
+                                        R.string.app_detail_locked_row_empty
+                                    } else {
+                                        R.string.app_detail_allowed_row_empty
+                                    },
+                                )
+                            }
+
+                            overrides.lockListedActivities -> {
+                                stringResource(
+                                    R.string.app_detail_locked_count,
+                                    overrides.listedActivities.size,
+                                )
+                            }
+
+                            else -> {
+                                stringResource(
+                                    R.string.app_detail_allowed_count,
+                                    overrides.listedActivities.size,
+                                )
+                            }
                         },
-                    onClick = { onNavigateToAllowedActivities(packageKey) },
+                    onClick = { onNavigateToActivities(packageKey) },
                 )
             }
 

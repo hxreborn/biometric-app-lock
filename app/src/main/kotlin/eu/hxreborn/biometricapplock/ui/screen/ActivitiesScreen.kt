@@ -15,16 +15,19 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -33,6 +36,9 @@ import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBarDefaults
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -51,9 +57,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.hxreborn.biometricapplock.App
 import eu.hxreborn.biometricapplock.R
@@ -81,7 +87,7 @@ private fun sectionPosition(
     }
 
 @Composable
-fun rememberLauncherActivities(packageKey: String): Set<String> {
+private fun rememberLauncherActivities(packageKey: String): Set<String> {
     val context = LocalContext.current
     val packageName = remember(packageKey) { packageKey.substringBeforeLast(':') }
     val userId = remember(packageKey) { packageKey.substringAfterLast(':').toIntOrNull() ?: 0 }
@@ -125,7 +131,7 @@ private fun rememberDeclaredActivities(packageKey: String): List<String> {
 }
 
 @Composable
-fun ActivityToggleRow(
+private fun ActivityToggleRow(
     className: String,
     checked: Boolean,
     isLauncher: Boolean,
@@ -134,13 +140,16 @@ fun ActivityToggleRow(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    SectionCard(modifier = modifier, position = position, onClick = { onCheckedChange(!checked) }) {
+    SectionCard(modifier = modifier, position = position) {
         Row(
             modifier =
-                Modifier.fillMaxWidth().padding(
-                    horizontal = Tokens.PreferenceRowHorizontalPadding,
-                    vertical = Tokens.PreferenceRowVerticalPadding,
-                ),
+                Modifier
+                    .fillMaxWidth()
+                    .toggleable(value = checked, role = Role.Checkbox, onValueChange = onCheckedChange)
+                    .padding(
+                        horizontal = Tokens.PreferenceRowHorizontalPadding,
+                        vertical = Tokens.PreferenceRowVerticalPadding,
+                    ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
@@ -177,12 +186,12 @@ fun ActivityToggleRow(
                                     ).toString(),
                             ),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
             Spacer(Modifier.width(Tokens.PreferenceRowTrailingSpacing))
-            Checkbox(checked = checked, onCheckedChange = onCheckedChange)
+            Checkbox(checked = checked, onCheckedChange = null)
         }
     }
 }
@@ -191,23 +200,57 @@ fun ActivityToggleRow(
 private fun LauncherBadge() {
     Surface(
         shape = RoundedCornerShape(Tokens.SmallCornerRadius),
-        color = MaterialTheme.colorScheme.errorContainer,
+        color = MaterialTheme.colorScheme.secondaryContainer,
     ) {
         Text(
             text = stringResource(R.string.app_detail_allowed_main_badge),
-            modifier = Modifier.padding(horizontal = Tokens.SpacingSm, vertical = 2.dp),
+            modifier = Modifier.padding(horizontal = Tokens.SpacingSm, vertical = Tokens.SpacingXs / 2),
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onErrorContainer,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
         )
     }
 }
 
 @Composable
-fun LauncherAllowConfirmDialog(
+private fun ActivityModeSelector(
+    lockListed: Boolean,
+    onSelect: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    SingleChoiceSegmentedButtonRow(
+        modifier = modifier.fillMaxWidth().height(Tokens.ModeSelectorHeight),
+    ) {
+        SegmentedButton(
+            selected = !lockListed,
+            onClick = { onSelect(false) },
+            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+        ) {
+            Text(
+                text = stringResource(R.string.app_detail_activities_mode_allow),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        SegmentedButton(
+            selected = lockListed,
+            onClick = { onSelect(true) },
+            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+        ) {
+            Text(
+                text = stringResource(R.string.app_detail_activities_mode_lock),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun LauncherAllowConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    androidx.compose.material3.AlertDialog(
+    AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.app_detail_allowed_main_confirm_title)) },
         text = { Text(stringResource(R.string.app_detail_allowed_main_confirm_body)) },
@@ -221,7 +264,7 @@ fun LauncherAllowConfirmDialog(
 }
 
 @Composable
-fun AllowedActivitiesScreen(
+fun ActivitiesScreen(
     packageKey: String,
     onBack: () -> Unit,
     contentPadding: PaddingValues,
@@ -232,7 +275,8 @@ fun AllowedActivitiesScreen(
 
     val overrides by app.appOverridesRepository.observe(packageKey).collectAsStateWithLifecycle(initialValue = AppOverrides(null, null))
     val recents by app.appOverridesRepository.observeRecentActivities(packageKey).collectAsStateWithLifecycle(initialValue = emptyList())
-    val allowed = overrides.allowedActivities
+    val allowed = overrides.listedActivities
+    val lockListed = overrides.lockListedActivities
     val launcherActivities = rememberLauncherActivities(packageKey)
     val declared = rememberDeclaredActivities(packageKey)
 
@@ -255,11 +299,11 @@ fun AllowedActivitiesScreen(
         name: String,
         allow: Boolean,
     ) {
-        if (allow && name in launcherActivities) {
+        if (allow && !lockListed && name in launcherActivities) {
             pendingLauncher = name
             return
         }
-        app.appOverridesRepository.setAllowedActivities(
+        app.appOverridesRepository.setListedActivities(
             packageKey,
             if (allow) allowed + name else allowed - name,
         )
@@ -268,7 +312,7 @@ fun AllowedActivitiesScreen(
     pendingLauncher?.let { name ->
         LauncherAllowConfirmDialog(
             onConfirm = {
-                app.appOverridesRepository.setAllowedActivities(packageKey, allowed + name)
+                app.appOverridesRepository.setListedActivities(packageKey, allowed + name)
                 pendingLauncher = null
             },
             onDismiss = { pendingLauncher = null },
@@ -283,7 +327,7 @@ fun AllowedActivitiesScreen(
         topBar = {
             LargeTopAppBar(
                 navigationIcon = { BackButton(onClick = onBack) },
-                title = { ExpandedTitle(stringResource(R.string.app_detail_allowed_section)) },
+                title = { ExpandedTitle(stringResource(R.string.app_detail_activities_section)) },
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -296,10 +340,42 @@ fun AllowedActivitiesScreen(
                     bottom = contentPadding.calculateBottomPadding() + Tokens.SpacingLg,
                 ),
         ) {
+            item(key = "mode") {
+                ActivityModeSelector(
+                    lockListed = lockListed,
+                    onSelect = { app.appOverridesRepository.setLockListedActivities(packageKey, it) },
+                    modifier =
+                        Modifier.padding(
+                            horizontal = Tokens.SectionHorizontalMargin,
+                            vertical = Tokens.SpacingSm,
+                        ),
+                )
+            }
+
+            item(key = "desc") {
+                Text(
+                    text =
+                        stringResource(
+                            if (lockListed) {
+                                R.string.app_detail_locked_screen_desc
+                            } else {
+                                R.string.app_detail_allowed_screen_desc
+                            },
+                        ),
+                    modifier =
+                        Modifier.padding(
+                            horizontal = Tokens.SectionHorizontalMargin + Tokens.PreferenceRowHorizontalPadding,
+                            vertical = Tokens.SpacingSm,
+                        ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
             item(key = "search") {
                 TextField(
                     state = searchState,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = Tokens.ScreenHorizontalPadding, vertical = Tokens.SpacingSm),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = Tokens.SectionHorizontalMargin, vertical = Tokens.SpacingSm),
                     placeholder = { Text(stringResource(R.string.app_detail_allowed_search)) },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     trailingIcon = {
@@ -318,19 +394,6 @@ fun AllowedActivitiesScreen(
                             unfocusedIndicatorColor = Color.Transparent,
                             disabledIndicatorColor = Color.Transparent,
                         ),
-                )
-            }
-
-            item(key = "desc") {
-                Text(
-                    text = stringResource(R.string.app_detail_allowed_screen_desc),
-                    modifier =
-                        Modifier.padding(
-                            horizontal = Tokens.SectionHorizontalMargin + Tokens.PreferenceRowHorizontalPadding,
-                            vertical = Tokens.SpacingSm,
-                        ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 

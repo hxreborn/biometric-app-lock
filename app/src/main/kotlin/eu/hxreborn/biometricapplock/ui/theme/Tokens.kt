@@ -66,6 +66,8 @@ object Tokens {
     val DialogTitleSpacing: Dp = 16.dp
     val DialogListItemVerticalPadding: Dp = 12.dp
 
+    val ModeSelectorHeight: Dp = 48.dp
+
     val RadioSize: Dp = 20.dp
 
     val RadioTitleTopOffset: Dp = 2.dp

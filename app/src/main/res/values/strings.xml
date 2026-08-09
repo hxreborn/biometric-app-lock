@@ -185,14 +185,19 @@
     <string name="app_detail_block_screenshots_summary">Blocks screenshots, screen recording, and the recents preview inside selected apps. May not apply if another module bypasses FLAG_SECURE</string>
 
 
-    <string name="app_detail_allowed_section">Allowed activities</string>
+    <string name="app_detail_activities_section">Activities</string>
     <string name="app_detail_allowed_row_empty">Choose activities that skip the unlock prompt</string>
     <string name="app_detail_allowed_count">%1$d allowed</string>
-    <string name="app_detail_allowed_screen_desc">Checked activities skip the unlock prompt. Going back from one can reach the rest of the app without asking again</string>
+    <string name="app_detail_allowed_screen_desc">You will be asked to unlock the rest of the app. Pressing back from a checked activity can skip that prompt</string>
     <string name="app_detail_allowed_recent">Prompted %1$s</string>
     <string name="app_detail_allowed_main_badge">Launcher</string>
     <string name="app_detail_allowed_main_confirm_title">Allow the launcher activity?</string>
-    <string name="app_detail_allowed_main_confirm_body">This is the screen that opens when you tap the app icon. Allowing it leaves the whole app unprotected.</string>
+    <string name="app_detail_allowed_main_confirm_body">This screen opens when you tap the app icon. Allowing it leaves the whole app unprotected.</string>
+    <string name="app_detail_locked_row_empty">Whole app will be locked until you choose activities</string>
+    <string name="app_detail_locked_count">%1$d locked</string>
+    <string name="app_detail_locked_screen_desc">Everything else opens without a prompt. Check nothing and the whole app will be locked</string>
+    <string name="app_detail_activities_mode_allow">Allow checked</string>
+    <string name="app_detail_activities_mode_lock">Lock checked</string>
     <string name="app_detail_allowed_search">Search activities</string>
     <string name="app_detail_allowed_no_matches">No activities match</string>
     <string name="app_detail_allowed_browse_empty">This app declares no activities</string>
