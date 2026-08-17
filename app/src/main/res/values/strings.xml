@@ -86,6 +86,8 @@
 
     <string name="settings_block_screenshots_title">Block screenshots</string>
     <string name="settings_block_screenshots_summary">Blocks screenshots, screen recording, and the recents preview inside selected apps. May not apply if another module bypasses FLAG_SECURE</string>
+    <string name="settings_hide_notification_content_title">Hide notification content</string>
+    <string name="settings_hide_notification_content_summary">Replaces the title and text of notifications posted by locked apps while they are locked. Notifications posted before locking keep their content. May not apply on ROMs that replace the notification service</string>
     <string name="settings_unlock_prompt">Unlock prompt</string>
     <string name="settings_unlock_confirmation_title">Require confirmation</string>
     <string name="settings_unlock_confirmation_summary">After a passive unlock such as face unlock, tap Confirm before the app opens. Matches Android\'s default</string>

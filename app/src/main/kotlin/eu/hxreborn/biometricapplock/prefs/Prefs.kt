@@ -12,6 +12,7 @@ object Prefs {
     val RELOCK_ON_SCREEN_OFF = BoolPref("relock_on_screen_off", true)
     val RELOCK_ON_TASK_REMOVED = BoolPref("relock_on_task_removed", true)
     val BLOCK_SCREENSHOTS = BoolPref("block_screenshots", false)
+    val HIDE_NOTIFICATION_CONTENT = BoolPref("hide_notification_content", false)
     val UNLOCK_REQUIRE_CONFIRMATION = BoolPref("unlock_require_confirmation", false)
 
     // METHOD_* mask the unlock prompt offers for apps with no per-app override
@@ -56,6 +57,7 @@ object Prefs {
             RELOCK_ON_SCREEN_OFF,
             RELOCK_ON_TASK_REMOVED,
             BLOCK_SCREENSHOTS,
+            HIDE_NOTIFICATION_CONTENT,
             UNLOCK_REQUIRE_CONFIRMATION,
             UNLOCK_METHODS,
             USE_OPAQUE_UNLOCK_PROMPT,

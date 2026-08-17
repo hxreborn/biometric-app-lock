@@ -1,5 +1,6 @@
 package eu.hxreborn.biometricapplock.hook
 
+import android.app.Notification
 import android.app.TaskInfo
 import android.content.Context
 import android.content.Intent
@@ -123,6 +124,7 @@ internal fun XposedModule.registerSystemServerHooks(
             "onScreenAwakeChanged" to hookScreenAwake(classLoader),
             "isSecureLocked" to hookFlagSecure(classLoader),
             "deletePackageX" to hookUninstall(classLoader),
+            "enqueueNotificationInternal" to hookNotificationEnqueue(classLoader),
         )
     val summary = installed.entries.joinToString(" ") { "${it.key}=${it.value}" }
     Logger.info("hooks installed $summary")
@@ -503,3 +505,92 @@ private fun XposedModule.hookUninstall(classLoader: ClassLoader): Boolean =
         }
         Logger.info("hooked deletePackageX args=${method.parameterCount}")
     }.onFailure { Logger.warn("hookUninstall not available: ${it.message}") }.isSuccess
+
+private const val EXTRA_TEMPLATE = "android.template"
+private const val EXTRA_REDACTED = "eu.hxreborn.biometricapplock.REDACTED"
+private const val REDACTED_TITLE = "Content hidden"
+private const val REDACTED_TEXT = "Unlock the app to view"
+private const val UID_PER_USER_RANGE = 100_000
+
+private val STYLE_EXTRAS =
+    arrayOf(
+        EXTRA_TEMPLATE,
+        Notification.EXTRA_TITLE_BIG,
+        Notification.EXTRA_BIG_TEXT,
+        Notification.EXTRA_TEXT_LINES,
+        Notification.EXTRA_SUB_TEXT,
+        Notification.EXTRA_INFO_TEXT,
+        Notification.EXTRA_SUMMARY_TEXT,
+        Notification.EXTRA_MESSAGES,
+        Notification.EXTRA_HISTORIC_MESSAGES,
+        Notification.EXTRA_CONVERSATION_TITLE,
+        Notification.EXTRA_PICTURE,
+        Notification.EXTRA_PICTURE_ICON,
+        Notification.EXTRA_LARGE_ICON,
+        Notification.EXTRA_LARGE_ICON_BIG,
+        Notification.EXTRA_PEOPLE_LIST,
+    )
+
+private fun XposedModule.hookNotificationEnqueue(classLoader: ClassLoader): Boolean =
+    runCatching {
+        val methods =
+            classLoader
+                .loadClass("com.android.server.notification.NotificationManagerService")
+                .declaredMethods
+                .filter { it.name == "enqueueNotificationInternal" }
+        check(methods.isNotEmpty()) {
+            "enqueueNotificationInternal not found sdk=${Build.VERSION.SDK_INT}"
+        }
+        var hooked = 0
+        methods.forEach { method ->
+            val notifIdx = method.firstArgIndexOfType("Notification")
+            if (notifIdx < 0) return@forEach
+            val userIdIdx =
+                (notifIdx + 1).takeIf {
+                    method.parameterTypes.getOrNull(it) == Int::class.javaPrimitiveType
+                } ?: -1
+            Logger.info(
+                "enqueue indices notif=$notifIdx user=$userIdIdx args=${method.parameterCount}",
+            )
+            hook(method).intercept { chain ->
+                val notification = chain.args[notifIdx] as? Notification
+                val pkg = chain.args.getOrNull(0) as? String
+                val userId =
+                    chain.args.getOrNull(userIdIdx) as? Int
+                        ?: (chain.args.getOrNull(2) as? Int)?.div(UID_PER_USER_RANGE)
+                if (notification != null && pkg != null && userId != null) {
+                    runCatching {
+                        maybeRedactNotification(notification, pkg, userId)
+                    }.onFailure { Logger.warn("notification redaction failed: ${it.message}") }
+                }
+                chain.proceed()
+            }
+            hooked++
+        }
+        check(hooked > 0) { "no enqueueNotificationInternal overload carries a Notification" }
+        Logger.info("hooked enqueueNotificationInternal overloads=$hooked")
+    }.onFailure { Logger.warn("hookNotificationEnqueue not available: ${it.message}") }.isSuccess
+
+@Suppress("DEPRECATION")
+private fun maybeRedactNotification(
+    notification: Notification,
+    pkg: String,
+    userId: Int,
+) {
+    if (!shouldHideNotificationContent()) return
+    if ("$pkg:$userId" !in lockedPackages) return
+    if (isUnlocked(pkg, userId)) return
+    val extras = notification.extras ?: return
+    if (extras.getBoolean(EXTRA_REDACTED)) return
+    extras.putBoolean(EXTRA_REDACTED, true)
+    extras.putCharSequence(Notification.EXTRA_TITLE, REDACTED_TITLE)
+    extras.putCharSequence(Notification.EXTRA_TEXT, REDACTED_TEXT)
+    STYLE_EXTRAS.forEach { extras.remove(it) }
+    notification.tickerText = null
+    notification.actions = null
+    notification.largeIcon = null
+    notification.contentView = null
+    notification.bigContentView = null
+    notification.headsUpContentView = null
+    Logger.debug { "redacted notification pkg=$pkg user=$userId" }
+}

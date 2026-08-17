@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.FormatPaint
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.NewReleases
+import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.RoundedCorner
 import androidx.compose.material.icons.outlined.ScreenLockPortrait
@@ -420,6 +421,23 @@ fun SettingsScreen(
                     },
                     trailing = {
                         LockSwitch(checked = prefs.blockScreenshots, onCheckedChange = null)
+                    },
+                )
+            }
+            item {
+                PreferenceRow(
+                    icon = Icons.Outlined.NotificationsOff,
+                    title = stringResource(R.string.settings_hide_notification_content_title),
+                    summary = stringResource(R.string.settings_hide_notification_content_summary),
+                    position = SectionPosition.Middle,
+                    onClick = {
+                        app.prefsRepository.save(
+                            Prefs.HIDE_NOTIFICATION_CONTENT,
+                            !prefs.hideNotificationContent,
+                        )
+                    },
+                    trailing = {
+                        LockSwitch(checked = prefs.hideNotificationContent, onCheckedChange = null)
                     },
                 )
             }

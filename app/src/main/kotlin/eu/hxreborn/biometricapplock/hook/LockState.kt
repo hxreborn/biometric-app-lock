@@ -190,6 +190,9 @@ private var globalRelockDelaySeconds: Int = 0
 private var globalBlockScreenshots: Boolean = false
 
 @Volatile
+private var globalHideNotificationContent: Boolean = false
+
+@Volatile
 private var globalRelockOnScreenOff: Boolean = true
 
 @Volatile
@@ -230,6 +233,8 @@ internal fun shouldBlockScreenshots(
     pkg: String,
     userId: Int,
 ): Boolean = appBlockScreenshotsOverrides[packageKey(pkg, userId)] ?: globalBlockScreenshots
+
+internal fun shouldHideNotificationContent(): Boolean = globalHideNotificationContent
 
 internal fun shouldForceSecure(
     pkg: String,
@@ -359,6 +364,7 @@ internal fun loadHookPrefs(prefs: SharedPreferences) {
     globalRelockOnScreenOff = Prefs.RELOCK_ON_SCREEN_OFF.read(prefs)
     globalRelockOnTaskRemoved = Prefs.RELOCK_ON_TASK_REMOVED.read(prefs)
     globalBlockScreenshots = Prefs.BLOCK_SCREENSHOTS.read(prefs)
+    globalHideNotificationContent = Prefs.HIDE_NOTIFICATION_CONTENT.read(prefs)
     globalPreventModuleUninstall = Prefs.PREVENT_MODULE_UNINSTALL.read(prefs)
     globalUseOpaqueUnlockPrompt = Prefs.USE_OPAQUE_UNLOCK_PROMPT.read(prefs)
     globalRequireBiometricInstall = Prefs.REQUIRE_BIOMETRIC_INSTALL.read(prefs)
@@ -404,6 +410,7 @@ internal fun loadHookPrefs(prefs: SharedPreferences) {
             "relockOnScreenOff=$globalRelockOnScreenOff " +
             "relockOnTaskRemoved=$globalRelockOnTaskRemoved " +
             "blockScreenshots=$globalBlockScreenshots " +
+            "hideNotifications=$globalHideNotificationContent " +
             "preventUninstall=$globalPreventModuleUninstall " +
             "opaquePrompt=$globalUseOpaqueUnlockPrompt " +
             "reqInstall=$globalRequireBiometricInstall " +
