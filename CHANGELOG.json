@@ -1,6 +1,26 @@
 {
-  "version": "1.9.0",
+  "version": "1.9.1",
   "entries": [
+    {
+      "type": "fix",
+      "title": "resume apps with no startable activity after unlock",
+      "description": "Unlocking an app that has no launchable entry now opens it instead of returning to the home screen.",
+      "version": "1.9.1",
+      "date": "2026-08-17",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/8d6a25111162a4b21153b61572b35d3239698201",
+      "scope": "auth",
+      "breaking": false
+    },
+    {
+      "type": "fix",
+      "title": "show apps without a launcher activity in the app list",
+      "description": "Iconless packages like Shell now appear in the app list and stay visible on the dashboard while locked.",
+      "version": "1.9.1",
+      "date": "2026-08-17",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/00ec23c3a605a6e47275717eb9b7ebcfb1ad91ee",
+      "scope": "ui",
+      "breaking": false
+    },
     {
       "type": "feat",
       "title": "add a per-app mode that locks only the selected activities",
@@ -109,36 +129,6 @@
       "date": "2026-07-10",
       "url": "https://github.com/hxreborn/biometric-app-lock/commit/462ed1a10980f41ae968d2adb263b85897db2cdc",
       "scope": "auth",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "rebuild nav bar without removed override API",
-      "description": null,
-      "version": "1.6.1",
-      "date": "2026-07-10",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/623a8ab0efabdbeb36b2710a4cf410a60218c0d1",
-      "scope": "ui",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "mark reflected methods accessible",
-      "description": "Locked apps no longer open without authentication on devices where the unlock prompt failed to appear.",
-      "version": "1.6.1",
-      "date": "2026-07-10",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/1c3e18ed4c2e3302b42e279733c284f105c7172f",
-      "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "use surface colors in floating navbar",
-      "description": "The floating navigation bar now matches the surface colors used elsewhere in the app.",
-      "version": "1.6.1",
-      "date": "2026-07-10",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/7b20f9ab6f2e388ee162da512c4a1077bf887646",
-      "scope": "ui",
       "breaking": false
     }
   ]
