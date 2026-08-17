@@ -1,6 +1,16 @@
 {
-  "version": "1.9.1",
+  "version": "1.10.0",
   "entries": [
+    {
+      "type": "feat",
+      "title": "hide notification content while an app is locked",
+      "description": "Notifications posted by a locked app now show a placeholder instead of their title and text until the app is unlocked.",
+      "version": "1.10.0",
+      "date": "2026-08-17",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/84a80c7416dd4298b20d9d4e43fdedb60f1e7699",
+      "scope": "hook",
+      "breaking": false
+    },
     {
       "type": "fix",
       "title": "resume apps with no startable activity after unlock",
@@ -118,16 +128,6 @@
       "version": "1.8.0",
       "date": "2026-08-04",
       "url": "https://github.com/hxreborn/biometric-app-lock/commit/b0b6c3f88da3f34f820530582799255b2006e1ca",
-      "scope": "auth",
-      "breaking": false
-    },
-    {
-      "type": "feat",
-      "title": "add screen lock fallback to self-lock",
-      "description": "Adds a setting to let the screen lock open the app's own settings when biometrics fail.",
-      "version": "1.7.0",
-      "date": "2026-07-10",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/462ed1a10980f41ae968d2adb263b85897db2cdc",
       "scope": "auth",
       "breaking": false
     }
