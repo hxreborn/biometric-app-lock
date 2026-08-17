@@ -100,7 +100,8 @@ fun AppDetailScreen(
                     val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
                     val userHandle = getUserHandle(userId)
                     val info = launcherApps.getActivityList(packageName, userHandle).firstOrNull()
-                    info?.label?.toString() ?: packageName
+                    val pm = context.packageManager
+                    info?.label?.toString() ?: pm.getApplicationInfo(packageName, 0).loadLabel(pm).toString()
                 }.getOrDefault(packageName)
             }
     }

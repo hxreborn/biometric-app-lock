@@ -13,7 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 @SuppressLint("QueryPermissionsNeeded")
-internal suspend fun loadLaunchablePackageKeys(
+internal suspend fun loadInstalledPackageKeys(
     context: Context,
     ownPackage: String,
 ): Set<String> =
@@ -32,15 +32,20 @@ internal suspend fun loadLaunchablePackageKeys(
                 }
             }
         }
+        context.packageManager.getInstalledApplications(0).forEach { info ->
+            if (info.packageName != ownPackage) {
+                keys.add("${info.packageName}:0")
+            }
+        }
         keys
     }
 
 @Composable
-internal fun rememberLaunchablePackageKeys(): Set<String> {
+internal fun rememberInstalledPackageKeys(): Set<String> {
     val context = LocalContext.current
     val ownPackage = context.packageName
     val packageKeys by produceState(initialValue = emptySet(), context, ownPackage) {
-        value = loadLaunchablePackageKeys(context, ownPackage)
+        value = loadInstalledPackageKeys(context, ownPackage)
     }
     return packageKeys
 }

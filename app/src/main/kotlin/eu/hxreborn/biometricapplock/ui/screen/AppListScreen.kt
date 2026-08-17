@@ -150,9 +150,19 @@ private suspend fun loadApps(
                 }.filter { (info, _) -> info.applicationInfo.packageName != ownPackage }
                 .distinctBy { (info, userId) -> "${info.applicationInfo.packageName}:$userId" }
 
+        val launcherKeys =
+            entries.mapTo(mutableSetOf()) { (info, userId) ->
+                "${info.applicationInfo.packageName}:$userId"
+            }
+        val pm = context.packageManager
+        val nonLaunchable =
+            pm
+                .getInstalledApplications(0)
+                .filter { it.packageName != ownPackage && "${it.packageName}:0" !in launcherKeys }
+
         coroutineScope {
-            entries
-                .map { (info, userId) ->
+            val launchable =
+                entries.map { (info, userId) ->
                     async {
                         val appInfo = info.applicationInfo
                         AppItem(
@@ -162,7 +172,19 @@ private suspend fun loadApps(
                             isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0,
                         )
                     }
-                }.awaitAll()
+                }
+            val hidden =
+                nonLaunchable.map { appInfo ->
+                    async {
+                        AppItem(
+                            label = appInfo.loadLabel(pm).toString(),
+                            packageName = appInfo.packageName,
+                            userId = 0,
+                            isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0,
+                        )
+                    }
+                }
+            (launchable + hidden).awaitAll()
         }
     }
 
@@ -452,20 +474,7 @@ fun AppListScreen(
     val appState = rememberInstalledApps(refreshKey)
 
     LaunchedEffect(refreshKey) {
-        val installed =
-            withContext(Dispatchers.IO) {
-                val userManager = context.getSystemService(Context.USER_SERVICE) as UserManager
-                val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
-                val profiles = userManager.userProfiles
-                val keys = mutableSetOf<String>()
-                for (user in profiles) {
-                    val userId = getUserId(user)
-                    launcherApps.getActivityList(null, user).forEach { info ->
-                        keys.add("${info.applicationInfo.packageName}:$userId")
-                    }
-                }
-                keys
-            }
+        val installed = loadInstalledPackageKeys(context, context.packageName)
         app.appOverridesRepository.prune(installed)
     }
     val isInitialLoading = appState.isLoading && appState.apps.isEmpty()
