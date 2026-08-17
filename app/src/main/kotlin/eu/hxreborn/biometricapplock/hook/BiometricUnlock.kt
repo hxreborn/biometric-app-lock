@@ -25,22 +25,28 @@ internal fun resolveAuthToken(
     val pkg = packageName ?: return null
     val peeked = peekToken(token) ?: return null
     if (peeked.packageName != pkg) {
-        // the auth activity launch itself carries the token through this intercept pass
-        if (pkg != BiometricAuthActivity.MODULE_PACKAGE) {
-            Logger.warn("token package mismatch: expected=${peeked.packageName} actual=$pkg")
+        val signalCarrier =
+            pkg == BiometricAuthActivity.MODULE_PACKAGE &&
+                intent.getBooleanExtra(BiometricAuthActivity.EXTRA_RESUME_SIGNAL, false)
+        if (!signalCarrier) {
+            // the auth activity launch itself carries the token through this intercept pass
+            if (pkg != BiometricAuthActivity.MODULE_PACKAGE) {
+                Logger.warn("token package mismatch: expected=${peeked.packageName} actual=$pkg")
+            }
+            return null
         }
-        return null
     }
     val entry = consumeToken(token) ?: return null
     intent.removeExtra(BiometricAuthActivity.EXTRA_AUTH_TOKEN)
+    val target = entry.packageName
     // install/uninstall handlers get the action-keyed grant, not the per-pkg unlock map, so an
     // install auth can't silently authorize an uninstall
-    if (isSystemHandler(pkg)) {
+    if (isSystemHandler(target)) {
         grantSystemHandler(entry.launch?.action)
     } else {
-        addUnlocked(pkg, entry.userId)
+        addUnlocked(target, entry.userId)
     }
-    Logger.info("unlocked pkg=$pkg user=${entry.userId}")
+    Logger.info("unlocked pkg=$target user=${entry.userId}")
     return entry
 }
 

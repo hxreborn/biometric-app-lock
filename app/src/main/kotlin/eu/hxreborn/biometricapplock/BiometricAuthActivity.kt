@@ -205,11 +205,7 @@ open class BiometricAuthActivity : Activity() {
         val pkg = targetPkg ?: return false
         val token = authToken ?: return false
         // only carries the token back so the hook can resume the real launch
-        val signal =
-            buildSignalIntent(pkg) ?: run {
-                Log.w(TAG, "no startable activity pkg=$pkg, cannot signal resume")
-                return false
-            }
+        val signal = buildSignalIntent(pkg)
         signal.putExtra(EXTRA_AUTH_TOKEN, token)
         signal.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
         Log.i(TAG, "auth ok, signaling resume pkg=$pkg")
@@ -224,7 +220,7 @@ open class BiometricAuthActivity : Activity() {
 
     // the launcher entry covers normal apps. installer handlers have none, so fall back to any
     // exported unguarded activity. it never actually runs, the hook consumes the token and aborts
-    private fun buildSignalIntent(pkg: String): Intent? {
+    private fun buildSignalIntent(pkg: String): Intent {
         packageManager.getLaunchIntentForPackage(pkg)?.let { return it }
         val implicit =
             Intent(Intent.ACTION_MAIN).apply {
@@ -232,15 +228,19 @@ open class BiometricAuthActivity : Activity() {
                 setPackage(pkg)
             }
         if (packageManager.resolveActivity(implicit, 0) != null) return implicit
-        return runCatching {
+        runCatching {
             packageManager
                 .getPackageInfo(
                     pkg,
                     PackageManager.GET_ACTIVITIES,
                 ).activities
                 ?.firstOrNull { it.exported && it.enabled && it.permission.isNullOrEmpty() }
-                ?.let { Intent().apply { component = ComponentName(pkg, it.name) } }
-        }.getOrNull()
+                ?.let { return Intent().apply { component = ComponentName(pkg, it.name) } }
+        }
+        return Intent().apply {
+            component = ComponentName(MODULE_PACKAGE, AUTH_ACTIVITY)
+            putExtra(EXTRA_RESUME_SIGNAL, true)
+        }
     }
 
     companion object {
@@ -254,6 +254,7 @@ open class BiometricAuthActivity : Activity() {
         const val EXTRA_TARGET_USER_ID = "$MODULE_PACKAGE.TARGET_USER_ID"
         const val EXTRA_AUTH_TOKEN = "$MODULE_PACKAGE.AUTH_TOKEN"
         const val EXTRA_TARGET_ACTIVITY = "$MODULE_PACKAGE.TARGET_ACTIVITY"
+        const val EXTRA_RESUME_SIGNAL = "$MODULE_PACKAGE.RESUME_SIGNAL"
 
         // uninstall backstop mode: no token, a good auth writes the grant pref instead of resuming
         const val EXTRA_UNINSTALL_AUTH = "$MODULE_PACKAGE.UNINSTALL_AUTH"
