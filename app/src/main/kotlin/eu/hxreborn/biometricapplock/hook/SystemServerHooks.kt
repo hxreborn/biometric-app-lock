@@ -533,13 +533,14 @@ private val STYLE_EXTRAS =
 
 private fun XposedModule.hookNotificationEnqueue(classLoader: ClassLoader): Boolean =
     runCatching {
-        val methods =
-            classLoader
-                .loadClass("com.android.server.notification.NotificationManagerService")
-                .declaredMethods
-                .filter { it.name == "enqueueNotificationInternal" }
+        val nms =
+            classLoader.loadClass("com.android.server.notification.NotificationManagerService")
+        val methods = nms.declaredMethods.filter { it.name == "enqueueNotificationInternal" }
         check(methods.isNotEmpty()) {
-            "enqueueNotificationInternal not found sdk=${Build.VERSION.SDK_INT}"
+            val candidates =
+                nms.declaredMethods.mapTo(sortedSetOf()) { it.name }.filter { "nqueue" in it }
+            "enqueueNotificationInternal not found sdk=${Build.VERSION.SDK_INT} " +
+                "candidates=$candidates"
         }
         var hooked = 0
         methods.forEach { method ->
@@ -561,7 +562,9 @@ private fun XposedModule.hookNotificationEnqueue(classLoader: ClassLoader): Bool
                 if (notification != null && pkg != null && userId != null) {
                     runCatching {
                         maybeRedactNotification(notification, pkg, userId)
-                    }.onFailure { Logger.warn("notification redaction failed: ${it.message}") }
+                    }.onFailure {
+                        Logger.warn("notification redaction failed pkg=$pkg: ${it.message}")
+                    }
                 }
                 chain.proceed()
             }
@@ -592,5 +595,6 @@ private fun maybeRedactNotification(
     notification.contentView = null
     notification.bigContentView = null
     notification.headsUpContentView = null
-    Logger.debug { "redacted notification pkg=$pkg user=$userId" }
+    notification.publicVersion = null
+    Logger.info("redacted notification pkg=$pkg user=$userId")
 }
