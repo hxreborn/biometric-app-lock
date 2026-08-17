@@ -1,6 +1,16 @@
 {
-  "version": "1.10.0",
+  "version": "1.10.1",
   "entries": [
+    {
+      "type": "fix",
+      "title": "redact the lockscreen copy of a locked app notification",
+      "description": "Notifications from a locked app no longer reveal their content on the lockscreen when Android is set to hide sensitive content.",
+      "version": "1.10.1",
+      "date": "2026-08-17",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/5352b09f21ceb9bd6c15ef77d66ad75e3ae37164",
+      "scope": "hook",
+      "breaking": false
+    },
     {
       "type": "feat",
       "title": "hide notification content while an app is locked",
@@ -68,66 +78,6 @@
       "version": "1.8.1",
       "date": "2026-08-06",
       "url": "https://github.com/hxreborn/biometric-app-lock/commit/36ccdf2e01755081d385c2247d4f46f468bced66",
-      "scope": "auth",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "apply setting changes without a reboot on all Xposed builds",
-      "description": "Changes to the locked app list and other settings now take effect immediately on Xposed builds where they previously applied only after a reboot.",
-      "version": "1.8.0",
-      "date": "2026-08-04",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/af8af65983fba46313e2a7ab36e101b4b365ad1c",
-      "scope": "prefs",
-      "breaking": false
-    },
-    {
-      "type": "refactor",
-      "title": "use primary elevated card for active status",
-      "description": null,
-      "version": "1.8.0",
-      "date": "2026-08-04",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/87a708f4e1e535526c4c1daaa47a427fd2776257",
-      "scope": "ui",
-      "breaking": false
-    },
-    {
-      "type": "feat",
-      "title": "set unlock methods for a single app",
-      "description": "An app can now use its own biometric and screen lock choice instead of the global one.",
-      "version": "1.8.0",
-      "date": "2026-08-04",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/b6c630cb9a15a033f7c1a90296dee584761fc059",
-      "scope": "ui",
-      "breaking": false
-    },
-    {
-      "type": "feat",
-      "title": "choose which biometrics and screen lock unlock apps",
-      "description": "The unlock prompt and the app's own settings lock now offer face unlock where it counts as a weak-class biometric, with an option to require the strongest biometrics or the screen lock instead.",
-      "version": "1.8.0",
-      "date": "2026-08-04",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/0764416db615efec5d135ad5bc79abd50639b52e",
-      "scope": "auth",
-      "breaking": false
-    },
-    {
-      "type": "feat",
-      "title": "label each sensor's biometric class on the dashboard",
-      "description": "The hardware card now shows whether the fingerprint reader and face unlock are Class 3 or Class 2 on this device instead of one combined label.",
-      "version": "1.8.0",
-      "date": "2026-08-04",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/1e3496ca07182a839161b19eb00865331132cb11",
-      "scope": "ui",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "retry the unlock prompt when it self-cancels on launch",
-      "description": "Locked apps no longer bounce back to the home screen when the unlock prompt disappears before you can authenticate.",
-      "version": "1.8.0",
-      "date": "2026-08-04",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/b0b6c3f88da3f34f820530582799255b2006e1ca",
       "scope": "auth",
       "breaking": false
     }
