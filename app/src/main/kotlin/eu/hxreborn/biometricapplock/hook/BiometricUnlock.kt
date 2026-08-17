@@ -71,11 +71,7 @@ internal fun tryRedirect(
         runCatching {
             val originalIntent =
                 runCatching { reflection.intentField.get(interceptor) as? Intent }.getOrNull()
-            val activityTaskSupervisor = reflection.supervisorField.get(interceptor)
-            val realPid = reflection.realCallingPidField.getInt(interceptor)
-            val realUid = reflection.realCallingUidField.getInt(interceptor)
             val userId = reflection.userIdField.getInt(interceptor)
-            val startFlags = reflection.startFlagsField.getInt(interceptor)
 
             val authIntent =
                 buildAuthIntent(
@@ -86,40 +82,85 @@ internal fun tryRedirect(
                     className,
                 )
             originalIntent?.let { stashLaunch(token, it) }
-
-            val resolveArgs =
-                if (reflection.resolveIntent.parameterCount >= 6) {
-                    // A14+ (API 34+) takes a trailing callingPid arg
-                    arrayOf(authIntent, null, userId, 0, realUid, realPid)
-                } else {
-                    // A13 (API 33) has no callingPid arg
-                    arrayOf(authIntent, null, userId, 0, realUid)
-                }
-            val resolvedInfo = reflection.resolveIntent.invoke(activityTaskSupervisor, *resolveArgs)
-            val activityInfo =
-                reflection.resolveActivity.invoke(
-                    activityTaskSupervisor,
-                    authIntent,
-                    resolvedInfo,
-                    startFlags,
-                    null,
-                ) as? ActivityInfo
-                    ?: error("BiometricAuthActivity not resolvable: PackageManager not ready")
-
-            reflection.intentField.set(interceptor, authIntent)
-            reflection.resolvedInfoField.set(interceptor, resolvedInfo)
-            reflection.activityInfoField.set(interceptor, activityInfo)
-            reflection.callingPidField.setInt(interceptor, realPid)
-            reflection.callingUidField.setInt(interceptor, realUid)
-            reflection.userIdField.setInt(interceptor, 0)
-            reflection.resolvedTypeField.set(interceptor, null)
+            rewriteLaunch(interceptor, authIntent)
         }.onFailure {
             discardToken(token)
             Logger.error("redirect failed: ${it.message}", it)
         }.isSuccess
 
-    if (redirected) Logger.info("redirected pkg=$packageName comp=$className")
-    return redirected
+    if (redirected) {
+        Logger.info("redirected pkg=$packageName comp=$className")
+        return true
+    }
+    return blockLaunch(interceptor, packageName)
+}
+
+/**
+ * Points the in-flight launch at [intent]. ActivityStarter carries on with whatever the interceptor
+ * holds, so every field the resolved target implies has to move with it or the original still runs.
+ */
+private fun rewriteLaunch(
+    interceptor: Any,
+    intent: Intent,
+) {
+    val reflection = reflection ?: error("reflection unavailable")
+    val activityTaskSupervisor = reflection.supervisorField.get(interceptor)
+    val realPid = reflection.realCallingPidField.getInt(interceptor)
+    val realUid = reflection.realCallingUidField.getInt(interceptor)
+    val userId = reflection.userIdField.getInt(interceptor)
+    val startFlags = reflection.startFlagsField.getInt(interceptor)
+
+    val resolveArgs =
+        if (reflection.resolveIntent.parameterCount >= 6) {
+            // A14+ (API 34+) takes a trailing callingPid arg
+            arrayOf(intent, null, userId, 0, realUid, realPid)
+        } else {
+            // A13 (API 33) has no callingPid arg
+            arrayOf(intent, null, userId, 0, realUid)
+        }
+    val resolvedInfo = reflection.resolveIntent.invoke(activityTaskSupervisor, *resolveArgs)
+    val activityInfo =
+        reflection.resolveActivity.invoke(
+            activityTaskSupervisor,
+            intent,
+            resolvedInfo,
+            startFlags,
+            null,
+        ) as? ActivityInfo
+            ?: error(
+                "unresolved ${intent.component ?: intent.action} rInfo=${resolvedInfo != null} user=$userId",
+            )
+
+    reflection.intentField.set(interceptor, intent)
+    reflection.resolvedInfoField.set(interceptor, resolvedInfo)
+    reflection.activityInfoField.set(interceptor, activityInfo)
+    reflection.callingPidField.setInt(interceptor, realPid)
+    reflection.callingUidField.setInt(interceptor, realUid)
+    reflection.userIdField.setInt(interceptor, 0)
+    reflection.resolvedTypeField.set(interceptor, null)
+}
+
+/**
+ * Last resort when the prompt cannot be resolved, which happens in the seconds after boot before
+ * PackageManager can see the module. Sending the launch home keeps the locked app shut, since
+ * ActivityStarter has no way to cancel a start and letting it run would open the app unauthenticated.
+ */
+private fun blockLaunch(
+    interceptor: Any,
+    packageName: String,
+): Boolean {
+    val home =
+        Intent(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_HOME)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+    val blocked = runCatching { rewriteLaunch(interceptor, home) }.isSuccess
+    if (blocked) {
+        Logger.warn("blocked pkg=$packageName, prompt unresolvable, sent home")
+    } else {
+        Logger.error("pkg=$packageName opens unauthenticated, neither prompt nor home resolvable")
+    }
+    return blocked
 }
 
 /**
