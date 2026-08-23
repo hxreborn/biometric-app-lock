@@ -178,9 +178,15 @@
     <string name="app_detail_relock_delay_immediate">Immediately</string>
     <string name="app_detail_relock_delay_30s">After 30 seconds</string>
     <string name="app_detail_relock_delay_1m">After 1 minute</string>
+    <string name="app_detail_relock_delay_3m">After 3 minutes</string>
     <string name="app_detail_relock_delay_5m">After 5 minutes</string>
+    <string name="app_detail_relock_delay_10m">After 10 minutes</string>
     <string name="app_detail_relock_delay_30m">After 30 minutes</string>
     <string name="app_detail_relock_delay_never">Never</string>
+    <string name="app_detail_relock_delay_custom">Custom</string>
+    <string name="app_detail_relock_delay_custom_minutes">Minutes</string>
+    <string name="app_detail_relock_delay_after_seconds">After %1$d seconds</string>
+    <string name="app_detail_relock_delay_after_minutes">After %1$d minutes</string>
 
 
     <string name="app_detail_block_screenshots_title">Block screenshots</string>
