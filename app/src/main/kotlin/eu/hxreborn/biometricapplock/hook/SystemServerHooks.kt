@@ -121,6 +121,7 @@ internal fun XposedModule.registerSystemServerHooks(
             "onActivityLaunched" to hookActivityLaunched(classLoader),
             "startActivityFromRecents" to hookRecentsLaunch(classLoader),
             "cleanUpRemovedTask" to hookTaskRemoved(classLoader),
+            "setLastResumedActivity" to hookTopResumedActivity(classLoader),
             "onScreenAwakeChanged" to hookScreenAwake(classLoader),
             "isSecureLocked" to hookFlagSecure(classLoader),
             "deletePackageX" to hookUninstall(classLoader),
@@ -393,6 +394,37 @@ private fun XposedModule.hookTaskRemoved(classLoader: ClassLoader): Boolean =
         Logger.info("hooked ${method.name} args=${method.parameterCount}")
     }.onFailure {
         Logger.warn("hookTaskRemoved unavailable (cleanUpRemovedTask/mTaskId): ${it.message}")
+    }.isSuccess
+
+// foreground changes that never reach ActivityStarter, most visibly the home gesture
+private fun XposedModule.hookTopResumedActivity(classLoader: ClassLoader): Boolean =
+    runCatching {
+        val method =
+            classLoader.findMethod(
+                "com.android.server.wm.ActivityTaskManagerService",
+                "setLastResumedActivityUncheckLocked",
+                2,
+            )
+        hook(method).intercept { chain ->
+            val record = chain.args.getOrNull(0)
+            val r = reflection
+            if (record != null && r != null) {
+                val pkg =
+                    runCatching { r.activityRecordPackageNameField.get(record) }
+                        .getOrNull() as? String
+                val userId =
+                    runCatching { r.activityRecordUserIdField.get(record) }
+                        .getOrNull() as? Int ?: 0
+                if (pkg != null) {
+                    Logger.debug { "top resumed pkg=$pkg user=$userId" }
+                    relockOtherPackages(pkg, userId)
+                }
+            }
+            chain.proceed()
+        }
+        Logger.info("hooked setLastResumedActivityUncheckLocked args=${method.parameterCount}")
+    }.onFailure {
+        Logger.warn("hookTopResumedActivity unavailable: ${it.message}")
     }.isSuccess
 
 // screen off wipes unlock state and screen on relocks whatever's past its delay
