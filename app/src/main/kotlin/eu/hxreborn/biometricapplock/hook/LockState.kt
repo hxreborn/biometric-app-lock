@@ -65,28 +65,28 @@ internal fun grantSystemHandler(action: String?) {
 
 internal fun isSystemHandler(pkg: String): Boolean = pkg in cachedSystemActionHandlers
 
-// a null action is component-only internal navigation, it inherits the current grant
+// a null or unclassified action inherits the current grant
 internal fun isSystemHandlerGrantFresh(action: String?): Boolean {
     val now = SystemClock.elapsedRealtime()
     if (now - systemHandlerGrantedAt >= SYSTEM_HANDLER_GRANT_TTL_MS) return false
     if (action == null) return true
     val stored = systemHandlerGrantedAction ?: return false
-    return (isInstallAction(action) && isInstallAction(stored)) ||
-        (
-            isUninstallAction(action) &&
-                isUninstallAction(
-                    stored,
-                )
-        )
+    return when {
+        isInstallAction(action) -> isInstallAction(stored)
+        isUninstallAction(action) -> isUninstallAction(stored)
+        else -> true
+    }
 }
 
-// hidden AOSP action PackageInstallerService fires when a Session.commit needs user confirmation
+// hidden AOSP actions PackageInstallerService fires when a session needs user confirmation
 private const val ACTION_CONFIRM_INSTALL = "android.content.pm.action.CONFIRM_INSTALL"
+
+private const val ACTION_CONFIRM_PRE_APPROVAL = "android.content.pm.action.CONFIRM_PRE_APPROVAL"
 
 @Suppress("DEPRECATION")
 private fun isInstallAction(action: String): Boolean =
     action == Intent.ACTION_VIEW || action == Intent.ACTION_INSTALL_PACKAGE ||
-        action == ACTION_CONFIRM_INSTALL
+        action == ACTION_CONFIRM_INSTALL || action == ACTION_CONFIRM_PRE_APPROVAL
 
 @Suppress("DEPRECATION")
 private fun isUninstallAction(action: String): Boolean =
