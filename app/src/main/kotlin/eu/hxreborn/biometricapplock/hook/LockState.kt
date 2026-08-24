@@ -33,9 +33,12 @@ internal val recentsSurfaceKey = ThreadLocal<String?>()
 // pkg:userId -> elapsedRealtime of last interaction, present only while that pkg is unlocked
 private val unlockedMap = ConcurrentHashMap<String, Long>()
 
-// the app is not foreground yet the instant it is unlocked, so a transition inside this window is
-// the auth handoff itself, not the user leaving
-private const val UNLOCK_HANDOFF_GRACE_MS = 1_500L
+// unlocked packages that have not reached the foreground yet. a transition while one is pending is
+// the resumed launch on its way in, not the user leaving, so it must not relock
+private val awaitingForeground = ConcurrentHashMap.newKeySet<String>()
+
+// bounds the exemption in case the resumed launch never lands
+private const val AWAITING_FOREGROUND_TTL_MS = 10_000L
 
 internal val unlockedPackages: Set<String>
     get() = unlockedMap.keys.toSet()
@@ -114,14 +117,27 @@ internal fun shouldRelockOnTransition(
     val delay = getEffectiveRelockDelay(pkg, userId)
     if (delay == RELOCK_DELAY_NEVER) return false
     val ts = unlockedMap[key] ?: return true
-    return now - ts >= maxOf(delay * 1000L, UNLOCK_HANDOFF_GRACE_MS)
+    if (key in awaitingForeground && now - ts < AWAITING_FOREGROUND_TTL_MS) return false
+    awaitingForeground.remove(key)
+    if (delay == 0) return true
+    return now - ts >= delay * 1000L
 }
 
 internal fun addUnlocked(
     pkg: String,
     userId: Int,
 ) {
-    unlockedMap[packageKey(pkg, userId)] = SystemClock.elapsedRealtime()
+    val key = packageKey(pkg, userId)
+    unlockedMap[key] = SystemClock.elapsedRealtime()
+    awaitingForeground += key
+}
+
+// the unlocked app reached the foreground, so the next transition away from it relocks normally
+internal fun markForegrounded(
+    pkg: String,
+    userId: Int,
+) {
+    awaitingForeground.remove(packageKey(pkg, userId))
 }
 
 internal fun refreshUnlock(
@@ -133,10 +149,14 @@ internal fun refreshUnlock(
 
 internal fun clearUnlocked() {
     unlockedMap.clear()
+    awaitingForeground.clear()
 }
 
 internal fun removeFromUnlocked(keys: Set<String>) {
-    keys.forEach { unlockedMap.remove(it) }
+    keys.forEach {
+        unlockedMap.remove(it)
+        awaitingForeground.remove(it)
+    }
 }
 
 internal val taskCache = ConcurrentHashMap<Int, TaskEntry>()
@@ -148,9 +168,11 @@ internal fun clearRuntimeStateForPackage(
     if (userId != null) {
         val key = packageKey(pkg, userId)
         unlockedMap.remove(key)
+        awaitingForeground.remove(key)
         taskCache.entries.removeIf { it.value.packageName == pkg && it.value.userId == userId }
     } else {
         unlockedMap.keys.removeIf { it.startsWith("$pkg:") }
+        awaitingForeground.removeIf { it.startsWith("$pkg:") }
         taskCache.entries.removeIf { it.value.packageName == pkg }
     }
 }

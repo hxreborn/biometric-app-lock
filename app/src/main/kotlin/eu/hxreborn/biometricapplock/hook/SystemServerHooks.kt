@@ -462,6 +462,7 @@ private fun XposedModule.hookTopResumedActivity(classLoader: ClassLoader): Boole
                         .getOrNull() as? Int ?: 0
                 if (pkg != null) {
                     Logger.debug { "top resumed pkg=$pkg user=$userId" }
+                    markForegrounded(pkg, userId)
                     relockOtherPackages(pkg, userId)
                 }
             }
