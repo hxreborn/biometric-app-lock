@@ -1,6 +1,16 @@
 {
-  "version": "1.11.1",
+  "version": "1.11.2",
   "entries": [
+    {
+      "type": "fix",
+      "title": "relock an app left right after it was unlocked",
+      "description": "Locked apps now ask for authentication again when reopened after briefly going to the home screen.",
+      "version": "1.11.2",
+      "date": "2026-08-24",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/1d01adcd24923303090c04986246a4e7c2fff6ec",
+      "scope": "hook",
+      "breaking": false
+    },
     {
       "type": "fix",
       "title": "keep an app unlocked while it comes to the foreground",
@@ -88,16 +98,6 @@
       "version": "1.10.1",
       "date": "2026-08-17",
       "url": "https://github.com/hxreborn/biometric-app-lock/commit/5352b09f21ceb9bd6c15ef77d66ad75e3ae37164",
-      "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "feat",
-      "title": "hide notification content while an app is locked",
-      "description": "Notifications posted by a locked app now show a placeholder instead of their title and text until the app is unlocked.",
-      "version": "1.10.0",
-      "date": "2026-08-17",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/84a80c7416dd4298b20d9d4e43fdedb60f1e7699",
       "scope": "hook",
       "breaking": false
     }
