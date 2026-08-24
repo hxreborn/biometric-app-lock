@@ -1,6 +1,16 @@
 {
-  "version": "1.11.0",
+  "version": "1.11.1",
   "entries": [
+    {
+      "type": "fix",
+      "title": "keep an app unlocked while it comes to the foreground",
+      "description": "The unlock prompt no longer reappears several times in a row before a locked app opens.",
+      "version": "1.11.1",
+      "date": "2026-08-24",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/b6946e528d4365cc9662543d92248d0e17e33cfe",
+      "scope": "hook",
+      "breaking": false
+    },
     {
       "type": "fix",
       "title": "drop the second prompt when uninstalling from the system dialog",
@@ -89,26 +99,6 @@
       "date": "2026-08-17",
       "url": "https://github.com/hxreborn/biometric-app-lock/commit/84a80c7416dd4298b20d9d4e43fdedb60f1e7699",
       "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "resume apps with no startable activity after unlock",
-      "description": "Unlocking an app that has no launchable entry now opens it instead of returning to the home screen.",
-      "version": "1.9.1",
-      "date": "2026-08-17",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/8d6a25111162a4b21153b61572b35d3239698201",
-      "scope": "auth",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "show apps without a launcher activity in the app list",
-      "description": "Iconless packages like Shell now appear in the app list and stay visible on the dashboard while locked.",
-      "version": "1.9.1",
-      "date": "2026-08-17",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/00ec23c3a605a6e47275717eb9b7ebcfb1ad91ee",
-      "scope": "ui",
       "breaking": false
     }
   ]
