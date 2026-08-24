@@ -98,8 +98,6 @@ internal fun tryRedirect(
 /**
  * Points the in-flight launch at [intent]. ActivityStarter carries on with whatever the interceptor
  * holds, so every field the resolved target implies has to move with it or the original still runs.
- * A resume passes [resumeUserId] and [resumeCallingUid] so the replayed launch keeps the identity
- * the original caller had, which ActivityStarter reads back off the interceptor.
  */
 private fun rewriteLaunch(
     interceptor: Any,
@@ -168,9 +166,7 @@ private fun blockLaunch(
 }
 
 /**
- * App-management resume. The installer aborts a session dialog whose caller does not own the
- * session, and the out-of-band replay arrives as the system uid, so it never gets that far. Putting
- * the stashed launch back on the interceptor lets it start under the uid that opened the session.
+ * The installer aborts a session dialog unless the caller owns the session.
  */
 internal fun resumeInPlace(
     interceptor: Any,

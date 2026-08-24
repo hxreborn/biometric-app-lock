@@ -270,6 +270,13 @@ internal fun shouldUseOpaqueUnlockPrompt(): Boolean = globalUseOpaqueUnlockPromp
 
 internal fun requireBiometricForUninstall(): Boolean = globalRequireBiometricUninstall
 
+// wider than the launch window because the user reads the dialog before the deletion runs
+internal fun hasFreshUninstallDialogAuth(): Boolean {
+    val stored = systemHandlerGrantedAction ?: return false
+    if (!isUninstallAction(stored)) return false
+    return SystemClock.elapsedRealtime() - systemHandlerGrantedAt < UNINSTALL_AUTH_GRANT_TTL_MS
+}
+
 internal fun hasFreshUninstallAuth(): Boolean {
     val prefs = hookPrefs ?: return false
     val ts = runCatching { Prefs.UNINSTALL_AUTH_GRANT_MS.read(prefs) }.getOrDefault(0L)

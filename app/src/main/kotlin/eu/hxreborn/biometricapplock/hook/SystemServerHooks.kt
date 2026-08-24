@@ -567,7 +567,7 @@ private fun XposedModule.hookUninstall(classLoader: ClassLoader): Boolean =
                     !packageName.isNullOrEmpty() &&
                     packageName != BiometricAuthActivity.MODULE_PACKAGE
             if (needsBiometric) {
-                if (hasFreshUninstallAuth() || isSystemHandlerGrantFresh(Intent.ACTION_DELETE)) {
+                if (hasFreshUninstallAuth() || hasFreshUninstallDialogAuth()) {
                     Logger.info("uninstall grant fresh pkg=$packageName")
                     return@intercept chain.proceed()
                 }
