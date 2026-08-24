@@ -91,11 +91,12 @@ internal fun refreshSecureSurfaces() {
 }
 
 /**
- * Wires up all the system_server hooks. A locked app can hit the foreground three ways, through
- * two framework methods:
+ * Wires up all the system_server hooks. A locked app can hit the foreground four ways, through
+ * three framework methods:
  * - launcher tap, deep link, notification -> ActivityStarter.intercept ([hookLaunchIntercept])
  * - recents card tap -> ActivityTaskSupervisor.startActivityFromRecents ([hookRecentsLaunch])
  * - nav-bar quick switch -> ActivityTaskSupervisor.startActivityFromRecents ([hookRecentsLaunch])
+ * - screen pinning -> ActivityTaskManagerService.startSystemLockTaskMode ([hookScreenPinning])
  */
 internal fun XposedModule.registerSystemServerHooks(
     classLoader: ClassLoader,
@@ -120,6 +121,7 @@ internal fun XposedModule.registerSystemServerHooks(
             "intercept" to hookLaunchIntercept(classLoader),
             "onActivityLaunched" to hookActivityLaunched(classLoader),
             "startActivityFromRecents" to hookRecentsLaunch(classLoader),
+            "startSystemLockTaskMode" to hookScreenPinning(classLoader),
             "cleanUpRemovedTask" to hookTaskRemoved(classLoader),
             "setLastResumedActivity" to hookTopResumedActivity(classLoader),
             "onScreenAwakeChanged" to hookScreenAwake(classLoader),
@@ -280,12 +282,22 @@ private fun resolveTaskEntry(
     taskId: Int,
 ): TaskEntry? {
     taskCache[taskId]?.let { return it }
+    val atms =
+        runCatching { reflection?.activityTaskManagerServiceField?.get(supervisor) }.getOrNull()
+            ?: return null
+    return resolveTaskEntryFromAtms(atms, taskId)
+}
+
+private fun resolveTaskEntryFromAtms(
+    atms: Any,
+    taskId: Int,
+): TaskEntry? {
+    taskCache[taskId]?.let { return it }
     return runCatching {
         val r = reflection ?: return null
         val lookup = r.taskLookup ?: return null
         val anyTaskForId = lookup.anyTaskForId ?: return null
         val matchMode = lookup.matchAttachedOrRecents ?: return null
-        val atms = r.activityTaskManagerServiceField.get(supervisor) ?: return null
         val rwc = r.rootWindowContainerField.get(atms) ?: return null
         val task = anyTaskForId.invoke(rwc, taskId, matchMode) ?: return null
         taskEntryFromTask(task)?.also { taskCache[taskId] = it }
@@ -356,6 +368,34 @@ private fun XposedModule.hookRecentsLaunch(classLoader: ClassLoader): Boolean =
         }
         Logger.info("hooked startActivityFromRecents args=${method.parameterCount}")
     }.onFailure { Logger.error("hookRecentsLaunch failed: ${it.message}", it) }.isSuccess
+
+// screen pinning fronts the task through startSystemLockTaskMode and skips both launch hooks.
+// swallowing the call keeps a still-locked app off-screen under the prompt recents already posted
+private fun XposedModule.hookScreenPinning(classLoader: ClassLoader): Boolean =
+    runCatching {
+        val method =
+            classLoader.findMethod(
+                "com.android.server.wm.ActivityTaskManagerService",
+                "startSystemLockTaskMode",
+                1,
+            )
+        hook(method).intercept { chain ->
+            val taskId = chain.args.getOrNull(0) as? Int ?: return@intercept chain.proceed()
+            val entry =
+                resolveTaskEntryFromAtms(chain.thisObject, taskId)
+                    ?: return@intercept chain.proceed()
+            if (isActivityExempt(entry.packageName, entry.userId, entry.topActivity, null)) {
+                return@intercept chain.proceed()
+            }
+            if (isUnlocked(entry.packageName, entry.userId)) {
+                refreshUnlock(entry.packageName, entry.userId)
+                return@intercept chain.proceed()
+            }
+            Logger.info("blocked pin pkg=${entry.packageName} user=${entry.userId} taskId=$taskId")
+            null
+        }
+        Logger.info("hooked startSystemLockTaskMode args=${method.parameterCount}")
+    }.onFailure { Logger.warn("hookScreenPinning unavailable: ${it.message}") }.isSuccess
 
 // drops the unlock when a locked task gets swiped off recents
 private fun XposedModule.hookTaskRemoved(classLoader: ClassLoader): Boolean =
