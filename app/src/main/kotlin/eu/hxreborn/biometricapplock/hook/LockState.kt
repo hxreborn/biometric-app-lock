@@ -33,6 +33,10 @@ internal val recentsSurfaceKey = ThreadLocal<String?>()
 // pkg:userId -> elapsedRealtime of last interaction, present only while that pkg is unlocked
 private val unlockedMap = ConcurrentHashMap<String, Long>()
 
+// the app is not foreground yet the instant it is unlocked, so a transition inside this window is
+// the auth handoff itself, not the user leaving
+private const val UNLOCK_HANDOFF_GRACE_MS = 1_500L
+
 internal val unlockedPackages: Set<String>
     get() = unlockedMap.keys.toSet()
 
@@ -109,9 +113,8 @@ internal fun shouldRelockOnTransition(
     val key = packageKey(pkg, userId)
     val delay = getEffectiveRelockDelay(pkg, userId)
     if (delay == RELOCK_DELAY_NEVER) return false
-    if (delay == 0) return true
     val ts = unlockedMap[key] ?: return true
-    return now - ts >= delay * 1000L
+    return now - ts >= maxOf(delay * 1000L, UNLOCK_HANDOFF_GRACE_MS)
 }
 
 internal fun addUnlocked(
