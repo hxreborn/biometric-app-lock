@@ -217,7 +217,12 @@ private fun XposedModule.hookLaunchIntercept(classLoader: ClassLoader): Boolean 
             val auth = resolveAuthToken(intent, packageName, userId)
             if (auth != null) {
                 if (auth.launch == null) return@intercept chain.proceed()
-                Logger.debug { "resume original pkg=$packageName user=$userId" }
+                Logger.debug { "resume original pkg=${auth.packageName} user=${auth.userId}" }
+                if (isSystemHandler(auth.packageName) &&
+                    resumeInPlace(chain.thisObject, auth)
+                ) {
+                    return@intercept true
+                }
                 resumeOriginalLaunch(auth)
                 return@intercept true
             }

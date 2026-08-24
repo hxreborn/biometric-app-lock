@@ -98,16 +98,20 @@ internal fun tryRedirect(
 /**
  * Points the in-flight launch at [intent]. ActivityStarter carries on with whatever the interceptor
  * holds, so every field the resolved target implies has to move with it or the original still runs.
+ * A resume passes [resumeUserId] and [resumeCallingUid] so the replayed launch keeps the identity
+ * the original caller had, which ActivityStarter reads back off the interceptor.
  */
 private fun rewriteLaunch(
     interceptor: Any,
     intent: Intent,
+    resumeUserId: Int? = null,
+    resumeCallingUid: Int? = null,
 ) {
     val reflection = reflection ?: error("reflection unavailable")
     val activityTaskSupervisor = reflection.supervisorField.get(interceptor)
     val realPid = reflection.realCallingPidField.getInt(interceptor)
     val realUid = reflection.realCallingUidField.getInt(interceptor)
-    val userId = reflection.userIdField.getInt(interceptor)
+    val userId = resumeUserId ?: reflection.userIdField.getInt(interceptor)
     val startFlags = reflection.startFlagsField.getInt(interceptor)
 
     val resolveArgs =
@@ -135,8 +139,8 @@ private fun rewriteLaunch(
     reflection.resolvedInfoField.set(interceptor, resolvedInfo)
     reflection.activityInfoField.set(interceptor, activityInfo)
     reflection.callingPidField.setInt(interceptor, realPid)
-    reflection.callingUidField.setInt(interceptor, realUid)
-    reflection.userIdField.setInt(interceptor, 0)
+    reflection.callingUidField.setInt(interceptor, resumeCallingUid ?: realUid)
+    reflection.userIdField.setInt(interceptor, resumeUserId ?: 0)
     reflection.resolvedTypeField.set(interceptor, null)
 }
 
@@ -161,6 +165,22 @@ private fun blockLaunch(
         Logger.error("pkg=$packageName opens unauthenticated, neither prompt nor home resolvable")
     }
     return blocked
+}
+
+/**
+ * App-management resume. The installer aborts a session dialog whose caller does not own the
+ * session, and the out-of-band replay arrives as the system uid, so it never gets that far. Putting
+ * the stashed launch back on the interceptor lets it start under the uid that opened the session.
+ */
+internal fun resumeInPlace(
+    interceptor: Any,
+    auth: PendingAuth,
+): Boolean {
+    val launch = auth.launch ?: return false
+    if (auth.callingUid < 0) return false
+    return runCatching { rewriteLaunch(interceptor, launch, auth.userId, auth.callingUid) }
+        .onFailure { Logger.warn("in-place resume failed pkg=${auth.packageName}: ${it.message}") }
+        .isSuccess
 }
 
 /**
