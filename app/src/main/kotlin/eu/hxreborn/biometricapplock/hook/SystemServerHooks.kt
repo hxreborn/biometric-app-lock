@@ -537,6 +537,8 @@ private fun XposedModule.hookFlagSecure(classLoader: ClassLoader): Boolean =
         Logger.info("hooked isSecureLocked args=${method.parameterCount}")
     }.onFailure { Logger.warn("hookFlagSecure not available: ${it.message}") }.isSuccess
 
+private val VERSIONED_LIBRARY_PACKAGE = Regex(""".+_\d+""")
+
 // every user uninstall (launcher, Settings, Play Store, adb) ends up here at deletePackageX
 private fun XposedModule.hookUninstall(classLoader: ClassLoader): Boolean =
     runCatching {
@@ -566,7 +568,8 @@ private fun XposedModule.hookUninstall(classLoader: ClassLoader): Boolean =
             val needsBiometric =
                 removedBySystem == false && requireBiometricForUninstall() &&
                     !packageName.isNullOrEmpty() &&
-                    packageName != BiometricAuthActivity.MODULE_PACKAGE
+                    packageName != BiometricAuthActivity.MODULE_PACKAGE &&
+                    !VERSIONED_LIBRARY_PACKAGE.matches(packageName)
             if (needsBiometric) {
                 if (hasFreshUninstallAuth() || hasFreshUninstallDialogAuth()) {
                     Logger.info("uninstall grant fresh pkg=$packageName")
