@@ -1,6 +1,26 @@
 {
-  "version": "1.11.2",
+  "version": "1.11.3",
   "entries": [
+    {
+      "type": "fix",
+      "title": "skip the uninstall prompt for versioned library packages",
+      "description": "Chrome and WebView updates no longer raise the biometric prompt while removing the old copy of their shared library.",
+      "version": "1.11.3",
+      "date": "2026-08-26",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/9fcaded6bc9e4569baec4f983a9c2cae5bce2f98",
+      "scope": "hook",
+      "breaking": false
+    },
+    {
+      "type": "fix",
+      "title": "find hook logs when the Xposed framework is not LSPosed",
+      "description": "Shared logs now include the hook log on Xposed forks that keep it outside LSPosed's own folder.",
+      "version": "1.11.3",
+      "date": "2026-08-24",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/c498ef5cc5822872429062de56decb6313b7f7de",
+      "scope": "ui",
+      "breaking": false
+    },
     {
       "type": "fix",
       "title": "relock an app left right after it was unlocked",
@@ -88,16 +108,6 @@
       "version": "1.10.2",
       "date": "2026-08-17",
       "url": "https://github.com/hxreborn/biometric-app-lock/commit/418663088a6a54147fe15ba12a909f9fe7e901ef",
-      "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "redact the lockscreen copy of a locked app notification",
-      "description": "Notifications from a locked app no longer reveal their content on the lockscreen when Android is set to hide sensitive content.",
-      "version": "1.10.1",
-      "date": "2026-08-17",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/5352b09f21ceb9bd6c15ef77d66ad75e3ae37164",
       "scope": "hook",
       "breaking": false
     }
