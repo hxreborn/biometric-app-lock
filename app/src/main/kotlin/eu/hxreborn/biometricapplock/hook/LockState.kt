@@ -161,6 +161,36 @@ internal fun removeFromUnlocked(keys: Set<String>) {
 
 internal val taskCache = ConcurrentHashMap<Int, TaskEntry>()
 
+private const val PENDING_PIN_TTL_MS = 30_000L
+
+private class PendingPin(
+    val key: String,
+    val taskId: Int,
+    val requestedAt: Long,
+)
+
+@Volatile
+private var pendingPin: PendingPin? = null
+
+internal fun stashPendingPin(
+    pkg: String,
+    userId: Int,
+    taskId: Int,
+) {
+    pendingPin = PendingPin(packageKey(pkg, userId), taskId, SystemClock.elapsedRealtime())
+}
+
+internal fun consumePendingPin(
+    pkg: String,
+    userId: Int,
+): Int? {
+    val pin = pendingPin ?: return null
+    if (pin.key != packageKey(pkg, userId)) return null
+    pendingPin = null
+    if (SystemClock.elapsedRealtime() - pin.requestedAt > PENDING_PIN_TTL_MS) return null
+    return pin.taskId
+}
+
 internal fun clearRuntimeStateForPackage(
     pkg: String,
     userId: Int? = null,

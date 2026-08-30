@@ -182,6 +182,9 @@ internal class SystemServerReflection(
     val handlerField: Field =
         activityTaskManagerServiceClass.getDeclaredField("mH").apply { isAccessible = true }
 
+    val startSystemLockTaskMode: Method? =
+        activityTaskManagerServiceClass.optionalMethod("startSystemLockTaskMode", argCount = 1)
+
     val rootWindowContainerField: Field =
         activityTaskManagerServiceClass.requiredField("mRootWindowContainer")
     private val getTopResumedActivity: Method by lazy {

@@ -45,9 +45,26 @@ internal fun resolveAuthToken(
         grantSystemHandler(entry.launch?.action)
     } else {
         addUnlocked(target, entry.userId)
+        replayPendingPin(target, entry.userId)
     }
     Logger.info("unlocked pkg=$target user=${entry.userId}")
     return entry
+}
+
+private fun replayPendingPin(
+    pkg: String,
+    userId: Int,
+) {
+    val taskId = consumePendingPin(pkg, userId) ?: return
+    val reflection = reflection ?: return
+    val atms = atmsRef ?: return
+    val startSystemLockTaskMode = reflection.startSystemLockTaskMode ?: return
+    val handler = reflection.handlerField.get(atms) as? Handler ?: return
+    handler.post {
+        runCatching { startSystemLockTaskMode.invoke(atms, taskId) }
+            .onSuccess { Logger.info("replayed pin pkg=$pkg user=$userId taskId=$taskId") }
+            .onFailure { Logger.warn("pin replay failed pkg=$pkg taskId=$taskId: ${it.message}") }
+    }
 }
 
 /**

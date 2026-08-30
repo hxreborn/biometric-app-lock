@@ -396,6 +396,7 @@ private fun XposedModule.hookScreenPinning(classLoader: ClassLoader): Boolean =
                 refreshUnlock(entry.packageName, entry.userId)
                 return@intercept chain.proceed()
             }
+            stashPendingPin(entry.packageName, entry.userId, taskId)
             Logger.info("blocked pin pkg=${entry.packageName} user=${entry.userId} taskId=$taskId")
             null
         }
