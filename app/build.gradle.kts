@@ -17,7 +17,7 @@ android {
 
     defaultConfig {
         applicationId = cfgModuleId
-        minSdk = 33
+        minSdk = 30
         targetSdk = 37
 
         versionCode = project.property("version.code").toString().toInt()

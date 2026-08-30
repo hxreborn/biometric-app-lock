@@ -31,7 +31,10 @@ import eu.hxreborn.biometricapplock.ui.theme.Tokens
 import eu.hxreborn.biometricapplock.util.BiometricClass
 import eu.hxreborn.biometricapplock.util.MODALITY_FACE
 import eu.hxreborn.biometricapplock.util.MODALITY_FINGERPRINT
+import eu.hxreborn.biometricapplock.util.hasFaceHardware
 import eu.hxreborn.biometricapplock.util.inferredFaceClass
+import eu.hxreborn.biometricapplock.util.miuiFaceEnrollmentCount
+import eu.hxreborn.biometricapplock.util.samsungFaceEnrollmentCount
 import eu.hxreborn.biometricapplock.util.sensorClasses
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -197,7 +200,7 @@ private fun readBiometricState(context: Context): BiometricState {
     val bm = context.getSystemService(BiometricManager::class.java)
 
     val hasFingerprint = pm.hasSystemFeature(PackageManager.FEATURE_FINGERPRINT)
-    val hasFace = pm.hasSystemFeature(PackageManager.FEATURE_FACE)
+    val hasFace = hasFaceHardware(context)
 
     val strongStatus =
         runCatching { bm?.canAuthenticate(Authenticators.BIOMETRIC_STRONG) }.getOrNull() ?: BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE
@@ -210,6 +213,15 @@ private fun readBiometricState(context: Context): BiometricState {
     val faceClass = classes[MODALITY_FACE] ?: inferredFaceClass(context)
 
     val fpEnrolled = readFingerprintCount(context)
+    // For MIUI face (miui.face.FaceService), get enrollment count via root settings check.
+    // For Samsung convenience face, check face_screen_lock setting.
+    // For standard Android face (FEATURE_FACE), the BiometricManager status is usually enough, but we fall back.
+    val faceEnrolled =
+        if (hasFace) {
+            miuiFaceEnrollmentCount(context) ?: samsungFaceEnrollmentCount(context)
+        } else {
+            null
+        }
     val lastAuthAgo = readLastAuthAgo(bm)
 
     return BiometricState(
@@ -226,7 +238,7 @@ private fun readBiometricState(context: Context): BiometricState {
                 hasHardware = hasFace,
                 weakStatus = weakStatus,
                 strongStatus = strongStatus,
-                explicitCount = null,
+                explicitCount = faceEnrolled,
                 classLabel = faceClass,
             ),
         lastAuthAgo = lastAuthAgo,

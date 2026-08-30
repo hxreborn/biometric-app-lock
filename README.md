@@ -16,13 +16,22 @@
 </p>
 
 > [!NOTE]
-> Built for AOSP and Pixel. Lightly modified flavors like One UI 8+ may work but are untested. HyperOS, OxygenOS, and ColorOS already ship a built-in app lock, so you probably don't need this there.
+> Built for AOSP and Pixel. Now also supports **Samsung (One UI)** and **Xiaomi (HyperOS / MIUI)** devices with native OEM face unlock. Other lightly modified flavors may work but are untested.
 
 ## About this module
 
 Stock Android has no native per-app lock. This module adds one. A locked app opens normally once you authenticate, including when you tap it from the recents screen.
 
 Enabling the module needs one reboot so it loads at boot. After that, if your framework supports hot reload, app updates apply with no reboot. If not, you still reboot after each update. Changing which apps are locked is always instant.
+
+## OEM face unlock support
+
+The standard Android `BiometricPrompt` hides OEM face unlock from third-party apps when only face biometrics are enrolled (no fingerprint). This module works around that limitation:
+
+- **Samsung (One UI)**: Falls back to device credential authentication, which triggers Samsung's native face scanner automatically.
+- **Xiaomi (HyperOS / MIUI)**: Bypasses the restriction entirely by communicating directly with `miui.face.FaceService` via raw Binder IPC. The native front-camera face scanner activates silently in the background while the system prompt is displayed, and unlocks the app instantly on match.
+
+No additional setup is needed — the module detects the device manufacturer and applies the correct strategy automatically.
 
 ## Requirements
 
