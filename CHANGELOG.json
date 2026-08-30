@@ -1,6 +1,16 @@
 {
-  "version": "1.11.3",
+  "version": "1.11.4",
   "entries": [
+    {
+      "type": "fix",
+      "title": "re-issue a blocked screen pin once the app is unlocked",
+      "description": "Pinning a locked app from recents now pins it after the unlock prompt is passed, instead of opening the app unpinned.",
+      "version": "1.11.4",
+      "date": "2026-08-30",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/5bcfefea4aafc1291ec9a64b2f8c461850517123",
+      "scope": "hook",
+      "breaking": false
+    },
     {
       "type": "fix",
       "title": "skip the uninstall prompt for versioned library packages",
@@ -98,16 +108,6 @@
       "version": "1.11.0",
       "date": "2026-08-23",
       "url": "https://github.com/hxreborn/biometric-app-lock/commit/adad21fb120cb4a7d5054132c2301e08a206e69c",
-      "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "send a locked app home when the unlock prompt cannot start",
-      "description": "Locked apps no longer open without authentication in the seconds after a reboot, when the prompt cannot be shown yet.",
-      "version": "1.10.2",
-      "date": "2026-08-17",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/418663088a6a54147fe15ba12a909f9fe7e901ef",
       "scope": "hook",
       "breaking": false
     }
