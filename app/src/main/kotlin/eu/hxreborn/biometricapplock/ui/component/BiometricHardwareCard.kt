@@ -213,7 +213,6 @@ private fun readBiometricState(context: Context): BiometricState {
     val faceClass = classes[MODALITY_FACE] ?: inferredFaceClass(context)
 
     val fpEnrolled = readFingerprintCount(context)
-    // For MIUI face (miui.face.FaceService), get enrollment count via root settings check.
     // For Samsung convenience face, check face_screen_lock setting.
     // For standard Android face (FEATURE_FACE), the BiometricManager status is usually enough, but we fall back.
     val faceEnrolled =

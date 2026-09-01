@@ -1,43 +1,35 @@
 package eu.hxreborn.biometricapplock.util
 
-import android.animation.Animator
-import android.animation.AnimatorListenerAdapter
-import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
+import android.app.Activity
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
-import android.graphics.PixelFormat
 import android.graphics.RectF
 import android.graphics.Shader
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.Gravity
 import android.view.View
-import android.view.WindowManager
+import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
-import kotlin.math.min
+import android.widget.FrameLayout
+import eu.hxreborn.biometricapplock.R
 
 /**
- * iOS-style Face ID scanning overlay. Shows a compact, non-intrusive indicator at the
+ * iOS-style Face Unlock scanning overlay. Shows a compact, non-intrusive indicator at the
  * top of the screen with an animated face-scan bracket frame, a scanning line, and
- * lock state transitions — inspired by the Apple Face ID padlock glyph behaviour.
- *
- * States:
- *  1. SCANNING  — brackets pulse, scan-line sweeps, text says "Face ID"
- *  2. SUCCESS   — brackets turn green, lock opens, text says "✓", auto-dismiss
- *  3. FAILED    — brackets turn red, shake, text says "✕", auto-dismiss
+ * lock state transitions.
  */
 class FaceScanOverlay(
-    private val context: Context,
+    private val activity: Activity,
 ) {
     companion object {
         private const val TAG = "FaceScanOverlay"
@@ -45,7 +37,6 @@ class FaceScanOverlay(
 
     enum class State { SCANNING, SUCCESS, FAILED }
 
-    private var windowManager: WindowManager? = null
     private var overlayView: FaceScanView? = null
     private var isShowing = false
     private val handler = Handler(Looper.getMainLooper())
@@ -53,28 +44,21 @@ class FaceScanOverlay(
     fun show() {
         if (isShowing) return
         try {
-            windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-            overlayView = FaceScanView(context)
+            overlayView = FaceScanView(activity)
 
             val params =
-                WindowManager.LayoutParams(
-                    WindowManager.LayoutParams.WRAP_CONTENT,
-                    WindowManager.LayoutParams.WRAP_CONTENT,
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-                    } else {
-                        @Suppress("DEPRECATION")
-                        WindowManager.LayoutParams.TYPE_SYSTEM_ALERT
-                    },
-                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                        WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
-                    PixelFormat.TRANSLUCENT,
-                )
-            params.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            params.y = dpToPx(80)
+                FrameLayout
+                    .LayoutParams(
+                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                    ).apply {
+                        gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+                        topMargin = dpToPx(80)
+                    }
 
-            windowManager?.addView(overlayView, params)
+            // Add the view directly to the Activity's decor view
+            val decorView = activity.window.decorView as? ViewGroup
+            decorView?.addView(overlayView, params)
             isShowing = true
 
             // Entrance animation
@@ -97,260 +81,114 @@ class FaceScanOverlay(
     fun setState(state: State) {
         handler.post {
             overlayView?.setState(state)
-            when (state) {
-                State.SUCCESS -> {
-                    handler.postDelayed({ dismiss() }, 1200)
-                }
-
-                State.FAILED -> {
-                    handler.postDelayed({ dismiss() }, 1800)
-                }
-
-                State.SCANNING -> { /* keep showing */ }
-            }
         }
     }
 
     fun dismiss() {
         if (!isShowing) return
-        overlayView
-            ?.animate()
-            ?.alpha(0f)
-            ?.scaleX(0.7f)
-            ?.scaleY(0.7f)
-            ?.setDuration(250)
-            ?.setInterpolator(AccelerateDecelerateInterpolator())
-            ?.setListener(
-                object : AnimatorListenerAdapter() {
-                    override fun onAnimationEnd(animation: Animator) {
-                        removeView()
-                    }
-                },
-            )?.start()
-    }
-
-    private fun removeView() {
-        try {
-            if (isShowing) {
-                windowManager?.removeView(overlayView)
+        handler.post {
+            try {
+                overlayView
+                    ?.animate()
+                    ?.alpha(0f)
+                    ?.scaleX(0.8f)
+                    ?.scaleY(0.8f)
+                    ?.setDuration(250)
+                    ?.withEndAction {
+                        val decorView = activity.window.decorView as? ViewGroup
+                        decorView?.removeView(overlayView)
+                        overlayView = null
+                        isShowing = false
+                    }?.start()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to dismiss overlay", e)
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to remove overlay", e)
         }
-        isShowing = false
-        overlayView = null
     }
 
-    private fun dpToPx(dp: Int): Int = (dp * context.resources.displayMetrics.density).toInt()
+    private fun dpToPx(dp: Int): Int {
+        val density = activity.resources.displayMetrics.density
+        return (dp * density).toInt()
+    }
 
-    /**
-     * The custom View that draws the iOS Face ID scanning indicator.
-     * Entirely Canvas-based — no bitmaps, no Lottie, zero external dependencies.
-     */
-    private class FaceScanView(
+    private inner class FaceScanView(
         context: Context,
     ) : View(context) {
-        // ── Dimensions ──────────────────────────────────────────────────
-        private val viewWidthDp = 200
-        private val viewHeightDp = 100
-        private val cornerRadius: Float
-        private val bracketSize: Float
-        private val bracketStroke: Float
-        private val faceFrameSize: Float
         private val density = context.resources.displayMetrics.density
+        private val size = 64f * density
+        private val halfSize = size / 2f
+        private val bracketLen = 14f * density
+        private val bracketStroke = 3f * density
 
-        // ── Paints ──────────────────────────────────────────────────────
-        private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private var currentState = State.SCANNING
+        private var stateColor = Color.WHITE
+
+        private var bracketPulse = 0f
+        private var scanLineProgress = 0f
+        private var lockShackleOffset = 0f
+        private var shakeOffset = 0f
+
+        private var pulseAnimator: ValueAnimator? = null
+        private var scanAnimator: ValueAnimator? = null
+
         private val bracketPaint =
             Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.WHITE
                 style = Paint.Style.STROKE
+                strokeWidth = bracketStroke
                 strokeCap = Paint.Cap.ROUND
+                strokeJoin = Paint.Join.ROUND
             }
-        private val scanLinePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+        private val scanLinePaint =
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.FILL
+            }
+
         private val textPaint =
             Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.WHITE
+                textSize = 14f * density
                 textAlign = Paint.Align.CENTER
                 isFakeBoldText = true
             }
-        private val lockPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-        private val lockBodyPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-        private val lockKeyholePaint = Paint(Paint.ANTI_ALIAS_FLAG)
-
-        // ── Animation state ─────────────────────────────────────────────
-        private var currentState = State.SCANNING
-        private var scanLineProgress = 0f
-        private var bracketPulse = 0f
-        private var lockShackleOffset = 0f
-        private var shakeOffset = 0f
-        private var stateColor = Color.WHITE
-
-        private var scanAnimator: ValueAnimator? = null
-        private var pulseAnimator: ValueAnimator? = null
 
         init {
-            cornerRadius = 24f * density
-            bracketSize = 18f * density
-            bracketStroke = 2.5f * density
-            faceFrameSize = 36f * density
-
-            bgPaint.color = Color.argb(200, 20, 20, 22)
-
-            bracketPaint.strokeWidth = bracketStroke
-            bracketPaint.color = Color.WHITE
-
-            textPaint.textSize = 13f * density
-            textPaint.color = Color.WHITE
-
-            lockPaint.color = Color.WHITE
-            lockPaint.style = Paint.Style.STROKE
-            lockPaint.strokeWidth = 2f * density
-            lockPaint.strokeCap = Paint.Cap.ROUND
-
-            lockBodyPaint.color = Color.WHITE
-            lockBodyPaint.style = Paint.Style.FILL
-
-            lockKeyholePaint.color = Color.argb(200, 20, 20, 22)
-            lockKeyholePaint.style = Paint.Style.FILL
-
-            startScanAnimation()
-            startPulseAnimation()
+            // Needed to ensure onDraw is called
+            setWillNotDraw(false)
         }
 
         override fun onMeasure(
             widthMeasureSpec: Int,
             heightMeasureSpec: Int,
         ) {
-            val w = (viewWidthDp * density).toInt()
-            val h = (viewHeightDp * density).toInt()
+            val w = (size * 1.5f).toInt()
+            val h = (size * 1.8f).toInt()
             setMeasuredDimension(w, h)
         }
 
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
-            val w = width.toFloat()
-            val h = height.toFloat()
+            val cx = width / 2f + shakeOffset
+            val cy = size / 2f
 
-            // Save and apply shake offset if in FAILED state
-            canvas.save()
-            canvas.translate(shakeOffset, 0f)
-
-            // ── Background pill ─────────────────────────────────────────
-            val bgRect = RectF(0f, 0f, w, h)
-            canvas.drawRoundRect(bgRect, cornerRadius, cornerRadius, bgPaint)
-
-            // ── Layout: [Lock icon] [Face scan frame] [Status text] ─────
-            val centerY = h / 2f
-
-            // Lock icon area (left side)
-            val lockCenterX = w * 0.17f
-            drawLockIcon(canvas, lockCenterX, centerY)
-
-            // Face scan frame (center)
-            val frameCenterX = w * 0.5f
-            drawFaceScanFrame(canvas, frameCenterX, centerY)
-
-            // Status text (right side)
-            val textCenterX = w * 0.82f
-            drawStatusText(canvas, textCenterX, centerY)
-
-            canvas.restore()
+            drawFaceScan(canvas, cx, cy)
+            drawStatusText(canvas, cx, cy + size * 0.7f)
         }
 
-        private fun drawLockIcon(
+        private fun drawFaceScan(
             canvas: Canvas,
             cx: Float,
             cy: Float,
         ) {
-            val lockSize = 14f * density
-            val bodyW = lockSize * 0.85f
-            val bodyH = lockSize * 0.65f
-            val shackleW = lockSize * 0.5f
-            val shackleH = lockSize * 0.45f
-
-            lockPaint.color = stateColor
-            lockBodyPaint.color = stateColor
-
-            // Shackle
-            val shackleLeft = cx - shackleW / 2f
-            val bodyTop = cy - bodyH / 2f + 2f * density
-            val shackleTop = bodyTop - shackleH + lockShackleOffset
-            val shackleRect = RectF(shackleLeft, shackleTop, cx + shackleW / 2f, bodyTop)
-
-            // For open lock, draw only the arc (not closing line)
-            if (currentState == State.SUCCESS) {
-                val arcRect =
-                    RectF(
-                        shackleLeft,
-                        shackleTop - shackleH / 2f,
-                        cx + shackleW / 2f,
-                        bodyTop,
-                    )
-                canvas.drawArc(arcRect, 180f, 180f, false, lockPaint)
-            } else {
-                val arcRect =
-                    RectF(
-                        shackleLeft,
-                        shackleTop - shackleH / 2f,
-                        cx + shackleW / 2f,
-                        bodyTop,
-                    )
-                canvas.drawArc(arcRect, 180f, 180f, false, lockPaint)
-                // Close the shackle
-                canvas.drawLine(
-                    cx + shackleW / 2f,
-                    bodyTop - shackleH / 2f + shackleH / 2f,
-                    cx + shackleW / 2f,
-                    bodyTop,
-                    lockPaint,
-                )
-                canvas.drawLine(
-                    shackleLeft,
-                    bodyTop - shackleH / 2f + shackleH / 2f,
-                    shackleLeft,
-                    bodyTop,
-                    lockPaint,
-                )
-            }
-
-            // Body
-            val bodyRect =
-                RectF(
-                    cx - bodyW / 2f,
-                    bodyTop,
-                    cx + bodyW / 2f,
-                    bodyTop + bodyH,
-                )
-            val bodyRadius = 2.5f * density
-            canvas.drawRoundRect(bodyRect, bodyRadius, bodyRadius, lockBodyPaint)
-
-            // Keyhole
-            val khRadius = 2f * density
-            canvas.drawCircle(cx, bodyTop + bodyH * 0.38f, khRadius, lockKeyholePaint)
-            val khLineW = 1.2f * density
-            canvas.drawRect(
-                cx - khLineW / 2f,
-                bodyTop + bodyH * 0.45f,
-                cx + khLineW / 2f,
-                bodyTop + bodyH * 0.7f,
-                lockKeyholePaint,
-            )
-        }
-
-        private fun drawFaceScanFrame(
-            canvas: Canvas,
-            cx: Float,
-            cy: Float,
-        ) {
-            val halfSize = faceFrameSize / 2f
-            val bracketLen = bracketSize * 0.55f
-            val pulsedHalf = halfSize + bracketPulse * 2f * density
+            // Pulse effect
+            val pulseScale = 1f + (0.05f * bracketPulse)
+            val pulsedHalf = halfSize * pulseScale
 
             bracketPaint.color = stateColor
 
-            // Four corner brackets
             val corners =
                 arrayOf(
-                    // top-left
                     floatArrayOf(
                         cx - pulsedHalf,
                         cy - pulsedHalf + bracketLen,
@@ -359,7 +197,6 @@ class FaceScanOverlay(
                         cx - pulsedHalf + bracketLen,
                         cy - pulsedHalf,
                     ),
-                    // top-right
                     floatArrayOf(
                         cx + pulsedHalf - bracketLen,
                         cy - pulsedHalf,
@@ -368,7 +205,6 @@ class FaceScanOverlay(
                         cx + pulsedHalf,
                         cy - pulsedHalf + bracketLen,
                     ),
-                    // bottom-left
                     floatArrayOf(
                         cx - pulsedHalf,
                         cy + pulsedHalf - bracketLen,
@@ -377,7 +213,6 @@ class FaceScanOverlay(
                         cx - pulsedHalf + bracketLen,
                         cy + pulsedHalf,
                     ),
-                    // bottom-right
                     floatArrayOf(
                         cx + pulsedHalf - bracketLen,
                         cy + pulsedHalf,
@@ -396,7 +231,6 @@ class FaceScanOverlay(
                 canvas.drawPath(path, bracketPaint)
             }
 
-            // Scan line (only during SCANNING)
             if (currentState == State.SCANNING) {
                 val scanY = cy - pulsedHalf + (2f * pulsedHalf * scanLineProgress)
                 val scanWidth = pulsedHalf * 1.4f
@@ -419,22 +253,21 @@ class FaceScanOverlay(
                 canvas.drawLine(cx - scanWidth, scanY, cx + scanWidth, scanY, scanLinePaint)
             }
 
-            // Checkmark (SUCCESS) or X (FAILED) inside the frame
             when (currentState) {
                 State.SUCCESS -> {
                     val checkPaint =
                         Paint(Paint.ANTI_ALIAS_FLAG).apply {
                             color = stateColor
                             style = Paint.Style.STROKE
-                            strokeWidth = 2.5f * density
+                            strokeWidth = 3f * density
                             strokeCap = Paint.Cap.ROUND
                             strokeJoin = Paint.Join.ROUND
                         }
                     val s = halfSize * 0.5f
                     val path = Path()
-                    path.moveTo(cx - s * 0.5f, cy)
-                    path.lineTo(cx - s * 0.1f, cy + s * 0.4f)
-                    path.lineTo(cx + s * 0.6f, cy - s * 0.4f)
+                    path.moveTo(cx - s * 0.5f, cy + lockShackleOffset)
+                    path.lineTo(cx - s * 0.1f, cy + s * 0.4f + lockShackleOffset)
+                    path.lineTo(cx + s * 0.6f, cy - s * 0.4f + lockShackleOffset)
                     canvas.drawPath(path, checkPaint)
                 }
 
@@ -443,7 +276,7 @@ class FaceScanOverlay(
                         Paint(Paint.ANTI_ALIAS_FLAG).apply {
                             color = stateColor
                             style = Paint.Style.STROKE
-                            strokeWidth = 2.5f * density
+                            strokeWidth = 3f * density
                             strokeCap = Paint.Cap.ROUND
                         }
                     val s = halfSize * 0.35f
@@ -451,7 +284,7 @@ class FaceScanOverlay(
                     canvas.drawLine(cx + s, cy - s, cx - s, cy + s, xPaint)
                 }
 
-                else -> { /* no icon in scanning state, the scan line is the feedback */ }
+                else -> {}
             }
         }
 
@@ -463,11 +296,10 @@ class FaceScanOverlay(
             textPaint.color = stateColor
             val text =
                 when (currentState) {
-                    State.SCANNING -> "Face ID"
-                    State.SUCCESS -> "Done"
-                    State.FAILED -> "Try Again"
+                    State.SCANNING -> context.getString(R.string.miui_face_scanning)
+                    State.SUCCESS -> context.getString(R.string.miui_face_success)
+                    State.FAILED -> context.getString(R.string.miui_face_failed)
                 }
-            // Vertically center the text
             val textY = cy - (textPaint.descent() + textPaint.ascent()) / 2f
             canvas.drawText(text, cx, textY, textPaint)
         }
@@ -478,7 +310,7 @@ class FaceScanOverlay(
                 State.SUCCESS -> {
                     stopAnimations()
                     stateColor = Color.rgb(52, 199, 89) // iOS green
-                    animateLockOpen()
+                    animateSuccess()
                 }
 
                 State.FAILED -> {
@@ -500,7 +332,7 @@ class FaceScanOverlay(
             scanAnimator?.cancel()
             scanAnimator =
                 ValueAnimator.ofFloat(0f, 1f).apply {
-                    duration = 1800
+                    duration = 1500
                     repeatCount = ValueAnimator.INFINITE
                     repeatMode = ValueAnimator.REVERSE
                     interpolator = AccelerateDecelerateInterpolator()
@@ -516,7 +348,7 @@ class FaceScanOverlay(
             pulseAnimator?.cancel()
             pulseAnimator =
                 ValueAnimator.ofFloat(0f, 1f).apply {
-                    duration = 1200
+                    duration = 1000
                     repeatCount = ValueAnimator.INFINITE
                     repeatMode = ValueAnimator.REVERSE
                     interpolator = AccelerateDecelerateInterpolator()
@@ -533,7 +365,7 @@ class FaceScanOverlay(
             pulseAnimator?.cancel()
         }
 
-        private fun animateLockOpen() {
+        private fun animateSuccess() {
             ObjectAnimator.ofFloat(this, "lockShackle", 0f, -6f * density).apply {
                 duration = 400
                 interpolator = OvershootInterpolator(2f)
@@ -542,26 +374,33 @@ class FaceScanOverlay(
             }
         }
 
-        @Suppress("unused") // used by ObjectAnimator
+        @Suppress("unused")
         fun setLockShackle(value: Float) {
             lockShackleOffset = value
             invalidate()
         }
 
-        @Suppress("unused") // used by ObjectAnimator
+        @Suppress("unused")
         fun getLockShackle(): Float = lockShackleOffset
 
         private fun animateShake() {
-            val shakeAnim =
-                ValueAnimator.ofFloat(0f, 12f, -10f, 8f, -6f, 4f, -2f, 0f).apply {
-                    duration = 500
-                    interpolator = DecelerateInterpolator()
-                    addUpdateListener {
-                        shakeOffset = (it.animatedValue as Float) * density
-                        invalidate()
-                    }
+            ValueAnimator.ofFloat(0f, 12f, -10f, 8f, -6f, 4f, -2f, 0f).apply {
+                duration = 400
+                interpolator = DecelerateInterpolator()
+                addUpdateListener {
+                    shakeOffset = (it.animatedValue as Float) * density
+                    invalidate()
                 }
-            shakeAnim.start()
+                start()
+            }
+        }
+
+        override fun onAttachedToWindow() {
+            super.onAttachedToWindow()
+            if (currentState == State.SCANNING) {
+                startScanAnimation()
+                startPulseAnimation()
+            }
         }
 
         override fun onDetachedFromWindow() {

@@ -15,8 +15,6 @@
   <img src="https://img.shields.io/github/downloads/hxreborn/biometric-app-lock/total?style=for-the-badge&logo=github&label=Downloads&cacheSeconds=600" alt="Downloads">
 </p>
 
-> [!NOTE]
-> Built for AOSP and Pixel. Now also supports **Samsung (One UI)** and **Xiaomi (HyperOS / MIUI)** devices with native OEM face unlock. Other lightly modified flavors may work but are untested.
 
 ## About this module
 
@@ -28,10 +26,13 @@ Enabling the module needs one reboot so it loads at boot. After that, if your fr
 
 The standard Android `BiometricPrompt` hides OEM face unlock from third-party apps when only face biometrics are enrolled (no fingerprint). This module works around that limitation:
 
-- **Samsung (One UI)**: Falls back to device credential authentication, which triggers Samsung's native face scanner automatically.
-- **Xiaomi (HyperOS / MIUI)**: Bypasses the restriction entirely by communicating directly with `miui.face.FaceService` via raw Binder IPC. The native front-camera face scanner activates silently in the background while the system prompt is displayed, and unlocks the app instantly on match.
+- **Samsung (One UI)**: When the standard biometric prompt cannot present a biometric, the module falls back to device credential authentication. On Samsung devices this triggers the native face scanner automatically through the credential path.
+- **Xiaomi (HyperOS / MIUI)**: Communicates directly with `miui.face.FaceService` via raw Binder IPC while the system prompt is displayed. The front-camera face scanner activates in the background, and on a successful match the system prompt is dismissed and the app unlocks.
 
 No additional setup is needed — the module detects the device manufacturer and applies the correct strategy automatically.
+
+> [!NOTE]
+> Verified on stock AOSP, Pixel, and Xiaomi (HyperOS / MIUI). Samsung (One UI) is supported via the credential-fallback path but has not been independently tested on a real device. **OxygenOS**, **ColorOS**, and other lightly-modified HyperOS derivatives already ship their own app-lock layer — if your ROM has a built-in app lock you probably don't need this module, and the two can conflict.
 
 ## Requirements
 

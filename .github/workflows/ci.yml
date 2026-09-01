@@ -27,9 +27,7 @@ jobs:
           cache: gradle
 
       - name: Lint and build debug APK
-        run: |
-          chmod +x gradlew
-          ./gradlew :app:ktlintCheck :app:assembleDebug --no-daemon
+        run: ./gradlew :app:ktlintCheck :app:assembleDebug --no-daemon
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v7

@@ -102,20 +102,10 @@ fun usableAuthenticators(
         val requested = methodAuthenticators(method, weakOk)
         if (bm.canAuthenticate(requested) == BiometricManager.BIOMETRIC_SUCCESS) {
             authenticators = authenticators or requested
-        } else if (method == METHOD_BIOMETRIC && weakOk && hasFaceHardware(context)) {
-            val faceEnrolled =
-                miuiFaceEnrollmentCount(context) ?: samsungFaceEnrollmentCount(context) ?: 0
-            android.util.Log.d(
-                "BiometricAppLock",
-                "usableAuthenticators: custom face check. enrolled=$faceEnrolled",
-            )
-            if (faceEnrolled > 0) {
-                // If only custom face is enrolled, standard BiometricPrompt will fail with BIOMETRIC_ERROR_NONE_ENROLLED.
-                // We MUST add DEVICE_CREDENTIAL so the OS falls back to the Keyguard, which natively triggers Face Unlock.
-                authenticators =
-                    authenticators or requested or BiometricManager.Authenticators.DEVICE_CREDENTIAL
-            }
         }
+        // Note: if canAuthenticate rejects a mask we do NOT add DEVICE_CREDENTIAL.
+        // The user's "require fingerprint or face only" setting must be respected.
+        // If nothing is usable, authenticators stays 0, we return null, and the app stays locked.
     }
     return authenticators.takeIf { it != 0 }
 }
@@ -206,20 +196,10 @@ private fun checkFaceSensorInDump(): Boolean {
 
 // MIUI/HyperOS devices keep face unlock in a separate service (miui.face.FaceService)
 // that is completely outside the Android BiometricManager stack.
-// Returns: null = no MIUI face hardware, 0 = not enrolled, 1+ = enrolled
-@Volatile private var miuiFaceEnrollmentCache: Int = Int.MIN_VALUE // MIN_VALUE = not checked
-
+// Returns: null = no MIUI face hardware on this device, 0 = not enrolled, 1 = enrolled
+// Re-reads on every call so enrollment changes are always reflected immediately.
 fun miuiFaceEnrollmentCount(context: Context): Int? {
-    if (miuiFaceEnrollmentCache != Int.MIN_VALUE) {
-        return if (miuiFaceEnrollmentCache < 0) null else miuiFaceEnrollmentCache
-    }
-    val result = checkMiuiFaceEnrollment(context)
-    miuiFaceEnrollmentCache = result ?: -1
-    return result
-}
-
-private fun checkMiuiFaceEnrollment(context: Context): Int? {
-    // If not a xiaomi/poco device, skip
+    // Covers Xiaomi and POCO (Xiaomi sub-brand)
     if (!android.os.Build.MANUFACTURER
             .equals("xiaomi", ignoreCase = true) &&
         !android.os.Build.MANUFACTURER
@@ -227,9 +207,9 @@ private fun checkMiuiFaceEnrollment(context: Context): Int? {
     ) {
         return null
     }
-
     return try {
-        // face_unlock_valid_feature=1 means face is enrolled in MIUI
+        // face_unlock_valid_feature = 1 means a face is enrolled in HyperOS / MIUI.
+        // Non-Xiaomi devices simply won't have this key (returns the default -1).
         val settingValue =
             android.provider.Settings.Secure.getInt(
                 context.contentResolver,
@@ -239,18 +219,20 @@ private fun checkMiuiFaceEnrollment(context: Context): Int? {
         when (settingValue) {
             1 -> 1
 
-            // face service exists and face is enrolled
+            // face enrolled
             0 -> 0
 
-            // face service exists but no face enrolled
-            else -> 0 // face service exists, assume not yet enrolled
+            // service present but nothing enrolled
+            else -> 0 // key absent — treat as not enrolled
         }
     } catch (e: Exception) {
         0
     }
 }
 
-fun hasMiuiFace(context: Context): Boolean = (miuiFaceEnrollmentCount(context) ?: -1) >= 0
+// hasMiuiFace is true only when at least one face is enrolled (count >= 1).
+// count == 0 means the service exists but nothing enrolled — face hardware card must not show face.
+fun hasMiuiFace(context: Context): Boolean = (miuiFaceEnrollmentCount(context) ?: -1) >= 1
 
 // Combined face hardware detection: standard API + root biometric dump + MIUI service.
 // This covers devices like Samsung (CONVENIENCE-class face) and Xiaomi MIUI (separate service)

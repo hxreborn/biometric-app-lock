@@ -33,29 +33,20 @@ jobs:
           cache: gradle
 
       - name: Decode keystore
-        env:
-          RELEASE_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE }}
         run: |
-          if [ -n "$RELEASE_KEYSTORE" ]; then
-            echo "$RELEASE_KEYSTORE" | base64 -d > ${{ runner.temp }}/release.keystore
-          fi
+          echo "${{ secrets.RELEASE_KEYSTORE }}" | base64 -d > ${{ runner.temp }}/release.keystore
 
       - name: Build APKs
         env:
-          RELEASE_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE }}
+          RELEASE_STORE_FILE: ${{ runner.temp }}/release.keystore
           RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: |
-          chmod +x gradlew
-          if [ -n "$RELEASE_KEYSTORE" ]; then
-            export RELEASE_STORE_FILE=${{ runner.temp }}/release.keystore
-          fi
-          ./gradlew :app:assembleRelease :app:assembleDebug
+        run: ./gradlew :app:assembleRelease :app:assembleDebug
 
       - name: Rename APKs
         run: |
-          mv app/build/outputs/apk/release/app-release*.apk \
+          mv app/build/outputs/apk/release/app-release.apk \
              app/build/outputs/apk/release/biometric-app-lock-${{ github.ref_name }}-release.apk
           mv app/build/outputs/apk/debug/app-debug.apk \
              app/build/outputs/apk/debug/biometric-app-lock-${{ github.ref_name }}-debug.apk
@@ -73,7 +64,6 @@ jobs:
         id: gh_release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || steps.mirror_tag.outputs.mirror_tag }}
           files: |
             app/build/outputs/apk/release/biometric-app-lock-${{ github.ref_name }}-release.apk
             app/build/outputs/apk/debug/biometric-app-lock-${{ github.ref_name }}-debug.apk
@@ -94,7 +84,7 @@ jobs:
     permissions:
       contents: read
     env:
-      TAG_NAME: ${{ github.ref_type == 'tag' && github.ref_name || needs.build.outputs.mirror_tag }}
+      TAG_NAME: ${{ github.ref_name }}
       MIRROR_TAG: ${{ needs.build.outputs.mirror_tag }}
 
     steps:
@@ -110,13 +100,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
-          NAME=$(gh release view "$TAG_NAME" --repo "$REPO" --json name -q ".name")
-          PRERELEASE=$(gh release view "$TAG_NAME" --repo "$REPO" --json isPrerelease -q ".isPrerelease")
-          echo "name=$NAME" >> "$GITHUB_OUTPUT"
-          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+          gh release view "$TAG_NAME" --repo "$REPO" --json name,body,isPrerelease \
+            --jq '"name=\(.name)\nprerelease=\(.isPrerelease)"' >> "$GITHUB_OUTPUT"
 
           echo "body<<BODY_EOF" >> "$GITHUB_OUTPUT"
-          gh release view "$TAG_NAME" --repo "$REPO" --json body -q ".body" >> "$GITHUB_OUTPUT"
+          gh release view "$TAG_NAME" --repo "$REPO" --json body --jq '.body' >> "$GITHUB_OUTPUT"
           echo "BODY_EOF" >> "$GITHUB_OUTPUT"
 
       - name: Create mirror release

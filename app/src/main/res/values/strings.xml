@@ -285,4 +285,8 @@
     <string name="diagnostics_share_title">Share logs</string>
     <string name="diagnostics_no_root">Root unavailable. LSPosed logs may be missing.</string>
     <string name="diagnostics_no_logs">No logs found. Reproduce the issue, then try again.</string>
+    <string name="miui_face_scanning">Face Unlock</string>
+    <string name="miui_face_success">Done</string>
+    <string name="miui_face_failed">Try Again</string>
+
 </resources>
