@@ -137,7 +137,7 @@ class MainActivity :
             } else {
                 normalizeMethods(App.from(this).prefsRepository.read(Prefs.SELF_LOCK_METHODS))
             }
-        val authenticators = usableAuthenticators(bm, methods)
+        val authenticators = usableAuthenticators(this, bm, methods)
         if (authenticators == null) {
             // allow if no security enrolled for module settings app
             selfLock.setUnlocked()

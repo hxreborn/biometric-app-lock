@@ -43,3 +43,9 @@ iss/
 !README.md
 __MACOSX/
 logs/
+
+# Reverse-engineering artifacts
+miui-framework/
+miui-framework.zip
+*.class
+dump*.txt

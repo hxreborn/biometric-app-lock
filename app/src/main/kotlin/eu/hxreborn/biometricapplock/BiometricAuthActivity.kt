@@ -13,7 +13,10 @@ import android.os.CancellationSignal
 import android.util.Log
 import eu.hxreborn.biometricapplock.prefs.Prefs
 import eu.hxreborn.biometricapplock.util.METHODS_ALL
+import eu.hxreborn.biometricapplock.util.METHOD_BIOMETRIC
+import eu.hxreborn.biometricapplock.util.METHOD_WEAK_OK
 import eu.hxreborn.biometricapplock.util.getUserHandle
+import eu.hxreborn.biometricapplock.util.miuiFaceEnrollmentCount
 import eu.hxreborn.biometricapplock.util.normalizeMethods
 import eu.hxreborn.biometricapplock.util.usableAuthenticators
 
@@ -90,7 +93,12 @@ open class BiometricAuthActivity : Activity() {
             packageManager.getApplicationInfo(pkg, 0).loadLabel(packageManager).toString()
         }.getOrDefault(pkg)
 
+    private var miuiFaceAuth: eu.hxreborn.biometricapplock.util.MiuiFaceAuthenticator? = null
+    private var faceScanOverlay: eu.hxreborn.biometricapplock.util.FaceScanOverlay? = null
+
     override fun onDestroy() {
+        miuiFaceAuth?.cancel()
+        faceScanOverlay?.dismiss()
         Log.d(TAG, "onDestroy replied=$replied pkg=$targetPkg")
         if (!replied) onResult(AUTH_CANCELLED)
         super.onDestroy()
@@ -103,16 +111,73 @@ open class BiometricAuthActivity : Activity() {
         val bm = getSystemService(BiometricManager::class.java)
         // an unusable per-app policy keeps the app locked, never widens to the global one
         val methods = packageKey?.let(::appMethods) ?: globalMethods()
-        val authenticators = usableAuthenticators(bm, methods)
+        val authenticators = usableAuthenticators(this, bm, methods)
         if (authenticators == null) {
             Log.w(TAG, "no usable auth method methods=$methods pkg=$targetPkg")
             onResult(AUTH_CANCELLED)
             return
         }
+
         val cancellation = CancellationSignal()
-        val executor = mainExecutor
+
         val requireConfirmation =
             App.from(this).prefsRepository.read(Prefs.UNLOCK_REQUIRE_CONFIRMATION)
+
+        // Run the custom MIUI face path when:
+        //   - Device is Xiaomi or POCO (POCO is a Xiaomi sub-brand with the same face service)
+        //   - Method mask includes biometric AND weak is allowed (METHOD_WEAK_OK). Strong-only
+        //     apps must not be unlocked by a Class 2 MIUI face sensor.
+        //   - Confirmation is not required (face unlock cannot satisfy an explicit confirm step)
+        //   - This is not the uninstall backstop (which must require explicit credential entry)
+        // methods is always non-null here — it is resolved by showPrompt's caller before this line.
+        val isXiaomiOrPoco =
+            android.os.Build.MANUFACTURER
+                .equals("Xiaomi", ignoreCase = true) ||
+                android.os.Build.MANUFACTURER
+                    .equals("Poco", ignoreCase = true)
+        val shouldRunCustomMiuiFace =
+            isXiaomiOrPoco &&
+                methods and METHOD_BIOMETRIC != 0 &&
+                methods and METHOD_WEAK_OK != 0 &&
+                !requireConfirmation &&
+                !uninstallAuth
+
+        if (shouldRunCustomMiuiFace) {
+            miuiFaceAuth =
+                eu.hxreborn.biometricapplock.util.MiuiFaceAuthenticator { success ->
+                    runOnUiThread {
+                        if (success) {
+                            faceScanOverlay?.setState(
+                                eu.hxreborn.biometricapplock.util.FaceScanOverlay.State.SUCCESS,
+                            )
+                            // Brief delay so the user sees the success animation before the screen closes
+                            window.decorView.postDelayed({
+                                cancellation.cancel()
+                                onResult(AUTH_OK)
+                            }, 600)
+                        } else {
+                            faceScanOverlay?.setState(
+                                eu.hxreborn.biometricapplock.util.FaceScanOverlay.State.FAILED,
+                            )
+                        }
+                    }
+                }
+            // Guard: only start the scanner if the service is present AND a face is enrolled.
+            // isAvailable() checks the binder; miuiFaceEnrollmentCount checks the feature flag.
+            val enrolledCount = miuiFaceEnrollmentCount(this) ?: 0
+            if (miuiFaceAuth?.isAvailable() == true && enrolledCount >= 1) {
+                faceScanOverlay =
+                    eu.hxreborn.biometricapplock.util
+                        .FaceScanOverlay(this)
+                faceScanOverlay?.show()
+                miuiFaceAuth?.authenticate()
+            } else {
+                val svc = miuiFaceAuth?.isAvailable()
+                Log.d(TAG, "MIUI face skipped: service=$svc enrolled=$enrolledCount")
+            }
+        }
+
+        val executor = mainExecutor
 
         val builder =
             BiometricPrompt
@@ -168,6 +233,8 @@ open class BiometricAuthActivity : Activity() {
     private fun onResult(code: Int) {
         if (replied) return
         replied = true
+        faceScanOverlay?.dismiss()
+        faceScanOverlay = null
         Log.d(TAG, "onResult code=$code pkg=$targetPkg uninstallAuth=$uninstallAuth")
         if (uninstallAuth) {
             // nothing is waiting behind this prompt, so grant on success and leave the screen

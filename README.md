@@ -15,14 +15,24 @@
   <img src="https://img.shields.io/github/downloads/hxreborn/biometric-app-lock/total?style=for-the-badge&logo=github&label=Downloads&cacheSeconds=600" alt="Downloads">
 </p>
 
-> [!NOTE]
-> Built for AOSP and Pixel. Lightly modified flavors like One UI 8+ may work but are untested. HyperOS, OxygenOS, and ColorOS already ship a built-in app lock, so you probably don't need this there.
 
 ## About this module
 
 Stock Android has no native per-app lock. This module adds one. A locked app opens normally once you authenticate, including when you tap it from the recents screen.
 
 Enabling the module needs one reboot so it loads at boot. After that, if your framework supports hot reload, app updates apply with no reboot. If not, you still reboot after each update. Changing which apps are locked is always instant.
+
+## OEM face unlock support
+
+The standard Android `BiometricPrompt` hides OEM face unlock from third-party apps when only face biometrics are enrolled (no fingerprint). This module works around that limitation:
+
+- **Samsung (One UI)**: When the standard biometric prompt cannot present a biometric, the module falls back to device credential authentication. On Samsung devices this triggers the native face scanner automatically through the credential path.
+- **Xiaomi (HyperOS / MIUI)**: Communicates directly with `miui.face.FaceService` via raw Binder IPC while the system prompt is displayed. The front-camera face scanner activates in the background, and on a successful match the system prompt is dismissed and the app unlocks.
+
+No additional setup is needed — the module detects the device manufacturer and applies the correct strategy automatically.
+
+> [!NOTE]
+> Verified on stock AOSP, Pixel, and Xiaomi (HyperOS / MIUI). Samsung (One UI) is supported via the credential-fallback path but has not been independently tested on a real device. **OxygenOS**, **ColorOS**, and other lightly-modified HyperOS derivatives already ship their own app-lock layer — if your ROM has a built-in app lock you probably don't need this module, and the two can conflict.
 
 ## Requirements
 
