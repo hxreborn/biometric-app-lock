@@ -159,15 +159,21 @@ private fun readSensorClasses(): Map<Int, BiometricClass> {
 
     // Samsung compact format: {<modality>, <strength>}
     val samsung =
-        Regex("""\{(\d+),\s*(\d+)\}""")
-            .findAll(dump)
-            .mapNotNull { match ->
-                val modality = match.groupValues[1].toIntOrNull() ?: return@mapNotNull null
-                val strength = match.groupValues[2].toIntOrNull() ?: return@mapNotNull null
-                classifyStrength(strength)?.let { modality to it }
-            }
+        if (android.os.Build.MANUFACTURER
+                .equals("samsung", ignoreCase = true)
+        ) {
+            Regex("""\{(\d+),\s*(\d+)\}""")
+                .findAll(dump)
+                .mapNotNull { match ->
+                    val modality = match.groupValues[1].toIntOrNull() ?: return@mapNotNull null
+                    val strength = match.groupValues[2].toIntOrNull() ?: return@mapNotNull null
+                    classifyStrength(strength)?.let { modality to it }
+                }
+        } else {
+            emptySequence()
+        }
 
-    return (aosp + samsung).toMap()
+    return (samsung + aosp).toMap()
 }
 
 private fun classifyStrength(strength: Int): BiometricClass? =
