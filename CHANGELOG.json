@@ -1,6 +1,36 @@
 {
-  "version": "1.11.4",
+  "version": "1.12.0",
   "entries": [
+    {
+      "type": "refactor",
+      "title": "drop the unused context parameter from usableAuthenticators",
+      "description": null,
+      "version": "1.12.0",
+      "date": "2026-09-02",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/0102b4e7b9c3c7e74d733961daabc66c82691970",
+      "scope": null,
+      "breaking": false
+    },
+    {
+      "type": "refactor",
+      "title": "scope the Samsung sensor-class match to Samsung devices",
+      "description": null,
+      "version": "1.12.0",
+      "date": "2026-09-02",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/62b76d325606dfcee94ca7e7a83ebd560117ebd2",
+      "scope": null,
+      "breaking": false
+    },
+    {
+      "type": "feat",
+      "title": "add native OEM face unlock for Samsung and Xiaomi",
+      "description": "Locked apps can now be unlocked with the built-in face scanner on Samsung and Xiaomi devices, where the standard prompt does not offer it.",
+      "version": "1.12.0",
+      "date": "2026-09-02",
+      "url": "https://github.com/hxreborn/biometric-app-lock/pull/50",
+      "scope": null,
+      "breaking": false
+    },
     {
       "type": "fix",
       "title": "re-issue a blocked screen pin once the app is unlocked",
@@ -48,66 +78,6 @@
       "version": "1.11.1",
       "date": "2026-08-24",
       "url": "https://github.com/hxreborn/biometric-app-lock/commit/b6946e528d4365cc9662543d92248d0e17e33cfe",
-      "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "drop the second prompt when uninstalling from the system dialog",
-      "description": "Uninstalling an app through the system dialog now asks for biometrics once instead of twice.",
-      "version": "1.11.0",
-      "date": "2026-08-24",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/2a52819ee628ed8ca09ebcfa6d69f4198656f785",
-      "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "resume install prompts as the app that requested them",
-      "description": "Installing an app now goes through on the first tap instead of needing a second one after the prompt.",
-      "version": "1.11.0",
-      "date": "2026-08-24",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/15e3ff2271ecc9733dec5b19e477c72fd23407dd",
-      "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "stop re-prompting when an installer asks for pre-approval",
-      "description": "Installing an app from a store that asks for confirmation up front no longer repeats the biometric prompt forever.",
-      "version": "1.11.0",
-      "date": "2026-08-24",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/06a0428129da15875d4f8e88740e7450ed801d05",
-      "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "block screen pinning from opening a locked app without auth",
-      "description": "Pinning a locked app from recents no longer opens it without authentication.",
-      "version": "1.11.0",
-      "date": "2026-08-24",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/63c588d87a9ce07bbbaa76db3c980a990ed7c944",
-      "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "feat",
-      "title": "add 3 and 10 minute re-lock delays plus a custom value",
-      "description": "Custom delays are entered in minutes and apply to the global delay and to\nper-app overrides.",
-      "version": "1.11.0",
-      "date": "2026-08-23",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/160c7be859a72c0e9bd8de3b2cd3a5bb858981d3",
-      "scope": "ui",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "relock a locked app when the user goes home",
-      "description": "Locked apps set to re-lock immediately now ask for the prompt again after\nyou leave them for the home screen, not only after another app opens.",
-      "version": "1.11.0",
-      "date": "2026-08-23",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/adad21fb120cb4a7d5054132c2301e08a206e69c",
       "scope": "hook",
       "breaking": false
     }
