@@ -91,7 +91,6 @@ fun withCredential(
 
 // one unavailable method never blocks the others
 fun usableAuthenticators(
-    context: Context,
     bm: BiometricManager,
     methods: Int,
 ): Int? {

@@ -111,7 +111,7 @@ open class BiometricAuthActivity : Activity() {
         val bm = getSystemService(BiometricManager::class.java)
         // an unusable per-app policy keeps the app locked, never widens to the global one
         val methods = packageKey?.let(::appMethods) ?: globalMethods()
-        val authenticators = usableAuthenticators(this, bm, methods)
+        val authenticators = usableAuthenticators(bm, methods)
         if (authenticators == null) {
             Log.w(TAG, "no usable auth method methods=$methods pkg=$targetPkg")
             onResult(AUTH_CANCELLED)
