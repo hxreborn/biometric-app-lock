@@ -2,6 +2,7 @@ package eu.hxreborn.biometricapplock.hook
 
 import android.app.Notification
 import android.app.TaskInfo
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
@@ -91,12 +92,14 @@ internal fun refreshSecureSurfaces() {
 }
 
 /**
- * Wires up all the system_server hooks. A locked app can hit the foreground four ways, through
- * three framework methods:
+ * Wires up all the system_server hooks. A locked app can hit the foreground five ways, through
+ * four framework methods:
  * - launcher tap, deep link, notification -> ActivityStarter.intercept ([hookLaunchIntercept])
  * - recents card tap -> ActivityTaskSupervisor.startActivityFromRecents ([hookRecentsLaunch])
  * - nav-bar quick switch -> ActivityTaskSupervisor.startActivityFromRecents ([hookRecentsLaunch])
  * - screen pinning -> ActivityTaskManagerService.startSystemLockTaskMode ([hookScreenPinning])
+ * - return to the task recents was opened from, which launches nothing ->
+ *   ActivityTaskManagerService.setLastResumedActivityUncheckLocked ([hookTopResumedActivity])
  */
 internal fun XposedModule.registerSystemServerHooks(
     classLoader: ClassLoader,
@@ -281,15 +284,16 @@ private fun taskEntryFromTask(task: Any): TaskEntry? {
     return TaskEntry(pkg, userId)
 }
 
+private fun atmsOf(supervisor: Any): Any? =
+    runCatching { reflection?.activityTaskManagerServiceField?.get(supervisor) }.getOrNull()
+
 // falls back to the window hierarchy since ROMs without onActivityLaunched never fill taskCache
 private fun resolveTaskEntry(
     supervisor: Any,
     taskId: Int,
 ): TaskEntry? {
     taskCache[taskId]?.let { return it }
-    val atms =
-        runCatching { reflection?.activityTaskManagerServiceField?.get(supervisor) }.getOrNull()
-            ?: return null
+    val atms = atmsOf(supervisor) ?: return null
     return resolveTaskEntryFromAtms(atms, taskId)
 }
 
@@ -367,8 +371,10 @@ private fun XposedModule.hookRecentsLaunch(classLoader: ClassLoader): Boolean =
                         recentsSurfaceKey.remove()
                     }
                 }
-            runCatching { postAuthLaunch(chain.thisObject, entry) }
-                .onFailure { Logger.error("recents auth failed: ${it.message}", it) }
+            atmsOf(chain.thisObject)?.let { atms ->
+                runCatching { postAuthLaunch(atms, entry) }
+                    .onFailure { Logger.error("recents auth failed: ${it.message}", it) }
+            }
             result
         }
         Logger.info("hooked startActivityFromRecents args=${method.parameterCount}")
@@ -442,6 +448,24 @@ private fun XposedModule.hookTaskRemoved(classLoader: ClassLoader): Boolean =
         Logger.warn("hookTaskRemoved unavailable (cleanUpRemovedTask/mTaskId): ${it.message}")
     }.isSuccess
 
+// returning to the task recents was opened from finishes an animation instead of launching, so
+// neither launch hook sees it. the resume is the last place a still-locked app can be caught
+private fun interceptResumedLocked(
+    activityTaskManagerService: Any,
+    record: Any,
+    packageName: String,
+    userId: Int,
+) {
+    if ("$packageName:$userId" !in lockedPackages) return
+    if (isUnlocked(packageName, userId)) return
+    val component =
+        runCatching { reflection?.activityRecordComponentField?.get(record) }.getOrNull()
+    val className = (component as? ComponentName)?.className
+    if (isActivityExempt(packageName, userId, className, null)) return
+    Logger.info("gating resumed pkg=$packageName user=$userId")
+    postAuthLaunch(activityTaskManagerService, TaskEntry(packageName, userId, className))
+}
+
 // foreground changes that never reach ActivityStarter, most visibly the home gesture
 private fun XposedModule.hookTopResumedActivity(classLoader: ClassLoader): Boolean =
     runCatching {
@@ -465,6 +489,7 @@ private fun XposedModule.hookTopResumedActivity(classLoader: ClassLoader): Boole
                     Logger.debug { "top resumed pkg=$pkg user=$userId" }
                     markForegrounded(pkg, userId)
                     relockOtherPackages(pkg, userId)
+                    interceptResumedLocked(chain.thisObject, record, pkg, userId)
                 }
             }
             chain.proceed()

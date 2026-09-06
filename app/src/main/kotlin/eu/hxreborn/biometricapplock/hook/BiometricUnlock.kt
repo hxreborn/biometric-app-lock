@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.os.Handler
+import android.os.SystemClock
 import eu.hxreborn.biometricapplock.BiometricAuthActivity
 import eu.hxreborn.biometricapplock.util.Logger
 
@@ -266,19 +267,36 @@ private fun regrantUriPermissions(
     }
 }
 
+// a recents launch and the resume it triggers would post the same prompt twice
+// short window so a dismissed prompt still re-posts on the next return to the app
+private const val AUTH_POST_DEDUPE_MS = 250L
+
+@Volatile
+private var lastAuthPostKey: String? = null
+
+@Volatile
+private var lastAuthPostAt = 0L
+
+private fun claimAuthPost(key: String): Boolean {
+    val now = SystemClock.elapsedRealtime()
+    if (key == lastAuthPostKey && now - lastAuthPostAt < AUTH_POST_DEDUPE_MS) return false
+    lastAuthPostKey = key
+    lastAuthPostAt = now
+    return true
+}
+
 /**
- * Recents path. No in-flight intent to rewrite, so just start the auth activity off the lock.
- * Nothing gets stashed, so after auth the tokened launcher intent re-enters and opens the app fresh
- * ([resolveAuthToken] hands back a null launch and the hook just proceeds it) instead of restoring
- * the exact task.
+ * Recents and transition paths. No in-flight intent to rewrite, so just start the auth activity off
+ * the lock. Nothing gets stashed, so after auth the tokened launcher intent re-enters and opens the
+ * app fresh ([resolveAuthToken] hands back a null launch and the hook just proceeds it) instead of
+ * restoring the exact task.
  */
 internal fun postAuthLaunch(
-    activityTaskSupervisor: Any,
+    activityTaskManagerService: Any,
     entry: TaskEntry,
 ) {
+    if (!claimAuthPost("${entry.packageName}:${entry.userId}")) return
     val reflection = reflection ?: return
-    val activityTaskManagerService =
-        reflection.activityTaskManagerServiceField.get(activityTaskSupervisor)
     val handler = reflection.handlerField.get(activityTaskManagerService) as Handler
     val context = reflection.contextField.get(activityTaskManagerService) as Context
 
