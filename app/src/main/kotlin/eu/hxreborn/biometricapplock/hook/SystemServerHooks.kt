@@ -463,7 +463,13 @@ private fun interceptResumedLocked(
     val className = (component as? ComponentName)?.className
     if (isActivityExempt(packageName, userId, className, null)) return
     Logger.info("gating resumed pkg=$packageName user=$userId")
-    postAuthLaunch(activityTaskManagerService, TaskEntry(packageName, userId, className))
+    // the app is already drawn on this path, so the prompt has to cover it rather than sit over
+    // it see-through, and its window has to land without waiting for the prompt process
+    postAuthLaunch(
+        activityTaskManagerService,
+        TaskEntry(packageName, userId, className),
+        forceOpaque = true,
+    )
 }
 
 // foreground changes that never reach ActivityStarter, most visibly the home gesture

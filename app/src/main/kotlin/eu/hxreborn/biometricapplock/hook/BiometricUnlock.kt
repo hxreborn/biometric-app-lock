@@ -294,6 +294,7 @@ private fun claimAuthPost(key: String): Boolean {
 internal fun postAuthLaunch(
     activityTaskManagerService: Any,
     entry: TaskEntry,
+    forceOpaque: Boolean = false,
 ) {
     if (!claimAuthPost("${entry.packageName}:${entry.userId}")) return
     val reflection = reflection ?: return
@@ -302,7 +303,12 @@ internal fun postAuthLaunch(
 
     val token = createToken(entry.packageName, entry.userId)
     val intent =
-        buildAuthIntent(entry.packageName, entry.userId, token, shouldUseOpaqueUnlockPrompt())
+        buildAuthIntent(
+            entry.packageName,
+            entry.userId,
+            token,
+            forceOpaque || shouldUseOpaqueUnlockPrompt(),
+        )
 
     handler.post {
         runCatching { context.startActivity(intent) }.onFailure {
