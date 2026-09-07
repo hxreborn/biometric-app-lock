@@ -1,6 +1,8 @@
 version: 2
 updates:
   - package-ecosystem: gradle
+    commit-message:
+      prefix: "ci(deps)"
     directory: /
     schedule:
       interval: weekly
@@ -37,6 +39,8 @@ updates:
           - "io.github.fornewid:*"
 
   - package-ecosystem: github-actions
+    commit-message:
+      prefix: "ci(deps)"
     directory: /
     schedule:
       interval: weekly
