@@ -14,6 +14,7 @@ import android.util.Log
 import eu.hxreborn.biometricapplock.prefs.Prefs
 import eu.hxreborn.biometricapplock.util.METHODS_ALL
 import eu.hxreborn.biometricapplock.util.METHOD_BIOMETRIC
+import eu.hxreborn.biometricapplock.util.METHOD_CREDENTIAL
 import eu.hxreborn.biometricapplock.util.METHOD_WEAK_OK
 import eu.hxreborn.biometricapplock.util.getUserHandle
 import eu.hxreborn.biometricapplock.util.miuiFaceEnrollmentCount
@@ -32,6 +33,7 @@ open class BiometricAuthActivity : Activity() {
     private var authToken: String? = null
     private var uninstallAuth = false
     private var replied = false
+    private var lockedOutRetried = false
 
     // the launch transition cancels a prompt started before the window gains focus
     private var pendingPrompt: (() -> Unit)? = null
@@ -107,10 +109,11 @@ open class BiometricAuthActivity : Activity() {
     private fun showPrompt(
         title: String,
         packageKey: String? = null,
+        forceMethods: Int? = null,
     ) {
         val bm = getSystemService(BiometricManager::class.java)
         // an unusable per-app policy keeps the app locked, never widens to the global one
-        val methods = packageKey?.let(::appMethods) ?: globalMethods()
+        val methods = forceMethods ?: (packageKey?.let(::appMethods) ?: globalMethods())
         val authenticators = usableAuthenticators(bm, methods)
         if (authenticators == null) {
             Log.w(TAG, "no usable auth method methods=$methods pkg=$targetPkg")
@@ -208,6 +211,14 @@ open class BiometricAuthActivity : Activity() {
                     errString: CharSequence,
                 ) {
                     Log.w(TAG, "auth error code=$errorCode msg=$errString pkg=$targetPkg")
+                    val lockedOut =
+                        errorCode == BiometricPrompt.BIOMETRIC_ERROR_LOCKOUT ||
+                            errorCode == BiometricPrompt.BIOMETRIC_ERROR_LOCKOUT_PERMANENT
+                    if (lockedOut && !lockedOutRetried && methods and METHOD_CREDENTIAL != 0) {
+                        lockedOutRetried = true
+                        showPrompt(title, packageKey, forceMethods = METHOD_CREDENTIAL)
+                        return
+                    }
                     onResult(AUTH_ERROR)
                 }
             },
