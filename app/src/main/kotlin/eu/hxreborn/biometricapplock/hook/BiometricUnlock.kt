@@ -127,7 +127,7 @@ private fun rewriteLaunch(
     val activityTaskSupervisor = reflection.supervisorField.get(interceptor)
     val realPid = reflection.realCallingPidField.getInt(interceptor)
     val realUid = reflection.realCallingUidField.getInt(interceptor)
-    val userId = resumeUserId ?: reflection.userIdField.getInt(interceptor)
+    val userId = resumeUserId ?: 0
     val startFlags = reflection.startFlagsField.getInt(interceptor)
 
     val resolveArgs =
