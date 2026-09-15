@@ -1,6 +1,46 @@
 {
-  "version": "1.12.0",
+  "version": "1.12.1",
   "entries": [
+    {
+      "type": "fix",
+      "title": "fall back to device credential when biometrics lock out",
+      "description": "Locked apps no longer become unopenable after too many failed fingerprint or face attempts.",
+      "version": "1.12.1",
+      "date": "2026-09-15",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/fa878c50d8e43222f226b142d688f3f7ee304f0a",
+      "scope": "auth",
+      "breaking": false
+    },
+    {
+      "type": "fix",
+      "title": "show the unlock prompt for locked apps in a work profile",
+      "description": "Locked work profile apps no longer bounce straight back to the home screen when tapped.",
+      "version": "1.12.1",
+      "date": "2026-09-15",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/1f9f29aabf594f9ca4e3dabd82cbefb544f8d417",
+      "scope": "hook",
+      "breaking": false
+    },
+    {
+      "type": "fix",
+      "title": "use the solid prompt when a locked app is already on screen",
+      "description": "A locked app coming back from the recents screen is covered as soon as the prompt starts instead of staying readable behind it.",
+      "version": "1.12.1",
+      "date": "2026-09-06",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/b5653dfdb6b6e624cf4f5ee7138774554930c900",
+      "scope": "auth",
+      "breaking": false
+    },
+    {
+      "type": "fix",
+      "title": "lock apps reopened from the recents screen without a launch",
+      "description": "Locked apps no longer open without authentication when you return to them from the recents screen.",
+      "version": "1.12.1",
+      "date": "2026-09-06",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/82db0c31c458b46eab03546a5a91dee96bd1829b",
+      "scope": "hook",
+      "breaking": false
+    },
     {
       "type": "refactor",
       "title": "drop the unused context parameter from usableAuthenticators",
@@ -68,16 +108,6 @@
       "version": "1.11.2",
       "date": "2026-08-24",
       "url": "https://github.com/hxreborn/biometric-app-lock/commit/1d01adcd24923303090c04986246a4e7c2fff6ec",
-      "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "keep an app unlocked while it comes to the foreground",
-      "description": "The unlock prompt no longer reappears several times in a row before a locked app opens.",
-      "version": "1.11.1",
-      "date": "2026-08-24",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/b6946e528d4365cc9662543d92248d0e17e33cfe",
       "scope": "hook",
       "breaking": false
     }
