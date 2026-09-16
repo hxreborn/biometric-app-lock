@@ -170,6 +170,7 @@ class AppOverridesRepository(
         }
 
     fun prune(installedPackageKeys: Set<String>) {
+        if (installedPackageKeys.isEmpty()) return
         val keys = local.all.keys
         val overrideKeys =
             keys.filter { key ->

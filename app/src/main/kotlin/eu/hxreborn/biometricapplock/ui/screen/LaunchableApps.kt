@@ -3,6 +3,7 @@ package eu.hxreborn.biometricapplock.ui.screen
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.LauncherApps
+import android.os.UserHandle
 import android.os.UserManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -29,6 +30,21 @@ internal suspend fun loadInstalledPackageKeys(
                 val pkg = info.applicationInfo.packageName
                 if (pkg != ownPackage) {
                     keys.add("$pkg:$userId")
+                }
+            }
+            runCatching {
+                val userContext =
+                    Context::class.java
+                        .getMethod(
+                            "createPackageContextAsUser",
+                            String::class.java,
+                            Int::class.javaPrimitiveType,
+                            UserHandle::class.java,
+                        ).invoke(context, "android", 0, user) as? Context
+                userContext?.packageManager?.getInstalledApplications(0)?.forEach { info ->
+                    if (info.packageName != ownPackage) {
+                        keys.add("${info.packageName}:$userId")
+                    }
                 }
             }
         }

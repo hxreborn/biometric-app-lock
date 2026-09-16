@@ -45,6 +45,9 @@
     <string name="dashboard_biometric_chip_update">Update required</string>
     <string name="dashboard_biometric_last_auth">Last authentication</string>
 
+    <string name="notification_redacted_title">Content hidden</string>
+    <string name="notification_redacted_text">Unlock the app to view</string>
+
 
     <string name="apps_search_placeholder">Search apps</string>
     <string name="apps_search_clear_cd">Clear search</string>

@@ -93,6 +93,7 @@ fun withCredential(
 fun usableAuthenticators(
     bm: BiometricManager,
     methods: Int,
+    context: Context? = null,
 ): Int? {
     val weakOk = methods and METHOD_WEAK_OK != 0
     var authenticators = 0
@@ -101,10 +102,16 @@ fun usableAuthenticators(
         val requested = methodAuthenticators(method, weakOk)
         if (bm.canAuthenticate(requested) == BiometricManager.BIOMETRIC_SUCCESS) {
             authenticators = authenticators or requested
+        } else if (context != null && method == METHOD_BIOMETRIC && weakOk) {
+            // Samsung convenience-class face is Class 1 (CONVENIENCE), which BiometricManager rejects for BIOMETRIC_WEAK.
+            // On Samsung devices with face enrolled, falling back to DEVICE_CREDENTIAL allows One UI's native
+            // Keyguard/BiometricPrompt to invoke Samsung face recognition instead of permanently locking out.
+            val samsungEnrolled = samsungFaceEnrollmentCount(context) ?: 0
+            if (samsungEnrolled > 0) {
+                authenticators =
+                    authenticators or requested or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+            }
         }
-        // Note: if canAuthenticate rejects a mask we do NOT add DEVICE_CREDENTIAL.
-        // The user's "require fingerprint or face only" setting must be respected.
-        // If nothing is usable, authenticators stays 0, we return null, and the app stays locked.
     }
     return authenticators.takeIf { it != 0 }
 }
@@ -191,12 +198,16 @@ fun hasFaceSensorInDump(): Boolean =
     faceSensorDumpCache ?: checkFaceSensorInDump().also { faceSensorDumpCache = it }
 
 private fun checkFaceSensorInDump(): Boolean {
-    val dump = RootShell.exec("dumpsys biometric").out.joinToString("\n")
-    // AOSP format: modality 8
-    if (Regex("""modality\s+8\b""").containsMatchIn(dump)) return true
-    // Samsung compact format: {8, *}
-    if (Regex("""\{8,\s*\d+\}""").containsMatchIn(dump)) return true
-    return false
+    val suPaths = arrayOf("/system/bin/su", "/system/xbin/su", "/sbin/su", "/data/adb/magisk/su")
+    if (suPaths.none { java.io.File(it).exists() }) return false
+    return runCatching {
+        val dump = RootShell.exec("dumpsys biometric").out.joinToString("\n")
+        // AOSP format: modality 8
+        if (Regex("""modality\s+8\b""").containsMatchIn(dump)) return@runCatching true
+        // Samsung compact format: {8, *}
+        if (Regex("""\{8,\s*\d+\}""").containsMatchIn(dump)) return@runCatching true
+        false
+    }.getOrDefault(false)
 }
 
 // MIUI/HyperOS devices keep face unlock in a separate service (miui.face.FaceService)
@@ -235,17 +246,35 @@ fun miuiFaceEnrollmentCount(context: Context): Int? {
     }
 }
 
-// hasMiuiFace is true only when at least one face is enrolled (count >= 1).
-// count == 0 means the service exists but nothing enrolled — face hardware card must not show face.
-fun hasMiuiFace(context: Context): Boolean = (miuiFaceEnrollmentCount(context) ?: -1) >= 1
+// hasMiuiFaceHardware checks for FaceService existence or MIUI feature flag, separate from enrollment count.
+fun hasMiuiFaceHardware(context: Context): Boolean {
+    val manufacturer = android.os.Build.MANUFACTURER
+    if (!manufacturer.equals("xiaomi", ignoreCase = true) &&
+        !manufacturer.equals("poco", ignoreCase = true) &&
+        !manufacturer.equals("redmi", ignoreCase = true)
+    ) {
+        return false
+    }
+    return runCatching {
+        val sm = Class.forName("android.os.ServiceManager")
+        sm.getMethod("getService", String::class.java).invoke(null, "miui.face.FaceService") != null
+    }.getOrDefault(false) || android.provider.Settings.Secure.getInt(
+        context.contentResolver,
+        "face_unlock_valid_feature",
+        -1,
+    ) != -1
+}
 
-// Combined face hardware detection: standard API + root biometric dump + MIUI service.
+fun hasMiuiFace(context: Context): Boolean = hasMiuiFaceHardware(context)
+
+// Combined face hardware detection: standard API + MIUI service + Samsung check + root biometric dump.
 // This covers devices like Samsung (CONVENIENCE-class face) and Xiaomi MIUI (separate service)
 // that don't expose android.hardware.biometrics.face via PackageManager.
 fun hasFaceHardware(context: Context): Boolean =
     context.packageManager.hasSystemFeature(PackageManager.FEATURE_FACE) ||
-        hasFaceSensorInDump() ||
-        hasMiuiFace(context)
+        hasMiuiFaceHardware(context) ||
+        (samsungFaceEnrollmentCount(context) != null) ||
+        hasFaceSensorInDump()
 
 // Samsung convenience-class face doesn't expose its enrollment status to BiometricManager.canAuthenticate(WEAK).
 // We check the face_screen_lock secure setting which is 1 when face unlock is set up.

@@ -24,8 +24,8 @@ object DiagnosticsExporter {
     // -b all reads every logcat buffer so nothing is missed if a line lands off the main one
     // the log directory carries the framework's own name, so forks land outside /data/adb/lspd
     private const val HOOK_LOG_COMMAND =
-        "( grep -h ${Logger.TAG} /data/adb/*/log.old/verbose_*.log; " +
-            "grep -h ${Logger.TAG} /data/adb/*/log/verbose_*.log ) 2>/dev/null"
+        "( grep -h ${Logger.TAG} /data/adb/*/log.old/*.log; " +
+            "grep -h ${Logger.TAG} /data/adb/*/log/*.log ) 2>/dev/null"
 
     private const val LOGCAT_COMMAND = "logcat -d -b all -s ${Logger.TAG} 2>/dev/null"
 

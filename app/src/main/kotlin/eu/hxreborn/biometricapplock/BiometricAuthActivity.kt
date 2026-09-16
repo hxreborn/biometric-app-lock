@@ -114,7 +114,7 @@ open class BiometricAuthActivity : Activity() {
         val bm = getSystemService(BiometricManager::class.java)
         // an unusable per-app policy keeps the app locked, never widens to the global one
         val methods = forceMethods ?: (packageKey?.let(::appMethods) ?: globalMethods())
-        val authenticators = usableAuthenticators(bm, methods)
+        val authenticators = usableAuthenticators(bm, methods, this)
         if (authenticators == null) {
             Log.w(TAG, "no usable auth method methods=$methods pkg=$targetPkg")
             onResult(AUTH_CANCELLED)
@@ -191,6 +191,10 @@ open class BiometricAuthActivity : Activity() {
         if (authenticators and Authenticators.DEVICE_CREDENTIAL == 0) {
             builder.setNegativeButton(getString(android.R.string.cancel), executor) { _, _ ->
                 cancellation.cancel()
+                miuiFaceAuth?.cancel()
+                miuiFaceAuth = null
+                faceScanOverlay?.dismiss()
+                faceScanOverlay = null
                 onResult(AUTH_CANCELLED)
             }
         }
@@ -216,6 +220,10 @@ open class BiometricAuthActivity : Activity() {
                             errorCode == BiometricPrompt.BIOMETRIC_ERROR_LOCKOUT_PERMANENT
                     if (lockedOut && !lockedOutRetried && methods and METHOD_CREDENTIAL != 0) {
                         lockedOutRetried = true
+                        miuiFaceAuth?.cancel()
+                        miuiFaceAuth = null
+                        faceScanOverlay?.dismiss()
+                        faceScanOverlay = null
                         showPrompt(title, packageKey, forceMethods = METHOD_CREDENTIAL)
                         return
                     }
@@ -238,12 +246,20 @@ open class BiometricAuthActivity : Activity() {
         Log.d(TAG, "onStop replied=$replied pkg=$targetPkg")
         // the system prompt steals focus and stops this activity, so only finish once there is a
         // result, or the prompt dies before the user can answer
-        if (replied) finish()
+        if (replied) {
+            miuiFaceAuth?.cancel()
+            miuiFaceAuth = null
+            faceScanOverlay?.dismiss()
+            faceScanOverlay = null
+            finish()
+        }
     }
 
     private fun onResult(code: Int) {
         if (replied) return
         replied = true
+        miuiFaceAuth?.cancel()
+        miuiFaceAuth = null
         faceScanOverlay?.dismiss()
         faceScanOverlay = null
         Log.d(TAG, "onResult code=$code pkg=$targetPkg uninstallAuth=$uninstallAuth")

@@ -213,32 +213,25 @@ private fun readBiometricState(context: Context): BiometricState {
     val faceClass = classes[MODALITY_FACE] ?: inferredFaceClass(context)
 
     val fpEnrolled = readFingerprintCount(context)
-    // For Samsung convenience face, check face_screen_lock setting.
-    // For standard Android face (FEATURE_FACE), the BiometricManager status is usually enough, but we fall back.
-    val faceEnrolled =
-        if (hasFace) {
-            miuiFaceEnrollmentCount(context) ?: samsungFaceEnrollmentCount(context)
-        } else {
-            null
-        }
+    val faceEnrolled = if (hasFace) readFaceCount(context) else null
     val lastAuthAgo = readLastAuthAgo(bm)
 
     return BiometricState(
         fingerprint =
             modalityState(
                 hasHardware = hasFingerprint,
-                weakStatus = weakStatus,
-                strongStatus = strongStatus,
+                status = strongStatus,
                 explicitCount = fpEnrolled,
                 classLabel = fpClass,
+                fallbackSuccessEnrolled = true,
             ),
         face =
             modalityState(
                 hasHardware = hasFace,
-                weakStatus = weakStatus,
-                strongStatus = strongStatus,
+                status = weakStatus,
                 explicitCount = faceEnrolled,
                 classLabel = faceClass,
+                fallbackSuccessEnrolled = !hasFingerprint,
             ),
         lastAuthAgo = lastAuthAgo,
     )
@@ -246,10 +239,10 @@ private fun readBiometricState(context: Context): BiometricState {
 
 private fun modalityState(
     hasHardware: Boolean,
-    weakStatus: Int,
-    strongStatus: Int,
+    status: Int,
     explicitCount: Int?,
     classLabel: BiometricClass?,
+    fallbackSuccessEnrolled: Boolean = true,
 ): ModalityState {
     if (!hasHardware) {
         return ModalityState(ChipKind.NoSensor)
@@ -257,20 +250,34 @@ private fun modalityState(
     val chip =
         when {
             explicitCount != null && explicitCount > 0 -> ChipKind.Enrolled
-
             explicitCount != null && explicitCount == 0 -> ChipKind.NotEnrolled
-
-            weakStatus == BiometricManager.BIOMETRIC_SUCCESS -> ChipKind.Enrolled
-
-            weakStatus == BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE ||
-                strongStatus == BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> ChipKind.Unavailable
-
-            weakStatus == BiometricManager.BIOMETRIC_ERROR_SECURITY_UPDATE_REQUIRED ||
-                strongStatus == BiometricManager.BIOMETRIC_ERROR_SECURITY_UPDATE_REQUIRED -> ChipKind.UpdateRequired
-
+            fallbackSuccessEnrolled && status == BiometricManager.BIOMETRIC_SUCCESS -> ChipKind.Enrolled
+            status == BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> ChipKind.Unavailable
+            status == BiometricManager.BIOMETRIC_ERROR_SECURITY_UPDATE_REQUIRED -> ChipKind.UpdateRequired
             else -> ChipKind.NotEnrolled
         }
     return ModalityState(chip = chip, enrolledCount = explicitCount, classLabel = classLabel)
+}
+
+@SuppressLint("MissingPermission")
+private fun readFaceCount(context: Context): Int? {
+    val miuiCount = miuiFaceEnrollmentCount(context)
+    if (miuiCount != null) return miuiCount
+
+    val samsungCount = samsungFaceEnrollmentCount(context)
+    if (samsungCount != null) return samsungCount
+
+    val fm = context.getSystemService("face") ?: return null
+    return try {
+        val isHwDetected = fm.javaClass.getMethod("isHardwareDetected").invoke(fm) as? Boolean
+        if (isHwDetected != true) return null
+        val list = runCatching { fm.javaClass.getMethod("getEnrolledFaces").invoke(fm) as? List<*> }.getOrNull()
+        if (list != null) return list.size
+        val hasEnrolled = runCatching { fm.javaClass.getMethod("hasEnrolledTemplates").invoke(fm) as? Boolean }.getOrNull()
+        if (hasEnrolled == true) 1 else 0
+    } catch (_: Throwable) {
+        null
+    }
 }
 
 @SuppressLint("MissingPermission")

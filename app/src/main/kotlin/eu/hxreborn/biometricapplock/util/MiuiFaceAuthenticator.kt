@@ -43,41 +43,49 @@ class MiuiFaceAuthenticator(
     /** True when the face service binder is available. Enrollment is checked separately at the call site. */
     fun isAvailable(): Boolean = faceService != null
 
+    private val executor =
+        java.util.concurrent.Executors
+            .newSingleThreadExecutor()
+
     fun authenticate() {
         val service = faceService ?: return
         isAuthenticating = true
-        try {
-            // Transaction 2 — preInitAuthen: registers our Binder receiver with the face service
-            val preData = Parcel.obtain()
-            val preReply = Parcel.obtain()
-            preData.writeInterfaceToken("miui.face.FaceService")
-            preData.writeStrongBinder(token)
-            preData.writeString(BuildConfig.APPLICATION_ID)
-            preData.writeStrongBinder(this)
-            service.transact(2, preData, preReply, 0)
-            preReply.readException()
-            preData.recycle()
-            preReply.recycle()
+        executor.execute {
+            try {
+                // Transaction 2 — preInitAuthen: registers our Binder receiver with the face service
+                val preData = Parcel.obtain()
+                val preReply = Parcel.obtain()
+                preData.writeInterfaceToken("miui.face.FaceService")
+                preData.writeStrongBinder(token)
+                preData.writeString(BuildConfig.APPLICATION_ID)
+                preData.writeStrongBinder(this)
+                service.transact(2, preData, preReply, 0)
+                preReply.readException()
+                preData.recycle()
+                preReply.recycle()
 
-            // Transaction 3 — authenticate: activates the front-camera face scanner
-            val authData = Parcel.obtain()
-            val authReply = Parcel.obtain()
-            authData.writeInterfaceToken("miui.face.FaceService")
-            authData.writeStrongBinder(token)
-            authData.writeLong(0L) // sessionId
-            authData.writeInt(0) // userId
-            authData.writeStrongBinder(this) // receiver (us)
-            authData.writeInt(0) // flags
-            authData.writeString(BuildConfig.APPLICATION_ID) // opPackageName
-            authData.writeInt(10000) // timeout ms
-            service.transact(3, authData, authReply, 0)
-            authReply.readException()
-            authData.recycle()
-            authReply.recycle()
-        } catch (e: Exception) {
-            Log.e("MiuiFace", "Failed to start authentication", e)
-            isAuthenticating = false
-            onResult(false)
+                if (!isAuthenticating) return@execute
+
+                // Transaction 3 — authenticate: activates the front-camera face scanner
+                val authData = Parcel.obtain()
+                val authReply = Parcel.obtain()
+                authData.writeInterfaceToken("miui.face.FaceService")
+                authData.writeStrongBinder(token)
+                authData.writeLong(0L) // sessionId
+                authData.writeInt(0) // userId
+                authData.writeStrongBinder(this) // receiver (us)
+                authData.writeInt(0) // flags
+                authData.writeString(BuildConfig.APPLICATION_ID) // opPackageName
+                authData.writeInt(10000) // timeout ms
+                service.transact(3, authData, authReply, 0)
+                authReply.readException()
+                authData.recycle()
+                authReply.recycle()
+            } catch (e: Exception) {
+                Log.e("MiuiFace", "Failed to start authentication", e)
+                isAuthenticating = false
+                onResult(false)
+            }
         }
     }
 
@@ -85,19 +93,21 @@ class MiuiFaceAuthenticator(
         if (!isAuthenticating) return
         val service = faceService ?: return
         isAuthenticating = false
-        try {
-            // Transaction 9 — cancelAuthentication
-            val data = Parcel.obtain()
-            val reply = Parcel.obtain()
-            data.writeInterfaceToken("miui.face.FaceService")
-            data.writeStrongBinder(token)
-            data.writeString(BuildConfig.APPLICATION_ID)
-            service.transact(9, data, reply, 0)
-            reply.readException()
-            data.recycle()
-            reply.recycle()
-        } catch (e: Exception) {
-            Log.e("MiuiFace", "Failed to cancel authentication", e)
+        executor.execute {
+            try {
+                // Transaction 9 — cancelAuthentication
+                val data = Parcel.obtain()
+                val reply = Parcel.obtain()
+                data.writeInterfaceToken("miui.face.FaceService")
+                data.writeStrongBinder(token)
+                data.writeString(BuildConfig.APPLICATION_ID)
+                service.transact(9, data, reply, 0)
+                reply.readException()
+                data.recycle()
+                reply.recycle()
+            } catch (e: Exception) {
+                Log.e("MiuiFace", "Failed to cancel authentication", e)
+            }
         }
     }
 
