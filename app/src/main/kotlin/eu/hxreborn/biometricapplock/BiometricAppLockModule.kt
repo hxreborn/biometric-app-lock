@@ -65,6 +65,11 @@ class BiometricAppLockModule : XposedModule() {
     override fun onHotReloading(param: HotReloadingParam): Boolean {
         Logger.debug { "hot reloading pid=${Process.myPid()}" }
         unregisterPackageEvents()
+        runCatching {
+            getRemotePreferences(
+                Prefs.GROUP,
+            ).unregisterOnSharedPreferenceChangeListener(prefsListener)
+        }
         systemServerClassLoader?.let { param.setSavedInstanceState(it) }
         return true
     }
