@@ -104,12 +104,12 @@ fun usableAuthenticators(
             authenticators = authenticators or requested
         } else if (context != null && method == METHOD_BIOMETRIC && weakOk) {
             // Samsung convenience-class face is Class 1 (CONVENIENCE), which BiometricManager rejects for BIOMETRIC_WEAK.
-            // On Samsung devices with face enrolled, falling back to DEVICE_CREDENTIAL allows One UI's native
-            // Keyguard/BiometricPrompt to invoke Samsung face recognition instead of permanently locking out.
+            // We add BIOMETRIC_WEAK so One UI's native BiometricPrompt can invoke Samsung face recognition.
+            // We do NOT add DEVICE_CREDENTIAL here; that is only added when METHOD_CREDENTIAL is in the mask,
+            // so a biometric-only policy cannot be bypassed with a PIN on lockout.
             val samsungEnrolled = samsungFaceEnrollmentCount(context) ?: 0
             if (samsungEnrolled > 0) {
-                authenticators =
-                    authenticators or requested or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                authenticators = authenticators or requested
             }
         }
     }
@@ -198,16 +198,12 @@ fun hasFaceSensorInDump(): Boolean =
     faceSensorDumpCache ?: checkFaceSensorInDump().also { faceSensorDumpCache = it }
 
 private fun checkFaceSensorInDump(): Boolean {
-    val suPaths = arrayOf("/system/bin/su", "/system/xbin/su", "/sbin/su", "/data/adb/magisk/su")
-    if (suPaths.none { java.io.File(it).exists() }) return false
-    return runCatching {
-        val dump = RootShell.exec("dumpsys biometric").out.joinToString("\n")
-        // AOSP format: modality 8
-        if (Regex("""modality\s+8\b""").containsMatchIn(dump)) return@runCatching true
-        // Samsung compact format: {8, *}
-        if (Regex("""\{8,\s*\d+\}""").containsMatchIn(dump)) return@runCatching true
-        false
-    }.getOrDefault(false)
+    val dump = RootShell.exec("dumpsys biometric").out.joinToString("\n")
+    // AOSP format: modality 8
+    if (Regex("""modality\s+8\b""").containsMatchIn(dump)) return true
+    // Samsung compact format: {8, *}
+    if (Regex("""\{8,\s*\d+\}""").containsMatchIn(dump)) return true
+    return false
 }
 
 // MIUI/HyperOS devices keep face unlock in a separate service (miui.face.FaceService)
