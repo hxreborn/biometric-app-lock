@@ -117,7 +117,7 @@ internal fun tryRedirect(
  * Points the in-flight launch at [intent]. ActivityStarter carries on with whatever the interceptor
  * holds, so every field the resolved target implies has to move with it or the original still runs.
  */
-private fun rewriteLaunch(
+internal fun rewriteLaunch(
     interceptor: Any,
     intent: Intent,
     resumeUserId: Int? = null,
@@ -127,6 +127,10 @@ private fun rewriteLaunch(
     val activityTaskSupervisor = reflection.supervisorField.get(interceptor)
     val realPid = reflection.realCallingPidField.getInt(interceptor)
     val realUid = reflection.realCallingUidField.getInt(interceptor)
+
+    val originalUserId = reflection.userIdField.getInt(interceptor)
+    val originalCallingUid = reflection.callingUidField.getInt(interceptor)
+
     val userId = resumeUserId ?: 0
     val startFlags = reflection.startFlagsField.getInt(interceptor)
 
@@ -155,7 +159,7 @@ private fun rewriteLaunch(
     reflection.resolvedInfoField.set(interceptor, resolvedInfo)
     reflection.activityInfoField.set(interceptor, activityInfo)
     reflection.callingPidField.setInt(interceptor, realPid)
-    reflection.callingUidField.setInt(interceptor, resumeCallingUid ?: realUid)
+    reflection.callingUidField.setInt(interceptor, resumeCallingUid ?: originalCallingUid)
     reflection.userIdField.setInt(interceptor, resumeUserId ?: 0)
     reflection.resolvedTypeField.set(interceptor, null)
 }
@@ -311,7 +315,33 @@ internal fun postAuthLaunch(
         )
 
     handler.post {
-        runCatching { context.startActivity(intent) }.onFailure {
+        runCatching {
+            val userHandle =
+                reflection.userHandleOf.invoke(
+                    null,
+                    entry.userId,
+                ) as android.os.UserHandle
+            val userContext =
+                Context::class.java
+                    .getMethod(
+                        "createContextAsUser",
+                        android.os.UserHandle::class.java,
+                        Int::class.javaPrimitiveType,
+                    ).invoke(context, userHandle, 0) as Context
+            val launcherIntent =
+                userContext.packageManager.getLaunchIntentForPackage(
+                    entry.packageName,
+                )
+            if (launcherIntent != null) {
+                stashLaunch(token, launcherIntent)
+            }
+        }.onFailure {
+            Logger.warn("failed to stash launcher intent: ${it.message}")
+        }
+
+        runCatching {
+            context.startActivity(intent)
+        }.onFailure {
             discardToken(token)
             Logger.error("posted auth launch failed: ${it.message}", it)
         }
@@ -341,8 +371,11 @@ internal fun launchUninstallAuth(targetPackage: String?) {
             }
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
+    val userHandle = reflection.userHandleOf.invoke(null, -2) // -2 = UserHandle.USER_CURRENT
     handler.post {
-        runCatching { context.startActivity(intent) }.onFailure {
+        runCatching {
+            reflection.startActivityAsUser.invoke(context, intent, userHandle)
+        }.onFailure {
             Logger.error("uninstall auth launch failed: ${it.message}", it)
         }
     }

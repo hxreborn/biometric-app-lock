@@ -51,6 +51,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -113,7 +114,7 @@ fun SettingsScreen(
     var showRelockDialog by remember { mutableStateOf(false) }
     var showWhatsNew by remember { mutableStateOf(false) }
     var showLogActions by remember { mutableStateOf(false) }
-    var pendingSaveFile by remember { mutableStateOf<File?>(null) }
+    var pendingSaveFilePath by rememberSaveable { mutableStateOf<String?>(null) }
     var launcherIconHidden by remember { mutableStateOf(!LauncherIconHelper.isLauncherIconVisible(context)) }
     var showHideLauncherConfirm by remember { mutableStateOf(false) }
 
@@ -152,9 +153,10 @@ fun SettingsScreen(
 
     val saveLogsLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
-            val file = pendingSaveFile
-            pendingSaveFile = null
-            if (uri == null || file == null) return@rememberLauncherForActivityResult
+            val filePath = pendingSaveFilePath
+            pendingSaveFilePath = null
+            if (uri == null || filePath == null) return@rememberLauncherForActivityResult
+            val file = File(filePath)
             coroutineScope.launch {
                 val saved = DiagnosticsExporter.saveTo(context, file, uri)
                 Toast
@@ -251,7 +253,7 @@ fun SettingsScreen(
         LogActionsSheet(
             onSave = {
                 collect { file ->
-                    pendingSaveFile = file
+                    pendingSaveFilePath = file.absolutePath
                     saveLogsLauncher.launch(file.name)
                 }
             },

@@ -116,26 +116,30 @@ class UpdateRepository(
             runCatching {
                 val etag = Prefs.CHANGELOG_ETAG.read(prefs)
                 val conn = openConnection(CHANGELOG_URL, etag)
-                when (conn.responseCode) {
-                    304 -> {
-                        fallback
-                    }
-
-                    200 -> {
-                        val raw = conn.inputStream.bufferedReader().use { it.readText() }
-                        val newEtag = conn.getHeaderField("ETag")
-                        val entries = json.decodeFromString<ChangelogManifest>(raw).entries
-                        _cachedChangelog.value = entries
-                        prefs.edit {
-                            Prefs.LAST_CHANGELOG_JSON.write(this, raw)
-                            if (newEtag != null) Prefs.CHANGELOG_ETAG.write(this, newEtag)
+                try {
+                    when (conn.responseCode) {
+                        304 -> {
+                            fallback
                         }
-                        entries
-                    }
 
-                    else -> {
-                        fallback
+                        200 -> {
+                            val raw = conn.inputStream.bufferedReader().use { it.readText() }
+                            val newEtag = conn.getHeaderField("ETag")
+                            val entries = json.decodeFromString<ChangelogManifest>(raw).entries
+                            _cachedChangelog.value = entries
+                            prefs.edit {
+                                Prefs.LAST_CHANGELOG_JSON.write(this, raw)
+                                if (newEtag != null) Prefs.CHANGELOG_ETAG.write(this, newEtag)
+                            }
+                            entries
+                        }
+
+                        else -> {
+                            fallback
+                        }
                     }
+                } finally {
+                    conn.disconnect()
                 }
             }.getOrElse {
                 Log.w(TAG, "changelog fetch failed: ${it.message}")
@@ -170,72 +174,80 @@ class UpdateRepository(
     private fun fetchRemoteVersionCode(tag: String): Int? =
         runCatching {
             val conn = openConnection(GRADLE_PROPS_URL_FORMAT.format(tag))
-            if (conn.responseCode != 200) return@runCatching null
-            val body = conn.inputStream.bufferedReader().use { it.readText() }
-            parseVersionCode(body)
+            try {
+                if (conn.responseCode != 200) return@runCatching null
+                val body = conn.inputStream.bufferedReader().use { it.readText() }
+                parseVersionCode(body)
+            } finally {
+                conn.disconnect()
+            }
         }.getOrNull()
 
     private fun fetchRelease(): UpdateState =
         try {
             val etag = Prefs.RELEASE_ETAG.read(prefs)
             val conn = openConnection(RELEASE_URL, etag)
-            val code = conn.responseCode
-            val isPrimaryRateLimit =
-                code == 403 && conn.getHeaderField("X-RateLimit-Remaining") == "0"
-            val isSecondaryRateLimit = code == 429
-            when {
-                code == 304 -> {
-                    val cached = Prefs.LAST_RELEASE_JSON.read(prefs)
-                    val cachedCode = Prefs.LAST_REMOTE_VERSION_CODE.read(prefs)
-                    if (cached.isNotEmpty() && cachedCode > 0) {
-                        compareRelease(cached, cachedCode)
-                    } else {
-                        UpdateState.UpToDate(BuildConfig.VERSION_NAME)
-                    }
-                }
-
-                isPrimaryRateLimit -> {
-                    val resetMs =
-                        conn
-                            .getHeaderField(
-                                "X-RateLimit-Reset",
-                            )?.toLongOrNull()
-                            ?.times(1000)
-                    UpdateState.RateLimited(resetMs)
-                }
-
-                isSecondaryRateLimit -> {
-                    val retryAfterSecs = conn.getHeaderField("Retry-After")?.toLongOrNull()
-                    val resetMs = retryAfterSecs?.let { System.currentTimeMillis() + it * 1000 }
-                    UpdateState.RateLimited(resetMs)
-                }
-
-                code in 500..599 -> {
-                    Log.w(TAG, "update check http=$code")
-                    UpdateState.Failed(FailureCause.ServiceUnavailable)
-                }
-
-                code != 200 -> {
-                    Log.w(TAG, "update check http=$code")
-                    UpdateState.Failed(FailureCause.Network)
-                }
-
-                else -> {
-                    val body = conn.inputStream.bufferedReader().use { it.readText() }
-                    val tag = JSONObject(body).getString("tag_name")
-                    val remoteCode =
-                        fetchRemoteVersionCode(tag) ?: run {
-                            Log.w(TAG, "could not resolve remote version.code for tag=$tag")
-                            return UpdateState.Failed(FailureCause.Parse)
+            try {
+                val code = conn.responseCode
+                val isPrimaryRateLimit =
+                    code == 403 && conn.getHeaderField("X-RateLimit-Remaining") == "0"
+                val isSecondaryRateLimit = code == 429
+                when {
+                    code == 304 -> {
+                        val cached = Prefs.LAST_RELEASE_JSON.read(prefs)
+                        val cachedCode = Prefs.LAST_REMOTE_VERSION_CODE.read(prefs)
+                        if (cached.isNotEmpty() && cachedCode > 0) {
+                            compareRelease(cached, cachedCode)
+                        } else {
+                            UpdateState.UpToDate(BuildConfig.VERSION_NAME)
                         }
-                    prefs.edit {
-                        Prefs.LAST_RELEASE_JSON.write(this, body)
-                        Prefs.LAST_REMOTE_VERSION_CODE.write(this, remoteCode)
-                        val newEtag = conn.getHeaderField("ETag")
-                        if (newEtag != null) Prefs.RELEASE_ETAG.write(this, newEtag)
                     }
-                    compareRelease(body, remoteCode)
+
+                    isPrimaryRateLimit -> {
+                        val resetMs =
+                            conn
+                                .getHeaderField(
+                                    "X-RateLimit-Reset",
+                                )?.toLongOrNull()
+                                ?.times(1000)
+                        UpdateState.RateLimited(resetMs)
+                    }
+
+                    isSecondaryRateLimit -> {
+                        val retryAfterSecs = conn.getHeaderField("Retry-After")?.toLongOrNull()
+                        val resetMs = retryAfterSecs?.let { System.currentTimeMillis() + it * 1000 }
+                        UpdateState.RateLimited(resetMs)
+                    }
+
+                    code in 500..599 -> {
+                        Log.w(TAG, "update check http=$code")
+                        UpdateState.Failed(FailureCause.ServiceUnavailable)
+                    }
+
+                    code != 200 -> {
+                        Log.w(TAG, "update check http=$code")
+                        UpdateState.Failed(FailureCause.Network)
+                    }
+
+                    else -> {
+                        val body = conn.inputStream.bufferedReader().use { it.readText() }
+                        val tag = JSONObject(body).getString("tag_name")
+                        val remoteCode =
+                            fetchRemoteVersionCode(tag) ?: run {
+                                Log.w(TAG, "could not resolve remote version.code for tag=$tag")
+                                return UpdateState.Failed(FailureCause.Parse)
+                            }
+                        prefs.edit {
+                            Prefs.LAST_RELEASE_JSON.write(this, body)
+                            Prefs.LAST_REMOTE_VERSION_CODE.write(this, remoteCode)
+                            val newEtag = conn.getHeaderField("ETag")
+                            if (newEtag != null) Prefs.RELEASE_ETAG.write(this, newEtag)
+                        }
+                        compareRelease(body, remoteCode)
+                    }
                 }
+            } finally {
+                conn.disconnect()
             }
         } catch (e: Exception) {
             Log.w(TAG, "update check exception: ${e.message}")
@@ -258,9 +270,6 @@ class UpdateRepository(
     private fun isOnline(): Boolean {
         val cm = app.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
-        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-            caps.hasCapability(
-                NetworkCapabilities.NET_CAPABILITY_VALIDATED,
-            )
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 }

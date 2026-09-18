@@ -21,12 +21,13 @@ object DiagnosticsExporter {
     private const val CONTACT_EMAIL = "hxreborn@duck.com"
 
     // system_server hooks log to LSPosed's own file while the module process logs to logcat
-    // -b all reads every logcat buffer so nothing is missed if a line lands off the main one
     // the log directory carries the framework's own name, so forks land outside /data/adb/lspd
+    // modules_*.log avoids the duplicate lines from verbose_*.log on stock LSPosed
     private const val HOOK_LOG_COMMAND =
-        "( grep -h ${Logger.TAG} /data/adb/*/log.old/verbose_*.log; " +
-            "grep -h ${Logger.TAG} /data/adb/*/log/verbose_*.log ) 2>/dev/null"
+        "( grep -h ${Logger.TAG} /data/adb/*/log.old/modules_*.log; " +
+            "grep -h ${Logger.TAG} /data/adb/*/log/modules_*.log ) 2>/dev/null"
 
+    // -b all reads every logcat buffer so nothing is missed if a line lands off the main one
     private const val LOGCAT_COMMAND = "logcat -d -b all -s ${Logger.TAG} 2>/dev/null"
 
     private const val CRASH_LOG_COMMAND = "logcat -d -b crash 2>/dev/null"
@@ -80,9 +81,13 @@ object DiagnosticsExporter {
                 putExtra(Intent.EXTRA_SUBJECT, "BiometricAppLock ${BuildConfig.VERSION_NAME} logs")
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-        context.startActivity(
-            Intent.createChooser(send, context.getString(R.string.diagnostics_share_title)),
-        )
+        val chooser =
+            Intent.createChooser(
+                send,
+                context.getString(R.string.diagnostics_share_title),
+            )
+        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(chooser)
     }
 
     private fun body(

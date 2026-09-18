@@ -227,16 +227,14 @@ private fun readBiometricState(context: Context): BiometricState {
         fingerprint =
             modalityState(
                 hasHardware = hasFingerprint,
-                weakStatus = weakStatus,
-                strongStatus = strongStatus,
+                status = strongStatus,
                 explicitCount = fpEnrolled,
                 classLabel = fpClass,
             ),
         face =
             modalityState(
                 hasHardware = hasFace,
-                weakStatus = weakStatus,
-                strongStatus = strongStatus,
+                status = weakStatus,
                 explicitCount = faceEnrolled,
                 classLabel = faceClass,
             ),
@@ -246,8 +244,7 @@ private fun readBiometricState(context: Context): BiometricState {
 
 private fun modalityState(
     hasHardware: Boolean,
-    weakStatus: Int,
-    strongStatus: Int,
+    status: Int,
     explicitCount: Int?,
     classLabel: BiometricClass?,
 ): ModalityState {
@@ -257,17 +254,10 @@ private fun modalityState(
     val chip =
         when {
             explicitCount != null && explicitCount > 0 -> ChipKind.Enrolled
-
             explicitCount != null && explicitCount == 0 -> ChipKind.NotEnrolled
-
-            weakStatus == BiometricManager.BIOMETRIC_SUCCESS -> ChipKind.Enrolled
-
-            weakStatus == BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE ||
-                strongStatus == BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> ChipKind.Unavailable
-
-            weakStatus == BiometricManager.BIOMETRIC_ERROR_SECURITY_UPDATE_REQUIRED ||
-                strongStatus == BiometricManager.BIOMETRIC_ERROR_SECURITY_UPDATE_REQUIRED -> ChipKind.UpdateRequired
-
+            status == BiometricManager.BIOMETRIC_SUCCESS -> ChipKind.Enrolled
+            status == BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> ChipKind.Unavailable
+            status == BiometricManager.BIOMETRIC_ERROR_SECURITY_UPDATE_REQUIRED -> ChipKind.UpdateRequired
             else -> ChipKind.NotEnrolled
         }
     return ModalityState(chip = chip, enrolledCount = explicitCount, classLabel = classLabel)

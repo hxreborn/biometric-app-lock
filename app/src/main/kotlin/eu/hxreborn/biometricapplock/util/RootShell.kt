@@ -16,10 +16,11 @@ object RootShell {
 
     private const val STDERR_JOIN_MS = 2000L
 
-    private const val SHELL_TIMEOUT_MS = 15_000L
-
-    fun exec(vararg commands: String): Result =
-        runCatching { runShell(commands) }
+    fun exec(
+        vararg commands: String,
+        timeoutMs: Long = 15000L,
+    ): Result =
+        runCatching { runShell(commands, timeoutMs) }
             .onFailure {
                 Log.w(
                     Logger.TAG,
@@ -30,14 +31,17 @@ object RootShell {
 
     fun isRootGranted(): Boolean = exec("true").code == 0
 
-    private fun runShell(commands: Array<out String>): Result {
+    private fun runShell(
+        commands: Array<out String>,
+        timeoutMs: Long,
+    ): Result {
         val process = ProcessBuilder("su").start()
 
         val timedOut = AtomicBoolean(false)
         val watchdog =
             Thread {
                 runCatching {
-                    if (!process.waitFor(SHELL_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+                    if (!process.waitFor(timeoutMs, TimeUnit.MILLISECONDS)) {
                         timedOut.set(true)
                         process.destroyForcibly()
                     }
@@ -66,10 +70,13 @@ object RootShell {
 
         val out = ArrayList<String>()
         var code = -1
-        process.inputStream.bufferedReader().forEachLine { line ->
+        val reader = process.inputStream.bufferedReader()
+        while (true) {
+            val line = reader.readLine() ?: break
             val idx = line.indexOf(marker)
             if (idx >= 0) {
                 code = line.substring(idx + marker.length).trim().toIntOrNull() ?: -1
+                break
             } else {
                 out += line
             }

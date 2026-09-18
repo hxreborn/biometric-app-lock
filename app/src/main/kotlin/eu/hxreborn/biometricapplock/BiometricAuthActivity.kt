@@ -114,7 +114,7 @@ open class BiometricAuthActivity : Activity() {
         val bm = getSystemService(BiometricManager::class.java)
         // an unusable per-app policy keeps the app locked, never widens to the global one
         val methods = forceMethods ?: (packageKey?.let(::appMethods) ?: globalMethods())
-        val authenticators = usableAuthenticators(bm, methods)
+        val authenticators = usableAuthenticators(bm, methods, this)
         if (authenticators == null) {
             Log.w(TAG, "no usable auth method methods=$methods pkg=$targetPkg")
             onResult(AUTH_CANCELLED)
@@ -191,6 +191,7 @@ open class BiometricAuthActivity : Activity() {
         if (authenticators and Authenticators.DEVICE_CREDENTIAL == 0) {
             builder.setNegativeButton(getString(android.R.string.cancel), executor) { _, _ ->
                 cancellation.cancel()
+                stopMiuiFace()
                 onResult(AUTH_CANCELLED)
             }
         }
@@ -216,6 +217,7 @@ open class BiometricAuthActivity : Activity() {
                             errorCode == BiometricPrompt.BIOMETRIC_ERROR_LOCKOUT_PERMANENT
                     if (lockedOut && !lockedOutRetried && methods and METHOD_CREDENTIAL != 0) {
                         lockedOutRetried = true
+                        stopMiuiFace()
                         showPrompt(title, packageKey, forceMethods = METHOD_CREDENTIAL)
                         return
                     }
@@ -241,11 +243,17 @@ open class BiometricAuthActivity : Activity() {
         if (replied) finish()
     }
 
+    private fun stopMiuiFace() {
+        miuiFaceAuth?.cancel()
+        miuiFaceAuth = null
+        faceScanOverlay?.dismiss()
+        faceScanOverlay = null
+    }
+
     private fun onResult(code: Int) {
         if (replied) return
         replied = true
-        faceScanOverlay?.dismiss()
-        faceScanOverlay = null
+        stopMiuiFace()
         Log.d(TAG, "onResult code=$code pkg=$targetPkg uninstallAuth=$uninstallAuth")
         if (uninstallAuth) {
             // nothing is waiting behind this prompt, so grant on success and leave the screen

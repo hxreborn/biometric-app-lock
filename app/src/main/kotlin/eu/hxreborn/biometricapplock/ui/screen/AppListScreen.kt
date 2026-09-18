@@ -69,6 +69,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -117,6 +118,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+@Immutable
 private data class AppItem(
     val label: String,
     val packageName: String,
@@ -126,6 +128,7 @@ private data class AppItem(
     val key: String get() = "$packageName:$userId"
 }
 
+@Immutable
 private data class AppLoadState(
     val apps: List<AppItem>,
     val isLoading: Boolean,

@@ -7,6 +7,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
+import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
@@ -86,6 +87,7 @@ class FaceScanOverlay(
 
     fun dismiss() {
         if (!isShowing) return
+        isShowing = false
         handler.post {
             try {
                 overlayView
@@ -98,7 +100,6 @@ class FaceScanOverlay(
                         val decorView = activity.window.decorView as? ViewGroup
                         decorView?.removeView(overlayView)
                         overlayView = null
-                        isShowing = false
                     }?.start()
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to dismiss overlay", e)
@@ -153,6 +154,31 @@ class FaceScanOverlay(
                 isFakeBoldText = true
             }
 
+        private val cornerPaths = Array(4) { Path() }
+        private val checkPath = Path()
+        private val checkPaint =
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.STROKE
+                strokeWidth = 3f * density
+                strokeCap = Paint.Cap.ROUND
+                strokeJoin = Paint.Join.ROUND
+            }
+        private val xPaint =
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.STROKE
+                strokeWidth = 3f * density
+                strokeCap = Paint.Cap.ROUND
+            }
+        private val scanGradientColors =
+            intArrayOf(
+                Color.argb(0, 100, 200, 255),
+                Color.argb(140, 100, 200, 255),
+                Color.argb(0, 100, 200, 255),
+            )
+        private val scanGradientPositions = floatArrayOf(0f, 0.5f, 1f)
+        private val scanMatrix = Matrix()
+        private var scanShader: LinearGradient? = null
+
         init {
             // Needed to ensure onDraw is called
             setWillNotDraw(false)
@@ -187,98 +213,73 @@ class FaceScanOverlay(
 
             bracketPaint.color = stateColor
 
-            val corners =
-                arrayOf(
-                    floatArrayOf(
-                        cx - pulsedHalf,
-                        cy - pulsedHalf + bracketLen,
-                        cx - pulsedHalf,
-                        cy - pulsedHalf,
-                        cx - pulsedHalf + bracketLen,
-                        cy - pulsedHalf,
-                    ),
-                    floatArrayOf(
-                        cx + pulsedHalf - bracketLen,
-                        cy - pulsedHalf,
-                        cx + pulsedHalf,
-                        cy - pulsedHalf,
-                        cx + pulsedHalf,
-                        cy - pulsedHalf + bracketLen,
-                    ),
-                    floatArrayOf(
-                        cx - pulsedHalf,
-                        cy + pulsedHalf - bracketLen,
-                        cx - pulsedHalf,
-                        cy + pulsedHalf,
-                        cx - pulsedHalf + bracketLen,
-                        cy + pulsedHalf,
-                    ),
-                    floatArrayOf(
-                        cx + pulsedHalf - bracketLen,
-                        cy + pulsedHalf,
-                        cx + pulsedHalf,
-                        cy + pulsedHalf,
-                        cx + pulsedHalf,
-                        cy + pulsedHalf - bracketLen,
-                    ),
-                )
+            // Top-left corner
+            cornerPaths[0].reset()
+            cornerPaths[0].moveTo(cx - pulsedHalf, cy - pulsedHalf + bracketLen)
+            cornerPaths[0].lineTo(cx - pulsedHalf, cy - pulsedHalf)
+            cornerPaths[0].lineTo(cx - pulsedHalf + bracketLen, cy - pulsedHalf)
+            canvas.drawPath(cornerPaths[0], bracketPaint)
 
-            for (c in corners) {
-                val path = Path()
-                path.moveTo(c[0], c[1])
-                path.lineTo(c[2], c[3])
-                path.lineTo(c[4], c[5])
-                canvas.drawPath(path, bracketPaint)
-            }
+            // Top-right corner
+            cornerPaths[1].reset()
+            cornerPaths[1].moveTo(cx + pulsedHalf - bracketLen, cy - pulsedHalf)
+            cornerPaths[1].lineTo(cx + pulsedHalf, cy - pulsedHalf)
+            cornerPaths[1].lineTo(cx + pulsedHalf, cy - pulsedHalf + bracketLen)
+            canvas.drawPath(cornerPaths[1], bracketPaint)
+
+            // Bottom-left corner
+            cornerPaths[2].reset()
+            cornerPaths[2].moveTo(cx - pulsedHalf, cy + pulsedHalf - bracketLen)
+            cornerPaths[2].lineTo(cx - pulsedHalf, cy + pulsedHalf)
+            cornerPaths[2].lineTo(cx - pulsedHalf + bracketLen, cy + pulsedHalf)
+            canvas.drawPath(cornerPaths[2], bracketPaint)
+
+            // Bottom-right corner
+            cornerPaths[3].reset()
+            cornerPaths[3].moveTo(cx + pulsedHalf - bracketLen, cy + pulsedHalf)
+            cornerPaths[3].lineTo(cx + pulsedHalf, cy + pulsedHalf)
+            cornerPaths[3].lineTo(cx + pulsedHalf, cy + pulsedHalf - bracketLen)
+            canvas.drawPath(cornerPaths[3], bracketPaint)
 
             if (currentState == State.SCANNING) {
                 val scanY = cy - pulsedHalf + (2f * pulsedHalf * scanLineProgress)
+                val baseScanWidth = halfSize * 1.4f
                 val scanWidth = pulsedHalf * 1.4f
-                val gradient =
-                    LinearGradient(
-                        cx - scanWidth,
-                        scanY,
-                        cx + scanWidth,
-                        scanY,
-                        intArrayOf(
-                            Color.argb(0, 100, 200, 255),
-                            Color.argb(140, 100, 200, 255),
-                            Color.argb(0, 100, 200, 255),
-                        ),
-                        floatArrayOf(0f, 0.5f, 1f),
-                        Shader.TileMode.CLAMP,
-                    )
-                scanLinePaint.shader = gradient
+
+                if (scanShader == null) {
+                    scanShader =
+                        LinearGradient(
+                            -baseScanWidth,
+                            0f,
+                            baseScanWidth,
+                            0f,
+                            scanGradientColors,
+                            scanGradientPositions,
+                            Shader.TileMode.CLAMP,
+                        )
+                }
+                val pulseScale = 1f + 0.05f * bracketPulse
+                scanMatrix.setScale(pulseScale, 1f)
+                scanMatrix.postTranslate(cx, scanY)
+                scanShader?.setLocalMatrix(scanMatrix)
+                scanLinePaint.shader = scanShader
                 scanLinePaint.strokeWidth = 1.5f * density
                 canvas.drawLine(cx - scanWidth, scanY, cx + scanWidth, scanY, scanLinePaint)
             }
 
             when (currentState) {
                 State.SUCCESS -> {
-                    val checkPaint =
-                        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                            color = stateColor
-                            style = Paint.Style.STROKE
-                            strokeWidth = 3f * density
-                            strokeCap = Paint.Cap.ROUND
-                            strokeJoin = Paint.Join.ROUND
-                        }
+                    checkPaint.color = stateColor
                     val s = halfSize * 0.5f
-                    val path = Path()
-                    path.moveTo(cx - s * 0.5f, cy + lockShackleOffset)
-                    path.lineTo(cx - s * 0.1f, cy + s * 0.4f + lockShackleOffset)
-                    path.lineTo(cx + s * 0.6f, cy - s * 0.4f + lockShackleOffset)
-                    canvas.drawPath(path, checkPaint)
+                    checkPath.reset()
+                    checkPath.moveTo(cx - s * 0.5f, cy + lockShackleOffset)
+                    checkPath.lineTo(cx - s * 0.1f, cy + s * 0.4f + lockShackleOffset)
+                    checkPath.lineTo(cx + s * 0.6f, cy - s * 0.4f + lockShackleOffset)
+                    canvas.drawPath(checkPath, checkPaint)
                 }
 
                 State.FAILED -> {
-                    val xPaint =
-                        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                            color = stateColor
-                            style = Paint.Style.STROKE
-                            strokeWidth = 3f * density
-                            strokeCap = Paint.Cap.ROUND
-                        }
+                    xPaint.color = stateColor
                     val s = halfSize * 0.35f
                     canvas.drawLine(cx - s, cy - s, cx + s, cy + s, xPaint)
                     canvas.drawLine(cx + s, cy - s, cx - s, cy + s, xPaint)
@@ -366,22 +367,16 @@ class FaceScanOverlay(
         }
 
         private fun animateSuccess() {
-            ObjectAnimator.ofFloat(this, "lockShackle", 0f, -6f * density).apply {
+            ValueAnimator.ofFloat(0f, -6f * density).apply {
                 duration = 400
                 interpolator = OvershootInterpolator(2f)
-                addUpdateListener { invalidate() }
+                addUpdateListener {
+                    lockShackleOffset = it.animatedValue as Float
+                    invalidate()
+                }
                 start()
             }
         }
-
-        @Suppress("unused")
-        fun setLockShackle(value: Float) {
-            lockShackleOffset = value
-            invalidate()
-        }
-
-        @Suppress("unused")
-        fun getLockShackle(): Float = lockShackleOffset
 
         private fun animateShake() {
             ValueAnimator.ofFloat(0f, 12f, -10f, 8f, -6f, 4f, -2f, 0f).apply {
