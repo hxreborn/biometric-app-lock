@@ -221,7 +221,9 @@ private fun XposedModule.hookLaunchIntercept(classLoader: ClassLoader): Boolean 
             if (auth != null) {
                 if (auth.launch == null) return@intercept chain.proceed()
                 Logger.debug { "resume original pkg=${auth.packageName} user=${auth.userId}" }
-                if (resumeInPlace(chain.thisObject, auth)) {
+                if (isSystemHandler(auth.packageName) &&
+                    resumeInPlace(chain.thisObject, auth)
+                ) {
                     return@intercept true
                 }
                 resumeOriginalLaunch(auth)
@@ -623,29 +625,18 @@ private const val REDACTED_TITLE_FALLBACK = "Content hidden"
 private const val REDACTED_TEXT_FALLBACK = "Unlock the app to view"
 private const val UID_PER_USER_RANGE = 100_000
 
-private fun getRedactedStrings(): Pair<CharSequence, CharSequence> {
+private val redactedStrings by lazy {
     val ctx = atmsContext()
     if (ctx != null) {
         runCatching {
             val pkgCtx = ctx.createPackageContext(BiometricAuthActivity.MODULE_PACKAGE, 0)
-            val titleId =
-                pkgCtx.resources.getIdentifier(
-                    "notification_redacted_title",
-                    "string",
-                    BiometricAuthActivity.MODULE_PACKAGE,
-                )
-            val textId =
-                pkgCtx.resources.getIdentifier(
-                    "notification_redacted_text",
-                    "string",
-                    BiometricAuthActivity.MODULE_PACKAGE,
-                )
-            if (titleId != 0 && textId != 0) {
-                return Pair(pkgCtx.getString(titleId), pkgCtx.getString(textId))
-            }
+            return@lazy Pair(
+                pkgCtx.getString(eu.hxreborn.biometricapplock.R.string.notification_redacted_title),
+                pkgCtx.getString(eu.hxreborn.biometricapplock.R.string.notification_redacted_text),
+            )
         }
     }
-    return Pair(REDACTED_TITLE_FALLBACK, REDACTED_TEXT_FALLBACK)
+    Pair(REDACTED_TITLE_FALLBACK, REDACTED_TEXT_FALLBACK)
 }
 
 private val STYLE_EXTRAS =
@@ -722,7 +713,7 @@ private fun maybeRedactNotification(
     val extras = notification.extras ?: return
     if (extras.getBoolean(EXTRA_REDACTED)) return
     extras.putBoolean(EXTRA_REDACTED, true)
-    val (title, text) = getRedactedStrings()
+    val (title, text) = redactedStrings
     extras.putCharSequence(Notification.EXTRA_TITLE, title)
     extras.putCharSequence(Notification.EXTRA_TEXT, text)
     STYLE_EXTRAS.forEach { extras.remove(it) }
@@ -732,5 +723,6 @@ private fun maybeRedactNotification(
     notification.contentView = null
     notification.bigContentView = null
     notification.headsUpContentView = null
+    notification.publicVersion = null
     Logger.info("redacted notification pkg=$pkg user=$userId")
 }

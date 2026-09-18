@@ -43,9 +43,12 @@ class MiuiFaceAuthenticator(
     /** True when the face service binder is available. Enrollment is checked separately at the call site. */
     fun isAvailable(): Boolean = faceService != null
 
-    private val executor =
-        java.util.concurrent.Executors
-            .newSingleThreadExecutor()
+    companion object {
+        private val executor =
+            java.util.concurrent.Executors.newSingleThreadExecutor { r ->
+                Thread(r, "MiuiFaceTransact").apply { isDaemon = true }
+            }
+    }
 
     fun authenticate() {
         val service = faceService ?: return

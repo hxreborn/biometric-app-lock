@@ -80,9 +80,13 @@ object DiagnosticsExporter {
                 putExtra(Intent.EXTRA_SUBJECT, "BiometricAppLock ${BuildConfig.VERSION_NAME} logs")
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-        context.startActivity(
-            Intent.createChooser(send, context.getString(R.string.diagnostics_share_title)),
-        )
+        val chooser =
+            Intent.createChooser(
+                send,
+                context.getString(R.string.diagnostics_share_title),
+            )
+        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(chooser)
     }
 
     private fun body(

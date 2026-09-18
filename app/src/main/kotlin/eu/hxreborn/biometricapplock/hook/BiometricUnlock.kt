@@ -321,7 +321,9 @@ internal fun postAuthLaunch(
                 reflection.startActivityAsUser.invoke(context, intent, userHandle)
             } else {
                 discardToken(token)
-                Logger.warn("startActivityAsUser unavailable, skipping auth prompt to avoid User 0 routing bug")
+                Logger.warn(
+                    "startActivityAsUser unavailable, skipping auth prompt to avoid User 0 routing bug",
+                )
             }
         }.onFailure {
             discardToken(token)
@@ -359,7 +361,9 @@ internal fun launchUninstallAuth(targetPackage: String?) {
             if (userHandle != null && reflection.startActivityAsUser != null) {
                 reflection.startActivityAsUser.invoke(context, intent, userHandle)
             } else {
-                Logger.warn("startActivityAsUser unavailable, skipping auth prompt to avoid User 0 routing bug")
+                Logger.warn(
+                    "startActivityAsUser unavailable, skipping auth prompt to avoid User 0 routing bug",
+                )
             }
         }.onFailure {
             Logger.error("uninstall auth launch failed: ${it.message}", it)

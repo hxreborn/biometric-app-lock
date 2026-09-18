@@ -87,6 +87,7 @@ class FaceScanOverlay(
 
     fun dismiss() {
         if (!isShowing) return
+        isShowing = false
         handler.post {
             try {
                 overlayView
@@ -99,7 +100,6 @@ class FaceScanOverlay(
                         val decorView = activity.window.decorView as? ViewGroup
                         decorView?.removeView(overlayView)
                         overlayView = null
-                        isShowing = false
                     }?.start()
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to dismiss overlay", e)
@@ -365,22 +365,16 @@ class FaceScanOverlay(
         }
 
         private fun animateSuccess() {
-            ObjectAnimator.ofFloat(this, "lockShackle", 0f, -6f * density).apply {
+            ValueAnimator.ofFloat(0f, -6f * density).apply {
                 duration = 400
                 interpolator = OvershootInterpolator(2f)
-                addUpdateListener { invalidate() }
+                addUpdateListener {
+                    lockShackleOffset = it.animatedValue as Float
+                    invalidate()
+                }
                 start()
             }
         }
-
-        @Suppress("unused")
-        fun setLockShackle(value: Float) {
-            lockShackleOffset = value
-            invalidate()
-        }
-
-        @Suppress("unused")
-        fun getLockShackle(): Float = lockShackleOffset
 
         private fun animateShake() {
             ValueAnimator.ofFloat(0f, 12f, -10f, 8f, -6f, 4f, -2f, 0f).apply {

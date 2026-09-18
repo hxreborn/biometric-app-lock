@@ -191,10 +191,7 @@ open class BiometricAuthActivity : Activity() {
         if (authenticators and Authenticators.DEVICE_CREDENTIAL == 0) {
             builder.setNegativeButton(getString(android.R.string.cancel), executor) { _, _ ->
                 cancellation.cancel()
-                miuiFaceAuth?.cancel()
-                miuiFaceAuth = null
-                faceScanOverlay?.dismiss()
-                faceScanOverlay = null
+                stopMiuiFace()
                 onResult(AUTH_CANCELLED)
             }
         }
@@ -220,10 +217,7 @@ open class BiometricAuthActivity : Activity() {
                             errorCode == BiometricPrompt.BIOMETRIC_ERROR_LOCKOUT_PERMANENT
                     if (lockedOut && !lockedOutRetried && methods and METHOD_CREDENTIAL != 0) {
                         lockedOutRetried = true
-                        miuiFaceAuth?.cancel()
-                        miuiFaceAuth = null
-                        faceScanOverlay?.dismiss()
-                        faceScanOverlay = null
+                        stopMiuiFace()
                         showPrompt(title, packageKey, forceMethods = METHOD_CREDENTIAL)
                         return
                     }
@@ -246,22 +240,20 @@ open class BiometricAuthActivity : Activity() {
         Log.d(TAG, "onStop replied=$replied pkg=$targetPkg")
         // the system prompt steals focus and stops this activity, so only finish once there is a
         // result, or the prompt dies before the user can answer
-        if (replied) {
-            miuiFaceAuth?.cancel()
-            miuiFaceAuth = null
-            faceScanOverlay?.dismiss()
-            faceScanOverlay = null
-            finish()
-        }
+        if (replied) finish()
+    }
+
+    private fun stopMiuiFace() {
+        miuiFaceAuth?.cancel()
+        miuiFaceAuth = null
+        faceScanOverlay?.dismiss()
+        faceScanOverlay = null
     }
 
     private fun onResult(code: Int) {
         if (replied) return
         replied = true
-        miuiFaceAuth?.cancel()
-        miuiFaceAuth = null
-        faceScanOverlay?.dismiss()
-        faceScanOverlay = null
+        stopMiuiFace()
         Log.d(TAG, "onResult code=$code pkg=$targetPkg uninstallAuth=$uninstallAuth")
         if (uninstallAuth) {
             // nothing is waiting behind this prompt, so grant on success and leave the screen
