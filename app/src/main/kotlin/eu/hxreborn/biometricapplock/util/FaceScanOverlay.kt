@@ -258,7 +258,8 @@ class FaceScanOverlay(
                             Shader.TileMode.CLAMP,
                         )
                 }
-                scanMatrix.setScale(bracketPulse, 1f)
+                val pulseScale = 1f + 0.05f * bracketPulse
+                scanMatrix.setScale(pulseScale, 1f)
                 scanMatrix.postTranslate(cx, scanY)
                 scanShader?.setLocalMatrix(scanMatrix)
                 scanLinePaint.shader = scanShader

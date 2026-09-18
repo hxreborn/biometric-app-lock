@@ -306,6 +306,11 @@ internal fun postAuthLaunch(
     val context = reflection.contextField.get(activityTaskManagerService) as Context
 
     val token = createToken(entry.packageName, entry.userId)
+    val launcherIntent = context.packageManager.getLaunchIntentForPackage(entry.packageName)
+    if (launcherIntent != null) {
+        stashLaunch(token, launcherIntent)
+    }
+
     val intent =
         buildAuthIntent(
             entry.packageName,

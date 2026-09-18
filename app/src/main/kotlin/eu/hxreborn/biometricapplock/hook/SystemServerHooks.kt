@@ -219,18 +219,7 @@ private fun XposedModule.hookLaunchIntercept(classLoader: ClassLoader): Boolean 
 
             val auth = resolveAuthToken(intent, packageName, userId)
             if (auth != null) {
-                if (auth.launch == null) {
-                    if (intent != null && auth.userId != userId) {
-                        runCatching {
-                            rewriteLaunch(chain.thisObject, intent, auth.userId, auth.callingUid)
-                        }.onFailure {
-                            Logger.warn(
-                                "opaque resume failed pkg=${auth.packageName}: ${it.message}",
-                            )
-                        }
-                    }
-                    return@intercept chain.proceed()
-                }
+                if (auth.launch == null) return@intercept chain.proceed()
                 Logger.debug { "resume original pkg=${auth.packageName} user=${auth.userId}" }
                 if (isSystemHandler(auth.packageName) &&
                     resumeInPlace(chain.thisObject, auth)
