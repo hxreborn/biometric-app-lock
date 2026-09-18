@@ -230,7 +230,6 @@ private fun readBiometricState(context: Context): BiometricState {
                 status = strongStatus,
                 explicitCount = fpEnrolled,
                 classLabel = fpClass,
-                fallbackSuccessEnrolled = true,
             ),
         face =
             modalityState(
@@ -238,7 +237,6 @@ private fun readBiometricState(context: Context): BiometricState {
                 status = weakStatus,
                 explicitCount = faceEnrolled,
                 classLabel = faceClass,
-                fallbackSuccessEnrolled = true,
             ),
         lastAuthAgo = lastAuthAgo,
     )
@@ -249,7 +247,6 @@ private fun modalityState(
     status: Int,
     explicitCount: Int?,
     classLabel: BiometricClass?,
-    fallbackSuccessEnrolled: Boolean = true,
 ): ModalityState {
     if (!hasHardware) {
         return ModalityState(ChipKind.NoSensor)
@@ -258,7 +255,7 @@ private fun modalityState(
         when {
             explicitCount != null && explicitCount > 0 -> ChipKind.Enrolled
             explicitCount != null && explicitCount == 0 -> ChipKind.NotEnrolled
-            fallbackSuccessEnrolled && status == BiometricManager.BIOMETRIC_SUCCESS -> ChipKind.Enrolled
+            status == BiometricManager.BIOMETRIC_SUCCESS -> ChipKind.Enrolled
             status == BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> ChipKind.Unavailable
             status == BiometricManager.BIOMETRIC_ERROR_SECURITY_UPDATE_REQUIRED -> ChipKind.UpdateRequired
             else -> ChipKind.NotEnrolled

@@ -219,7 +219,14 @@ private fun XposedModule.hookLaunchIntercept(classLoader: ClassLoader): Boolean 
 
             val auth = resolveAuthToken(intent, packageName, userId)
             if (auth != null) {
-                if (auth.launch == null) return@intercept chain.proceed()
+                if (auth.launch == null) {
+                    if (intent != null && auth.userId != userId) {
+                        runCatching {
+                            rewriteLaunch(chain.thisObject, intent, auth.userId, auth.callingUid)
+                        }.onFailure { Logger.warn("opaque resume failed pkg=${auth.packageName}: ${it.message}") }
+                    }
+                    return@intercept chain.proceed()
+                }
                 Logger.debug { "resume original pkg=${auth.packageName} user=${auth.userId}" }
                 if (isSystemHandler(auth.packageName) &&
                     resumeInPlace(chain.thisObject, auth)
@@ -621,23 +628,9 @@ private fun XposedModule.hookUninstall(classLoader: ClassLoader): Boolean =
 
 private const val EXTRA_TEMPLATE = "android.template"
 private const val EXTRA_REDACTED = "eu.hxreborn.biometricapplock.REDACTED"
-private const val REDACTED_TITLE_FALLBACK = "Content hidden"
-private const val REDACTED_TEXT_FALLBACK = "Unlock the app to view"
+private const val REDACTED_TITLE = "Content hidden"
+private const val REDACTED_TEXT = "Unlock the app to view"
 private const val UID_PER_USER_RANGE = 100_000
-
-private val redactedStrings by lazy {
-    val ctx = atmsContext()
-    if (ctx != null) {
-        runCatching {
-            val pkgCtx = ctx.createPackageContext(BiometricAuthActivity.MODULE_PACKAGE, 0)
-            return@lazy Pair(
-                pkgCtx.getString(eu.hxreborn.biometricapplock.R.string.notification_redacted_title),
-                pkgCtx.getString(eu.hxreborn.biometricapplock.R.string.notification_redacted_text),
-            )
-        }
-    }
-    Pair(REDACTED_TITLE_FALLBACK, REDACTED_TEXT_FALLBACK)
-}
 
 private val STYLE_EXTRAS =
     arrayOf(
@@ -713,9 +706,8 @@ private fun maybeRedactNotification(
     val extras = notification.extras ?: return
     if (extras.getBoolean(EXTRA_REDACTED)) return
     extras.putBoolean(EXTRA_REDACTED, true)
-    val (title, text) = redactedStrings
-    extras.putCharSequence(Notification.EXTRA_TITLE, title)
-    extras.putCharSequence(Notification.EXTRA_TEXT, text)
+    extras.putCharSequence(Notification.EXTRA_TITLE, REDACTED_TITLE)
+    extras.putCharSequence(Notification.EXTRA_TEXT, REDACTED_TEXT)
     STYLE_EXTRAS.forEach { extras.remove(it) }
     notification.tickerText = null
     notification.actions = null

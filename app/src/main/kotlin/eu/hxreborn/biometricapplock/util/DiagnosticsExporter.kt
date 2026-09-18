@@ -20,13 +20,7 @@ object DiagnosticsExporter {
 
     private const val CONTACT_EMAIL = "hxreborn@duck.com"
 
-    // system_server hooks log to LSPosed's own file while the module process logs to logcat
     // -b all reads every logcat buffer so nothing is missed if a line lands off the main one
-    // the log directory carries the framework's own name, so forks land outside /data/adb/lspd
-    private const val HOOK_LOG_COMMAND =
-        "( grep -h ${Logger.TAG} /data/adb/*/log.old/*.log; " +
-            "grep -h ${Logger.TAG} /data/adb/*/log/*.log ) 2>/dev/null"
-
     private const val LOGCAT_COMMAND = "logcat -d -b all -s ${Logger.TAG} 2>/dev/null"
 
     private const val CRASH_LOG_COMMAND = "logcat -d -b crash 2>/dev/null"
@@ -38,17 +32,16 @@ object DiagnosticsExporter {
         framework: String?,
     ): File =
         withContext(Dispatchers.IO) {
-            val hookLog = RootShell.exec(HOOK_LOG_COMMAND)
             val appLog = RootShell.exec(LOGCAT_COMMAND)
             val crashRaw = RootShell.exec(CRASH_LOG_COMMAND)
             val crashLog = crashRaw.copy(out = ownCrashes(crashRaw.out))
-            if (hookLog.out.isEmpty() && appLog.out.isEmpty() && crashLog.out.isEmpty()) {
+            if (appLog.out.isEmpty() && crashLog.out.isEmpty()) {
                 throw NoLogsException()
             }
             val dir = File(context.cacheDir, "diagnostics").apply { mkdirs() }
             val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
             File(dir, "biometricapplock-$stamp.log").apply {
-                writeText(body(framework, hookLog, appLog, crashLog))
+                writeText(body(framework, appLog, crashLog))
             }
         }
 
@@ -91,7 +84,6 @@ object DiagnosticsExporter {
 
     private fun body(
         framework: String?,
-        hookLog: RootShell.Result,
         appLog: RootShell.Result,
         crashLog: RootShell.Result,
     ): String =
@@ -108,7 +100,6 @@ object DiagnosticsExporter {
             appendLine("build ${Build.FINGERPRINT}")
             appendLine("xposed framework: ${framework ?: "unknown"}")
             appendSection("module process crashes", crashLog)
-            appendSection("system_server hooks (LSPosed log)", hookLog)
             appendSection("module process (logcat)", appLog)
         }
 

@@ -18,7 +18,7 @@ object RootShell {
 
     fun exec(
         vararg commands: String,
-        timeoutMs: Long = 5000L,
+        timeoutMs: Long = 15000L,
     ): Result =
         runCatching { runShell(commands, timeoutMs) }
             .onFailure {

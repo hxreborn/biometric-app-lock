@@ -103,25 +103,6 @@ fun usableAuthenticators(
         val status = bm.canAuthenticate(requested)
         if (status == BiometricManager.BIOMETRIC_SUCCESS) {
             authenticators = authenticators or requested
-        } else if (
-            context != null &&
-            method == METHOD_BIOMETRIC &&
-            weakOk &&
-            (
-                status == BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE ||
-                    status == BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED
-            )
-        ) {
-            // Samsung convenience-class face is Class 1 (CONVENIENCE), which BiometricManager rejects for BIOMETRIC_WEAK.
-            // We add BIOMETRIC_WEAK so One UI's native BiometricPrompt can invoke Samsung face recognition.
-            // We do NOT add DEVICE_CREDENTIAL here; that is only added when METHOD_CREDENTIAL is in the mask,
-            // so a biometric-only policy cannot be bypassed with a PIN on lockout.
-            // We also only enter this branch on NO_HARDWARE or NONE_ENROLLED — NOT on lockout errors,
-            // so a locked-out fingerprint sensor is never masked by the Samsung face path.
-            val samsungEnrolled = samsungFaceEnrollmentCount(context) ?: 0
-            if (samsungEnrolled > 0) {
-                authenticators = authenticators or requested
-            }
         }
     }
     return authenticators.takeIf { it != 0 }

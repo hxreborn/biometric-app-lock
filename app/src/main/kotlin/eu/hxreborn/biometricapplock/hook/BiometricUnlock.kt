@@ -131,7 +131,7 @@ private fun rewriteLaunch(
     val originalUserId = reflection.userIdField.getInt(interceptor)
     val originalCallingUid = reflection.callingUidField.getInt(interceptor)
 
-    val userId = resumeUserId ?: originalUserId
+    val userId = resumeUserId ?: 0
     val startFlags = reflection.startFlagsField.getInt(interceptor)
 
     val resolveArgs =
@@ -160,7 +160,7 @@ private fun rewriteLaunch(
     reflection.activityInfoField.set(interceptor, activityInfo)
     reflection.callingPidField.setInt(interceptor, realPid)
     reflection.callingUidField.setInt(interceptor, resumeCallingUid ?: originalCallingUid)
-    reflection.userIdField.setInt(interceptor, resumeUserId ?: originalUserId)
+    reflection.userIdField.setInt(interceptor, resumeUserId ?: 0)
     reflection.resolvedTypeField.set(interceptor, null)
 }
 
@@ -314,17 +314,9 @@ internal fun postAuthLaunch(
             forceOpaque || shouldUseOpaqueUnlockPrompt(),
         )
 
-    val userHandle = reflection.userHandleOf?.invoke(null, entry.userId)
     handler.post {
         runCatching {
-            if (userHandle != null && reflection.startActivityAsUser != null) {
-                reflection.startActivityAsUser.invoke(context, intent, userHandle)
-            } else {
-                discardToken(token)
-                Logger.warn(
-                    "startActivityAsUser unavailable, skipping auth prompt to avoid User 0 routing bug",
-                )
-            }
+            context.startActivity(intent)
         }.onFailure {
             discardToken(token)
             Logger.error("posted auth launch failed: ${it.message}", it)

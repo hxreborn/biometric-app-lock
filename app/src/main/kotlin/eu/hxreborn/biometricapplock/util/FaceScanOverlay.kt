@@ -178,7 +178,6 @@ class FaceScanOverlay(
         private val scanGradientPositions = floatArrayOf(0f, 0.5f, 1f)
         private val scanMatrix = Matrix()
         private var scanShader: LinearGradient? = null
-        private var lastScanWidth = 0f
 
         init {
             // Needed to ensure onDraw is called
@@ -244,21 +243,23 @@ class FaceScanOverlay(
 
             if (currentState == State.SCANNING) {
                 val scanY = cy - pulsedHalf + (2f * pulsedHalf * scanLineProgress)
+                val baseScanWidth = halfSize * 1.4f
                 val scanWidth = pulsedHalf * 1.4f
-                if (scanShader == null || scanWidth != lastScanWidth) {
-                    lastScanWidth = scanWidth
+                
+                if (scanShader == null) {
                     scanShader =
                         LinearGradient(
-                            -scanWidth,
+                            -baseScanWidth,
                             0f,
-                            scanWidth,
+                            baseScanWidth,
                             0f,
                             scanGradientColors,
                             scanGradientPositions,
                             Shader.TileMode.CLAMP,
                         )
                 }
-                scanMatrix.setTranslate(cx, scanY)
+                scanMatrix.setScale(bracketPulse, 1f)
+                scanMatrix.postTranslate(cx, scanY)
                 scanShader?.setLocalMatrix(scanMatrix)
                 scanLinePaint.shader = scanShader
                 scanLinePaint.strokeWidth = 1.5f * density
