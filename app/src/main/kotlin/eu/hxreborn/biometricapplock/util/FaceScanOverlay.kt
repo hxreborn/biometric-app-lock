@@ -245,7 +245,7 @@ class FaceScanOverlay(
                 val scanY = cy - pulsedHalf + (2f * pulsedHalf * scanLineProgress)
                 val baseScanWidth = halfSize * 1.4f
                 val scanWidth = pulsedHalf * 1.4f
-                
+
                 if (scanShader == null) {
                     scanShader =
                         LinearGradient(

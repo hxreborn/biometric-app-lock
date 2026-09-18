@@ -223,7 +223,11 @@ private fun XposedModule.hookLaunchIntercept(classLoader: ClassLoader): Boolean 
                     if (intent != null && auth.userId != userId) {
                         runCatching {
                             rewriteLaunch(chain.thisObject, intent, auth.userId, auth.callingUid)
-                        }.onFailure { Logger.warn("opaque resume failed pkg=${auth.packageName}: ${it.message}") }
+                        }.onFailure {
+                            Logger.warn(
+                                "opaque resume failed pkg=${auth.packageName}: ${it.message}",
+                            )
+                        }
                     }
                     return@intercept chain.proceed()
                 }
