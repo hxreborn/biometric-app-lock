@@ -317,8 +317,10 @@ internal fun postAuthLaunch(
     handler.post {
         runCatching {
             val userHandle =
-                eu.hxreborn.biometricapplock.util
-                    .getUserHandle(entry.userId)
+                reflection.userHandleOf.invoke(
+                    null,
+                    entry.userId,
+                ) as android.os.UserHandle
             val userContext =
                 Context::class.java
                     .getMethod(
@@ -333,6 +335,11 @@ internal fun postAuthLaunch(
             if (launcherIntent != null) {
                 stashLaunch(token, launcherIntent)
             }
+        }.onFailure {
+            Logger.warn("failed to stash launcher intent: ${it.message}")
+        }
+
+        runCatching {
             context.startActivity(intent)
         }.onFailure {
             discardToken(token)
