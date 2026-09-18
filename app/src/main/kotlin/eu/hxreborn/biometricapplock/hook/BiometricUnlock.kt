@@ -117,7 +117,7 @@ internal fun tryRedirect(
  * Points the in-flight launch at [intent]. ActivityStarter carries on with whatever the interceptor
  * holds, so every field the resolved target implies has to move with it or the original still runs.
  */
-private fun rewriteLaunch(
+internal fun rewriteLaunch(
     interceptor: Any,
     intent: Intent,
     resumeUserId: Int? = null,
