@@ -364,16 +364,10 @@ internal fun launchUninstallAuth(targetPackage: String?) {
             }
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-    val userHandle = reflection.userHandleOf?.invoke(null, -2) // -2 = UserHandle.USER_CURRENT
+    val userHandle = reflection.userHandleOf.invoke(null, -2) // -2 = UserHandle.USER_CURRENT
     handler.post {
         runCatching {
-            if (userHandle != null && reflection.startActivityAsUser != null) {
-                reflection.startActivityAsUser.invoke(context, intent, userHandle)
-            } else {
-                Logger.warn(
-                    "startActivityAsUser unavailable, skipping auth prompt to avoid User 0 routing bug",
-                )
-            }
+            reflection.startActivityAsUser.invoke(context, intent, userHandle)
         }.onFailure {
             Logger.error("uninstall auth launch failed: ${it.message}", it)
         }
