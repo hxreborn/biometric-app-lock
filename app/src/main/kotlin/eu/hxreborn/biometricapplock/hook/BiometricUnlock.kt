@@ -127,7 +127,11 @@ private fun rewriteLaunch(
     val activityTaskSupervisor = reflection.supervisorField.get(interceptor)
     val realPid = reflection.realCallingPidField.getInt(interceptor)
     val realUid = reflection.realCallingUidField.getInt(interceptor)
-    val userId = resumeUserId ?: 0
+
+    val originalUserId = reflection.userIdField.getInt(interceptor)
+    val originalCallingUid = reflection.callingUidField.getInt(interceptor)
+
+    val userId = resumeUserId ?: originalUserId
     val startFlags = reflection.startFlagsField.getInt(interceptor)
 
     val resolveArgs =
@@ -155,8 +159,8 @@ private fun rewriteLaunch(
     reflection.resolvedInfoField.set(interceptor, resolvedInfo)
     reflection.activityInfoField.set(interceptor, activityInfo)
     reflection.callingPidField.setInt(interceptor, realPid)
-    reflection.callingUidField.setInt(interceptor, resumeCallingUid ?: realUid)
-    reflection.userIdField.setInt(interceptor, resumeUserId ?: 0)
+    reflection.callingUidField.setInt(interceptor, resumeCallingUid ?: originalCallingUid)
+    reflection.userIdField.setInt(interceptor, resumeUserId ?: originalUserId)
     reflection.resolvedTypeField.set(interceptor, null)
 }
 
@@ -310,8 +314,16 @@ internal fun postAuthLaunch(
             forceOpaque || shouldUseOpaqueUnlockPrompt(),
         )
 
+    val userHandle = reflection.userHandleOf?.invoke(null, entry.userId)
     handler.post {
-        runCatching { context.startActivity(intent) }.onFailure {
+        runCatching {
+            if (userHandle != null && reflection.startActivityAsUser != null) {
+                reflection.startActivityAsUser.invoke(context, intent, userHandle)
+            } else {
+                discardToken(token)
+                Logger.warn("startActivityAsUser unavailable, skipping auth prompt to avoid User 0 routing bug")
+            }
+        }.onFailure {
             discardToken(token)
             Logger.error("posted auth launch failed: ${it.message}", it)
         }
@@ -341,8 +353,15 @@ internal fun launchUninstallAuth(targetPackage: String?) {
             }
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
+    val userHandle = reflection.userHandleOf?.invoke(null, -2) // -2 = UserHandle.USER_CURRENT
     handler.post {
-        runCatching { context.startActivity(intent) }.onFailure {
+        runCatching {
+            if (userHandle != null && reflection.startActivityAsUser != null) {
+                reflection.startActivityAsUser.invoke(context, intent, userHandle)
+            } else {
+                Logger.warn("startActivityAsUser unavailable, skipping auth prompt to avoid User 0 routing bug")
+            }
+        }.onFailure {
             Logger.error("uninstall auth launch failed: ${it.message}", it)
         }
     }
