@@ -306,11 +306,6 @@ internal fun postAuthLaunch(
     val context = reflection.contextField.get(activityTaskManagerService) as Context
 
     val token = createToken(entry.packageName, entry.userId)
-    val launcherIntent = context.packageManager.getLaunchIntentForPackage(entry.packageName)
-    if (launcherIntent != null) {
-        stashLaunch(token, launcherIntent)
-    }
-
     val intent =
         buildAuthIntent(
             entry.packageName,
@@ -321,6 +316,23 @@ internal fun postAuthLaunch(
 
     handler.post {
         runCatching {
+            val userHandle =
+                eu.hxreborn.biometricapplock.util
+                    .getUserHandle(entry.userId)
+            val userContext =
+                Context::class.java
+                    .getMethod(
+                        "createContextAsUser",
+                        android.os.UserHandle::class.java,
+                        Int::class.javaPrimitiveType,
+                    ).invoke(context, userHandle, 0) as Context
+            val launcherIntent =
+                userContext.packageManager.getLaunchIntentForPackage(
+                    entry.packageName,
+                )
+            if (launcherIntent != null) {
+                stashLaunch(token, launcherIntent)
+            }
             context.startActivity(intent)
         }.onFailure {
             discardToken(token)
