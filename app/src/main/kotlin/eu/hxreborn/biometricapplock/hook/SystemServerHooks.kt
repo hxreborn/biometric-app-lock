@@ -230,9 +230,6 @@ private fun XposedModule.hookLaunchIntercept(classLoader: ClassLoader): Boolean 
                 return@intercept true
             }
 
-            // skips relock since a null keep key wipes every unlock
-            if (packageName != null) relockOtherPackages(packageName, userId)
-
             val result = chain.proceed()
             if (result == true) return@intercept true
             if (activityInfo == null || packageName == null) return@intercept false
@@ -472,6 +469,10 @@ private fun interceptResumedLocked(
     )
 }
 
+private fun occludesParent(record: Any): Boolean =
+    runCatching { reflection?.activityRecordOccludesParent?.invoke(record) as? Boolean }
+        .getOrNull() ?: true
+
 // foreground changes that never reach ActivityStarter, most visibly the home gesture
 private fun XposedModule.hookTopResumedActivity(classLoader: ClassLoader): Boolean =
     runCatching {
@@ -492,9 +493,10 @@ private fun XposedModule.hookTopResumedActivity(classLoader: ClassLoader): Boole
                     runCatching { r.activityRecordUserIdField.get(record) }
                         .getOrNull() as? Int ?: 0
                 if (pkg != null) {
-                    Logger.debug { "top resumed pkg=$pkg user=$userId" }
+                    val occludes = occludesParent(record)
+                    Logger.debug { "top resumed pkg=$pkg user=$userId occludes=$occludes" }
                     markForegrounded(pkg, userId)
-                    relockOtherPackages(pkg, userId)
+                    if (occludes) relockOtherPackages(pkg, userId)
                     interceptResumedLocked(chain.thisObject, record, pkg, userId)
                 }
             }
