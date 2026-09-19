@@ -1,6 +1,26 @@
 {
-  "version": "1.12.1",
+  "version": "1.12.2",
   "entries": [
+    {
+      "type": "fix",
+      "title": "keep an app unlocked when an overlay opens over it",
+      "description": "Locked apps no longer ask for authentication again after a share sheet, permission dialog or similar overlay appears on top of them.",
+      "version": "1.12.2",
+      "date": "2026-09-19",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/3b6c34ba29083f27d858645316f2e9d48eb8ab98",
+      "scope": "hook",
+      "breaking": false
+    },
+    {
+      "type": "fix",
+      "title": "return work profile apps to their profile after auth",
+      "description": "Locked work profile apps no longer open as the personal copy after the resume prompt, and the MIUI face prompt now releases the front camera when it closes.",
+      "version": "1.12.2",
+      "date": "2026-09-18",
+      "url": "https://github.com/hxreborn/biometric-app-lock/pull/58",
+      "scope": "hook",
+      "breaking": false
+    },
     {
       "type": "fix",
       "title": "fall back to device credential when biometrics lock out",
@@ -99,16 +119,6 @@
       "date": "2026-08-24",
       "url": "https://github.com/hxreborn/biometric-app-lock/commit/c498ef5cc5822872429062de56decb6313b7f7de",
       "scope": "ui",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "relock an app left right after it was unlocked",
-      "description": "Locked apps now ask for authentication again when reopened after briefly going to the home screen.",
-      "version": "1.11.2",
-      "date": "2026-08-24",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/1d01adcd24923303090c04986246a4e7c2fff6ec",
-      "scope": "hook",
       "breaking": false
     }
   ]
