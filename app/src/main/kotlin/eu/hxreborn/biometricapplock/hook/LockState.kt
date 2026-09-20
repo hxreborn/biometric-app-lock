@@ -401,13 +401,7 @@ private fun resolveSystemActionHandlers(): Set<String> {
     return handlers
 }
 
-internal fun parseLockedPackages(raw: String): Set<String> =
-    if (raw.isEmpty()) {
-        emptySet()
-    } else {
-        // pre-1.5 entries carry no userId and a downgrade can write them back, key them to user 0
-        raw.split("|").mapTo(mutableSetOf()) { if (':' in it) it else "$it:0" }
-    }
+internal fun parseLockedPackages(raw: String): Set<String> = Prefs.parseLockedPackages(raw)
 
 internal fun applyHookConfig(prefs: SharedPreferences) {
     val locked = parseLockedPackages(Prefs.LOCKED_PACKAGES.read(prefs))

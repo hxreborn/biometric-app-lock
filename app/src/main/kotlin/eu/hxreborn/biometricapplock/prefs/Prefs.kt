@@ -48,6 +48,28 @@ object Prefs {
     val RELEASE_ETAG = StringPref("release_etag", "")
     val CHANGELOG_ETAG = StringPref("changelog_etag", "")
 
+    fun parseLockedPackages(raw: String): Set<String> =
+        if (raw.isEmpty()) {
+            emptySet()
+        } else {
+            raw
+                .split("|")
+                .asSequence()
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .map { if (':' in it) it else "$it:0" }
+                .toSet()
+        }
+
+    fun serializeLockedPackages(packages: Collection<String>): String =
+        packages
+            .asSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .map { if (':' in it) it else "$it:0" }
+            .distinct()
+            .joinToString("|")
+
     val all: List<PrefSpec<*>> =
         listOf(
             DARK_THEME_CONFIG,

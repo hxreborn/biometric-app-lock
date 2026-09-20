@@ -9,7 +9,7 @@ import eu.hxreborn.biometricapplock.util.METHOD_WEAK_OK
 // TODO remove every migration after 2026-10-04
 internal object Migration {
     private const val PREF_VERSION = "pref_version"
-    private const val CURRENT_VERSION = 2
+    private const val CURRENT_VERSION = 3
     private const val LEGACY_CRED_FALLBACK = "cred_fallback"
     private const val LEGACY_SELF_LOCK_CRED_FALLBACK = "self_lock_cred_fallback"
 
@@ -18,7 +18,18 @@ internal object Migration {
         if (version >= CURRENT_VERSION) return
         if (version < 1) migrateToMultiUser(prefs)
         if (version < 2) migrateCredFallbackToMethods(prefs)
+        if (version < 3) normalizeLockedPackages(prefs)
         prefs.edit { putInt(PREF_VERSION, CURRENT_VERSION) }
+    }
+
+    private fun normalizeLockedPackages(prefs: SharedPreferences) {
+        val raw = prefs.getString(Prefs.LOCKED_PACKAGES.key, null) ?: return
+        if (raw.isEmpty()) return
+        val normalized = Prefs.parseLockedPackages(raw)
+        val clean = Prefs.serializeLockedPackages(normalized)
+        if (clean != raw) {
+            prefs.edit { putString(Prefs.LOCKED_PACKAGES.key, clean) }
+        }
     }
 
     private fun migrateCredFallbackToMethods(prefs: SharedPreferences) {

@@ -185,31 +185,53 @@ class ScopeViewModel(
         packageName: String,
         enable: Boolean,
     ) {
-        val updated = if (enable) _scope.value + packageName else _scope.value - packageName
+        val key = if (':' in packageName) packageName else "$packageName:0"
+        val rawPkg = packageName.substringBefore(':')
+        val updated =
+            if (enable) {
+                _scope.value + key
+            } else {
+                _scope.value.filterTo(mutableSetOf()) {
+                    it != key && it != packageName && it != rawPkg && it != "$rawPkg:0"
+                }
+            }
         _scope.value = updated
         saveLockedPackages(updated)
     }
 
     fun clearScope(packages: Set<String> = _scope.value) {
         if (packages.isEmpty()) return
-        val updated = _scope.value - packages
+        val toRemove =
+            packages
+                .flatMap { pkg ->
+                    val raw = pkg.substringBefore(':')
+                    listOf(pkg, raw, "$raw:0")
+                }.toSet()
+        val updated = _scope.value - toRemove
         _scope.value = updated
         saveLockedPackages(updated)
     }
 
     fun restoreScope(previous: Set<String>) {
-        val updated = _scope.value + previous
+        val normalizedPrevious = Prefs.parseLockedPackages(previous.joinToString("|"))
+        val updated = _scope.value + normalizedPrevious
         _scope.value = updated
         saveLockedPackages(updated)
     }
 
     private fun readLockedPackages(): Set<String> {
         val raw = Prefs.LOCKED_PACKAGES.read(localPrefs)
-        return if (raw.isEmpty()) emptySet() else raw.split("|").toSet()
+        val normalized = Prefs.parseLockedPackages(raw)
+        val cleanRaw = Prefs.serializeLockedPackages(normalized)
+        if (cleanRaw != raw) {
+            saveLockedPackages(normalized)
+        }
+        return normalized
     }
 
     private fun saveLockedPackages(packages: Set<String>) {
-        app.prefsRepository.save(Prefs.LOCKED_PACKAGES, packages.joinToString("|"))
+        val serialized = Prefs.serializeLockedPackages(packages)
+        app.prefsRepository.save(Prefs.LOCKED_PACKAGES, serialized)
     }
 
     companion object {
