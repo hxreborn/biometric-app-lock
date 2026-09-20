@@ -104,6 +104,8 @@ internal class SystemServerReflection(
     val activityRecordUserIdField: Field = activityRecordClass.requiredField("mUserId")
     val activityRecordComponentField: Field? =
         activityRecordClass.optionalField("mActivityComponent")
+    val activityRecordOccludesParent: Method? =
+        activityRecordClass.optionalMethod("occludesParent", argCount = 0)
 
     private val taskInfoClass = cl.loadClass("android.app.TaskInfo")
     val taskInfoUserIdField: Field = taskInfoClass.requiredField("userId")
