@@ -186,28 +186,14 @@ class ScopeViewModel(
         enable: Boolean,
     ) {
         val key = if (':' in packageName) packageName else "$packageName:0"
-        val rawPkg = packageName.substringBefore(':')
-        val updated =
-            if (enable) {
-                _scope.value + key
-            } else {
-                _scope.value.filterTo(mutableSetOf()) {
-                    it != key && it != packageName && it != rawPkg && it != "$rawPkg:0"
-                }
-            }
+        val updated = if (enable) _scope.value + key else _scope.value - key
         _scope.value = updated
         saveLockedPackages(updated)
     }
 
     fun clearScope(packages: Set<String> = _scope.value) {
         if (packages.isEmpty()) return
-        val toRemove =
-            packages
-                .flatMap { pkg ->
-                    val raw = pkg.substringBefore(':')
-                    listOf(pkg, raw, "$raw:0")
-                }.toSet()
-        val updated = _scope.value - toRemove
+        val updated = _scope.value - packages
         _scope.value = updated
         saveLockedPackages(updated)
     }
