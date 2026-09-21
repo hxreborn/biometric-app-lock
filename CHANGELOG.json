@@ -1,6 +1,46 @@
 {
-  "version": "1.12.2",
+  "version": "1.12.3",
   "entries": [
+    {
+      "type": "fix",
+      "title": "keep the personal copy locked when unlocking a work profile app",
+      "description": "Turning off a work profile app no longer also unlocks the personal copy of the same app.",
+      "version": "1.12.3",
+      "date": "2026-09-21",
+      "url": "https://github.com/hxreborn/biometric-app-lock/commit/223c6a5c82b115ef794f6c77c1e64345632f0a09",
+      "scope": "ui",
+      "breaking": false
+    },
+    {
+      "type": "ci",
+      "title": "bump the compose group across 1 directory with 2 updates",
+      "description": "Bumps the compose group with 2 updates in the / directory: androidx.compose:compose-bom and androidx.compose.material3:material3.",
+      "version": "1.12.3",
+      "date": "2026-09-21",
+      "url": "https://github.com/hxreborn/biometric-app-lock/pull/57",
+      "scope": "deps",
+      "breaking": false
+    },
+    {
+      "type": "ci",
+      "title": "bump com.android.application in the agp group",
+      "description": "Bumps the agp group with 1 update: com.android.application.",
+      "version": "1.12.3",
+      "date": "2026-09-21",
+      "url": "https://github.com/hxreborn/biometric-app-lock/pull/62",
+      "scope": "deps",
+      "breaking": false
+    },
+    {
+      "type": "fix",
+      "title": "fix apps remaining locked after removal due to unkeyed package entries",
+      "description": null,
+      "version": "1.12.3",
+      "date": "2026-09-21",
+      "url": "https://github.com/hxreborn/biometric-app-lock/pull/61",
+      "scope": "scope",
+      "breaking": false
+    },
     {
       "type": "fix",
       "title": "keep an app unlocked when an overlay opens over it",
@@ -39,6 +79,46 @@
       "date": "2026-09-15",
       "url": "https://github.com/hxreborn/biometric-app-lock/commit/1f9f29aabf594f9ca4e3dabd82cbefb544f8d417",
       "scope": "hook",
+      "breaking": false
+    },
+    {
+      "type": "ci",
+      "title": "bump the compose group across 1 directory with 2 updates",
+      "description": null,
+      "version": "1.12.1",
+      "date": "2026-09-07",
+      "url": "https://github.com/hxreborn/biometric-app-lock/pull/48",
+      "scope": "deps",
+      "breaking": false
+    },
+    {
+      "type": "ci",
+      "title": "bump actions/setup-java from 5 to 6 in the actions group",
+      "description": null,
+      "version": "1.12.1",
+      "date": "2026-09-07",
+      "url": "https://github.com/hxreborn/biometric-app-lock/pull/51",
+      "scope": "deps",
+      "breaking": false
+    },
+    {
+      "type": "ci",
+      "title": "bump gradle-wrapper from 9.7.0 to 9.7.1",
+      "description": null,
+      "version": "1.12.1",
+      "date": "2026-09-07",
+      "url": "https://github.com/hxreborn/biometric-app-lock/pull/49",
+      "scope": "deps",
+      "breaking": false
+    },
+    {
+      "type": "ci",
+      "title": "bump com.android.application from 9.3.1 to 9.3.2 in the agp group across 1 directory",
+      "description": null,
+      "version": "1.12.1",
+      "date": "2026-09-07",
+      "url": "https://github.com/hxreborn/biometric-app-lock/pull/47",
+      "scope": "deps",
       "breaking": false
     },
     {
@@ -99,26 +179,6 @@
       "date": "2026-08-30",
       "url": "https://github.com/hxreborn/biometric-app-lock/commit/5bcfefea4aafc1291ec9a64b2f8c461850517123",
       "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "skip the uninstall prompt for versioned library packages",
-      "description": "Chrome and WebView updates no longer raise the biometric prompt while removing the old copy of their shared library.",
-      "version": "1.11.3",
-      "date": "2026-08-26",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/9fcaded6bc9e4569baec4f983a9c2cae5bce2f98",
-      "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "fix",
-      "title": "find hook logs when the Xposed framework is not LSPosed",
-      "description": "Shared logs now include the hook log on Xposed forks that keep it outside LSPosed's own folder.",
-      "version": "1.11.3",
-      "date": "2026-08-24",
-      "url": "https://github.com/hxreborn/biometric-app-lock/commit/c498ef5cc5822872429062de56decb6313b7f7de",
-      "scope": "ui",
       "breaking": false
     }
   ]
