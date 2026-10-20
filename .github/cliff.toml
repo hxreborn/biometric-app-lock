@@ -61,6 +61,8 @@ conventional_commits = true
 filter_unconventional = true
 protect_breaking_commits = true
 commit_preprocessors = [
+  { pattern = '(?s)\n\n\* .*', replace = "" },
+  { pattern = '(?s)^(.*?\n\n.*?)\n\n.*$', replace = "${1}" },
   { pattern = '\((\w+\s)?#([0-9]+)\)', replace = "" },
 ]
 commit_parsers = [
@@ -71,8 +73,8 @@ commit_parsers = [
   { body = ".*[Ss]ecurity", group = "<!-- 03 -->Security" },
   { message = "^refactor", group = "<!-- 04 -->Refactor" },
   { message = "^[Rr]evert", group = "<!-- 05 -->Reverts" },
-  { message = '^(build|chore)\(deps(-dev)?\)', skip = true },
-  { message = "^deps", skip = true },
+  { message = '^\w+\(deps(-dev)?\)', group = "<!-- 10 -->CI/CD" },
+  { message = "^deps", group = "<!-- 10 -->CI/CD" },
   { message = "^doc", skip = true },
   { message = "^style", skip = true },
   { message = "^build", skip = true },
