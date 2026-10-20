@@ -1,6 +1,5 @@
 package eu.hxreborn.biometricapplock.ui.screen.settings
 
-import android.hardware.biometrics.BiometricManager
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,6 +11,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,16 +25,21 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import eu.hxreborn.biometricapplock.R
+import eu.hxreborn.biometricapplock.ui.component.ChoiceButtonGroup
 import eu.hxreborn.biometricapplock.ui.component.LockSwitch
 import eu.hxreborn.biometricapplock.ui.component.SectionCard
 import eu.hxreborn.biometricapplock.ui.component.SectionPosition
 import eu.hxreborn.biometricapplock.ui.theme.Tokens
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SettingsSectionHeader(
     title: String,
@@ -40,15 +48,28 @@ fun SettingsSectionHeader(
     Text(
         text = title,
         modifier =
-            modifier.padding(
-                start = Tokens.SectionHeaderStartPadding,
-                top = Tokens.SectionHeaderTopPadding,
-                bottom = Tokens.SectionHeaderBottomPadding,
-            ),
-        style = MaterialTheme.typography.titleSmall,
+            modifier
+                .padding(
+                    start = Tokens.SectionHeaderStartPadding,
+                    top = Tokens.SectionHeaderTopPadding,
+                    bottom = Tokens.SectionHeaderBottomPadding,
+                ).semantics { heading() },
+        style = MaterialTheme.typography.labelLargeEmphasized,
         color = MaterialTheme.colorScheme.primary,
     )
 }
+
+@Composable
+fun Chevron() {
+    Icon(
+        imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+        contentDescription = null,
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+fun HapticFeedback.toggle(checked: Boolean) =
+    performHapticFeedback(if (checked) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff)
 
 @Composable
 fun PreferenceRow(
@@ -86,20 +107,81 @@ fun PreferenceRow(
 }
 
 @Composable
+fun <T> ChoicePreferenceRow(
+    icon: ImageVector,
+    title: String,
+    summary: String?,
+    options: List<T>,
+    selected: T,
+    onSelect: (T) -> Unit,
+    label: @Composable (T) -> String,
+    modifier: Modifier = Modifier,
+    position: SectionPosition = SectionPosition.Single,
+) {
+    SectionCard(modifier = modifier, position = position) {
+        Column {
+            PreferenceRowContent(icon = rememberVectorPainter(icon), title = title, summary = summary)
+            ChoiceButtonGroup(options = options, selected = selected, onSelect = onSelect, label = label)
+        }
+    }
+}
+
+@Composable
+fun SwitchPreferenceRow(
+    icon: ImageVector,
+    title: String,
+    summary: String?,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    position: SectionPosition = SectionPosition.Single,
+    enabled: Boolean = true,
+    switchEnabled: Boolean = true,
+) {
+    val haptics = LocalHapticFeedback.current
+    SectionCard(modifier = modifier, position = position) {
+        PreferenceRowContent(
+            icon = rememberVectorPainter(icon),
+            title = title,
+            summary = summary,
+            enabled = enabled,
+            checked = checked,
+            onClick =
+                if (switchEnabled) {
+                    {
+                        haptics.toggle(!checked)
+                        onCheckedChange(!checked)
+                    }
+                } else {
+                    null
+                },
+            trailing = { LockSwitch(checked = checked, onCheckedChange = null, enabled = enabled && switchEnabled) },
+        )
+    }
+}
+
+@Composable
 fun PreferenceRowContent(
     icon: Painter,
     title: String,
     summary: String?,
     enabled: Boolean = true,
+    checked: Boolean? = null,
     onClick: (() -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null,
 ) {
+    val interaction =
+        when {
+            !enabled || onClick == null -> Modifier
+            checked != null -> Modifier.toggleable(value = checked, role = Role.Switch, onValueChange = { onClick() })
+            else -> Modifier.clickable(onClick = onClick)
+        }
     val rowModifier =
         Modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = Tokens.PreferenceRowMinHeight)
-            .alpha(if (enabled) 1f else 0.38f)
-            .then(if (enabled && onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .alpha(if (enabled) 1f else Tokens.DISABLED_ALPHA)
+            .then(interaction)
             .then(if (!enabled) Modifier.semantics(mergeDescendants = true) { disabled() } else Modifier)
             .padding(
                 horizontal = Tokens.PreferenceRowHorizontalPadding,
@@ -125,7 +207,7 @@ fun PreferenceRowContent(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             if (!summary.isNullOrEmpty()) {

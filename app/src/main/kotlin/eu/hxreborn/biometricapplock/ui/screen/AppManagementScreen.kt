@@ -1,18 +1,21 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 
 package eu.hxreborn.biometricapplock.ui.screen
 
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -28,11 +31,8 @@ import eu.hxreborn.biometricapplock.R
 import eu.hxreborn.biometricapplock.prefs.AppPrefs
 import eu.hxreborn.biometricapplock.prefs.Prefs
 import eu.hxreborn.biometricapplock.ui.component.BackButton
-import eu.hxreborn.biometricapplock.ui.component.ExpandedTitle
-import eu.hxreborn.biometricapplock.ui.component.LockSwitch
 import eu.hxreborn.biometricapplock.ui.component.SectionPosition
-import eu.hxreborn.biometricapplock.ui.screen.settings.PreferenceRow
-import eu.hxreborn.biometricapplock.ui.screen.settings.SettingsSectionHeader
+import eu.hxreborn.biometricapplock.ui.screen.settings.SwitchPreferenceRow
 import eu.hxreborn.biometricapplock.ui.theme.Tokens
 
 @Composable
@@ -50,9 +50,9 @@ fun AppManagementScreen(
         modifier = modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            LargeTopAppBar(
+            MediumFlexibleTopAppBar(
                 navigationIcon = { BackButton(onClick = onBack) },
-                title = { ExpandedTitle(stringResource(R.string.app_management_title)) },
+                title = { Text(stringResource(R.string.app_management_title)) },
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -65,51 +65,37 @@ fun AppManagementScreen(
                     bottom = contentPadding.calculateBottomPadding() + Tokens.SpacingLg,
                 ),
         ) {
+            item { Spacer(Modifier.height(Tokens.SpacingSm)) }
+            item {
+                SwitchPreferenceRow(
+                    icon = Icons.Outlined.Download,
+                    title = stringResource(R.string.app_management_install_title),
+                    summary = stringResource(R.string.app_management_install_summary),
+                    checked = prefs.requireBiometricInstall,
+                    onCheckedChange = { app.prefsRepository.save(Prefs.REQUIRE_BIOMETRIC_INSTALL, it) },
+                    position = SectionPosition.Top,
+                )
+            }
+            item {
+                SwitchPreferenceRow(
+                    icon = Icons.Outlined.Delete,
+                    title = stringResource(R.string.app_management_uninstall_title),
+                    summary = stringResource(R.string.app_management_uninstall_summary),
+                    checked = prefs.requireBiometricUninstall,
+                    onCheckedChange = { app.prefsRepository.save(Prefs.REQUIRE_BIOMETRIC_UNINSTALL, it) },
+                    position = SectionPosition.Bottom,
+                )
+            }
             item {
                 Text(
                     text = stringResource(R.string.app_management_description),
                     modifier =
                         Modifier.padding(
                             horizontal = Tokens.SectionHorizontalMargin + Tokens.PreferenceRowHorizontalPadding,
-                            vertical = Tokens.SpacingSm,
+                            vertical = Tokens.SpacingLg,
                         ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            item { SettingsSectionHeader(title = stringResource(R.string.app_management_title)) }
-            item {
-                PreferenceRow(
-                    icon = Icons.Outlined.Download,
-                    title = stringResource(R.string.app_management_install_title),
-                    summary = stringResource(R.string.app_management_install_summary),
-                    position = SectionPosition.Top,
-                    onClick = {
-                        app.prefsRepository.save(
-                            Prefs.REQUIRE_BIOMETRIC_INSTALL,
-                            !prefs.requireBiometricInstall,
-                        )
-                    },
-                    trailing = {
-                        LockSwitch(checked = prefs.requireBiometricInstall, onCheckedChange = null)
-                    },
-                )
-            }
-            item {
-                PreferenceRow(
-                    icon = Icons.Outlined.Delete,
-                    title = stringResource(R.string.app_management_uninstall_title),
-                    summary = stringResource(R.string.app_management_uninstall_summary),
-                    position = SectionPosition.Bottom,
-                    onClick = {
-                        app.prefsRepository.save(
-                            Prefs.REQUIRE_BIOMETRIC_UNINSTALL,
-                            !prefs.requireBiometricUninstall,
-                        )
-                    },
-                    trailing = {
-                        LockSwitch(checked = prefs.requireBiometricUninstall, onCheckedChange = null)
-                    },
                 )
             }
         }

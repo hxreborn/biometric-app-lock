@@ -149,7 +149,7 @@ fun ClassicBottomNav(
                     onClick =
                         dropUnlessResumed {
                             if (!selected) {
-                                haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
                                 backStack.clear()
                                 backStack.add(item.key)
                             }
@@ -163,15 +163,15 @@ fun ClassicBottomNav(
                             val icon = if (isSelected) item.selectedIcon else item.unselectedIcon
                             if (item.key is Screen.Settings && showUpdateBadge) {
                                 BadgedBox(badge = { Badge() }) {
-                                    Icon(icon, contentDescription = stringResource(item.titleRes))
+                                    Icon(icon, contentDescription = null)
                                 }
                             } else {
-                                Icon(icon, contentDescription = stringResource(item.titleRes))
+                                Icon(icon, contentDescription = null)
                             }
                         }
                     },
                     label = { Text(stringResource(item.titleRes)) },
-                    alwaysShowLabel = false,
+                    alwaysShowLabel = true,
                     colors = transparentIndicatorColors,
                 )
             }

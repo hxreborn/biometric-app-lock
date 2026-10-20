@@ -103,6 +103,30 @@ fun ChangelogSheet(
     )
 }
 
+@Composable
+fun WhatsNewForCurrentVersion(onDismiss: () -> Unit) {
+    val app = App.from(LocalContext.current)
+    val uriHandler = LocalUriHandler.current
+    val items =
+        app.updateRepository.bundledChangelog.filter { it.version == BuildConfig.VERSION_NAME }.map { entry ->
+            val type = ChangeType.from(entry.type, entry.breaking)
+            FeatureSheetItem(
+                label = stringResource(changeTypeLabelRes(type)),
+                scope = entry.scope?.takeIf { it.isNotBlank() },
+                changeType = type,
+                title = entry.title,
+                body = entry.description,
+                onClick = entry.url?.let { url -> { uriHandler.openUri(url) } },
+            )
+        }
+    WhatsNewSheet(
+        state = UpdateSheetState.WhatsNew,
+        items = items,
+        versionLabel = BuildConfig.VERSION_NAME,
+        onDismiss = onDismiss,
+    )
+}
+
 internal fun changeTypeIcon(type: ChangeType): ImageVector =
     when (type) {
         ChangeType.Feat -> Icons.Filled.AutoAwesome

@@ -5,29 +5,27 @@
 
     <string name="app_bar_title">Biometric App Locker</string>
 
-    <string name="tab_dashboard">Dashboard</string>
+    <string name="tab_dashboard">Home</string>
     <string name="tab_apps">Apps</string>
     <string name="tab_settings">Settings</string>
 
     <string name="dashboard_locked_apps_title">Locked apps</string>
     <string name="dashboard_locked_apps_all">All</string>
     <string name="dashboard_locked_apps_more">more</string>
-    <string name="dashboard_locked_apps_empty">Add apps to lock</string>
     <string name="env_footer_unbound">Xposed not bound</string>
 
-    <string name="status_active">Module enabled</string>
-    <string name="status_inactive">Not enabled</string>
-    <string name="status_inactive_action">Enable the module in your Xposed manager, then reopen this app</string>
-    <string name="status_reboot_required">Reboot required</string>
-    <string name="status_reboot_required_reason">Reboot to activate updated System Framework hooks</string>
-    <string name="status_restart_label">Restart app</string>
+    <string name="status_running">Running in System Framework</string>
+    <string name="status_framework">%1$s %2$s (API %3$d)</string>
+    <string name="status_inactive">Module not active</string>
+    <string name="status_inactive_action">Enable it in your Xposed manager with System Framework in scope, then reboot</string>
+    <string name="status_reboot_required">Reboot needed</string>
+    <string name="status_reboot_required_reason">Restart your phone to load the updated module</string>
     <string name="status_locked_empty">No apps locked</string>
-    <plurals name="status_locked_count">
-        <item quantity="one">1 app locked</item>
-        <item quantity="other">%1$d apps locked</item>
-    </plurals>
-    <string name="status_loaded_at_boot">System server hooks loaded at boot %1$s</string>
-    <string name="status_loaded_via_hot_reload">System server hooks hot reloaded %1$s</string>
+    <string name="status_locked_empty_action">Pick the apps that should ask for your fingerprint or screen lock</string>
+    <string name="status_action_choose_apps">Choose apps</string>
+    <string name="status_no_unlock_method">Locked apps can\'t open</string>
+    <string name="status_no_unlock_method_action">No unlock method is ready. Set up a screen lock or a fingerprint</string>
+    <string name="status_action_security_settings">Open security settings</string>
 
     <string name="dashboard_biometric_title">Hardware</string>
     <string name="dashboard_biometric_fingerprint">Fingerprint</string>
@@ -60,42 +58,40 @@
 
     <string name="settings_appearance">Appearance</string>
     <string name="settings_theme">Theme</string>
-    <string name="settings_theme_summary">Light, dark, or follow system</string>
-    <string name="settings_theme_system">Follow system</string>
+    <string name="settings_theme_system">System</string>
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_dynamic_color">Dynamic color</string>
-    <string name="settings_dynamic_color_summary">Use wallpaper colors</string>
+    <string name="settings_dynamic_color_summary">Use colors from your wallpaper</string>
     <string name="settings_floating_nav_bar">Floating navigation bar</string>
-    <string name="settings_floating_nav_bar_summary">Replaces the classic navigation bar with a floating one</string>
+    <string name="settings_floating_nav_bar_summary">Show the navigation bar as a floating pill</string>
 
     <string name="settings_hide_launcher">Hide from launcher</string>
-    <string name="settings_hide_launcher_summary">Open it from your Xposed manager instead</string>
+    <string name="settings_hide_launcher_summary">Open the app from your Xposed manager instead</string>
     <string name="settings_hide_launcher_confirm_title">Hide from launcher?</string>
-    <string name="settings_hide_launcher_confirm_body">The app icon will be removed from your launcher. You can open it only from your Xposed manager.</string>
+    <string name="settings_hide_launcher_confirm_body">The icon disappears from your launcher. You can still open the app from your Xposed manager.</string>
+    <string name="settings_hide_launcher_confirm_action">Hide</string>
 
     <string name="settings_lock">Lock behavior</string>
-    <string name="settings_protection">Privacy &amp; stealth</string>
+    <string name="settings_protection">Privacy</string>
     <string name="settings_relock_delay_title">Re-lock delay</string>
-    <string name="settings_relock_delay_summary">How long to wait before locking an app again</string>
     <string name="settings_relock_screen_off_title">Re-lock on screen off</string>
-    <string name="settings_relock_screen_off_summary">Locks all protected apps as soon as the screen turns off, ignoring the re-lock delay</string>
+    <string name="settings_relock_screen_off_summary">Lock every app when the screen turns off</string>
     <string name="settings_relock_task_removed_title">Re-lock on task removed</string>
-    <string name="settings_relock_task_removed_summary">Locks a protected app again when its task is swiped off the recents screen, ignoring the re-lock delay</string>
+    <string name="settings_relock_task_removed_summary">Lock an app again when you swipe it away from Recents</string>
 
     <string name="settings_block_screenshots_title">Block screenshots</string>
-    <string name="settings_block_screenshots_summary">Blocks screenshots, screen recording, and the recents preview inside selected apps. May not apply if another module bypasses FLAG_SECURE</string>
+    <string name="settings_block_screenshots_summary">Hide locked apps from screenshots, recordings and Recents. Modules that disable FLAG_SECURE override this</string>
     <string name="settings_hide_notification_content_title">Hide notification content</string>
-    <string name="settings_hide_notification_content_summary">Replaces the title and text of notifications posted by locked apps while they are locked. Notifications posted before locking keep their content. May not apply on ROMs that replace the notification service</string>
+    <string name="settings_hide_notification_content_summary">Hide the text of notifications from locked apps while they\'re locked</string>
     <string name="settings_unlock_prompt">Unlock prompt</string>
     <string name="settings_unlock_confirmation_title">Require confirmation</string>
-    <string name="settings_unlock_confirmation_summary">After a passive unlock such as face unlock, tap Confirm before the app opens. Matches Android\'s default</string>
+    <string name="settings_unlock_confirmation_summary">After face unlock, tap Confirm before the app opens</string>
     <string name="unlock_section">Unlock</string>
     <string name="unlock_biometrics_title">Biometrics</string>
     <string name="unlock_biometrics_default">Default</string>
-    <string name="unlock_biometrics_default_summary">Follow the global setting</string>
-    <string name="unlock_biometrics_any">Any enrolled</string>
-    <string name="unlock_biometrics_strongest">Strongest only</string>
+    <string name="unlock_biometrics_any">Any</string>
+    <string name="unlock_biometrics_strongest">Strong</string>
     <string name="unlock_biometrics_none">None</string>
     <string name="unlock_biometrics_any_summary">Class 2 (Weak) and above</string>
     <string name="unlock_biometrics_any_summary_face">Class 2 (Weak) and above, includes face unlock</string>
@@ -105,38 +101,35 @@
     <string name="unlock_biometrics_none_summary">Screen lock only</string>
     <string name="unlock_biometrics_default_resolved">Default (%1$s)</string>
     <string name="unlock_screen_lock_title">Allow screen lock fallback</string>
-    <string name="unlock_screen_lock_summary">When enabled, the screen lock (PIN, pattern, or password) can unlock a locked app if biometrics fail. Disable to require fingerprint or face only</string>
+    <string name="unlock_screen_lock_summary">Use your PIN, pattern or password if biometrics fail</string>
     <string name="unlock_screen_lock_unset">No screen lock set</string>
     <string name="settings_opaque_unlock_prompt_title">Compatibility mode</string>
-    <string name="settings_opaque_unlock_prompt_summary">Helps on some non-AOSP ROMs where the prompt closes itself or loses focus. Leave it off on stock Android, where it hides the screen behind the prompt</string>
+    <string name="settings_opaque_unlock_prompt_summary">Use a solid prompt screen. Turn it on if the prompt closes by itself on your ROM</string>
     <string name="settings_prevent_uninstall_title">Prevent uninstall</string>
-    <string name="settings_prevent_uninstall_summary">Blocks attempts to uninstall this app. To remove it, disable the module in your Xposed manager and reboot</string>
+    <string name="settings_prevent_uninstall_summary">Block uninstalling this app. To remove it, disable the module and reboot</string>
     <string name="settings_self_lock_section">App settings lock</string>
     <string name="settings_self_lock_title">Require biometric unlock</string>
-    <string name="settings_self_lock_summary">Open the app\'s own settings only after biometric or screen lock</string>
+    <string name="settings_self_lock_summary">Ask for biometrics or your screen lock to open this app</string>
     <string name="settings_self_lock_biometrics_title">Biometrics</string>
     <string name="settings_self_lock_credential_title">Allow screen lock fallback</string>
-    <string name="settings_self_lock_credential_summary">When enabled, the screen lock (PIN, pattern, or password) can open this app\'s own settings if biometrics fail. Disable to require fingerprint or face only</string>
+    <string name="settings_self_lock_credential_summary">Use your PIN, pattern or password if biometrics fail</string>
     <string name="uninstall_blocked_toast">This app is protected and can\'t be uninstalled</string>
-
-    <string name="settings_app_management">App management</string>
     <string name="settings_app_management_title">App management</string>
-    <string name="settings_app_management_summary">Require biometric to install, update, or uninstall apps</string>
+    <string name="settings_app_management_summary">Ask before apps are installed, updated or removed</string>
 
     <string name="app_management_title">App management</string>
-    <string name="app_management_description">Install and update prompts show up only when Android\'s installer screen appears, whichever app opened it. Silent installers that skip that screen, like the Play Store or adb, slip through. Uninstalls get caught deeper in the system server, so removing an app from the launcher, Settings, Play Store, or adb is blocked even without that screen. One approval clears that kind of action across every app and profile, then expires after a short while</string>
+    <string name="app_management_description">Install prompts appear only when Android\'s installer screen opens, so silent installs from the Play Store or adb aren\'t covered. Uninstalls are covered from every source. One approval covers that kind of action for a short time.</string>
     <string name="app_management_install_title">Require biometric to install apps</string>
-    <string name="app_management_install_summary">Protect APK installs and app updates before Android shows the installer</string>
+    <string name="app_management_install_summary">Ask before Android\'s installer opens</string>
     <string name="app_management_uninstall_title">Require biometric to uninstall apps</string>
-    <string name="app_management_uninstall_summary">Protect app removals from the launcher, Settings, Play Store, and adb</string>
+    <string name="app_management_uninstall_summary">Ask before an app is removed from the launcher, Settings, Play Store or adb</string>
 
     <string name="biometric_prompt_uninstall_title">Uninstall %1$s</string>
     <string name="biometric_prompt_default_target">app</string>
 
     <string name="settings_diagnostics">Diagnostics</string>
-    <string name="settings_about">About</string>
     <string name="settings_about_entry">About</string>
-    <string name="settings_about_entry_summary">App info and source</string>
+    <string name="settings_about_entry_summary">Version %1$s</string>
     <string name="settings_lsposed_framework">Xposed framework</string>
     <string name="settings_lsposed_framework_unbound">Not bound</string>
 
@@ -151,20 +144,18 @@
     <string name="about_back_cd">Back</string>
     <string name="about_app_name">Biometric App Locker</string>
     <string name="about_source_title">Source code</string>
-    <string name="about_source_summary">Browse the project on GitHub</string>
-    <string name="about_report_issue_title">Report an issue</string>
-    <string name="about_report_issue_summary">Report a bug or suggest a feature on GitHub</string>
-    <string name="about_app_version_title">App version</string>
+    <string name="about_source_summary">View the project on GitHub</string>
+    <string name="about_report_issue_title">Suggest a feature or report a bug</string>
+    <string name="about_report_issue_summary">Open an issue on GitHub</string>
     <string name="about_libxposed_api_title">libxposed API</string>
     <string name="about_framework_title">Xposed framework</string>
-    <string name="about_whats_new_title">What\'s New</string>
-    <string name="about_whats_new_summary">See what\'s new in v%1$s</string>
+    <string name="about_whats_new_title">What\'s new</string>
+    <string name="about_whats_new_summary">Changes in v%1$s</string>
 
     <string name="whats_new_version_badge">v%1$s</string>
     <string name="whats_new_title">What\'s New</string>
     <string name="whats_new_got_it">Got it</string>
     <string name="about_section_links">Links</string>
-    <string name="about_section_versions">Versions</string>
     <string name="about_section_release">Release</string>
     <string name="about_section_debug">Debug</string>
     <string name="about_debug_hot_reload_title">Trigger hot reload</string>
@@ -173,6 +164,7 @@
     <string name="app_detail_title">App details</string>
 
     <string name="app_detail_override_title">Override global settings</string>
+    <string name="app_detail_override_summary">Use different lock settings for this app</string>
     <string name="app_detail_relock_delay_title">Re-lock delay</string>
     <string name="app_detail_relock_delay_immediate">Immediately</string>
     <string name="app_detail_relock_delay_30s">After 30 seconds</string>
@@ -189,7 +181,7 @@
 
 
     <string name="app_detail_block_screenshots_title">Block screenshots</string>
-    <string name="app_detail_block_screenshots_summary">Blocks screenshots, screen recording, and the recents preview inside selected apps. May not apply if another module bypasses FLAG_SECURE</string>
+    <string name="app_detail_block_screenshots_summary">Hide this app from screenshots, recordings and Recents</string>
 
 
     <string name="app_detail_activities_section">Activities</string>
@@ -211,13 +203,13 @@
 
     <string name="app_detail_section_advanced">Advanced</string>
     <string name="app_detail_open_app_info_title">Open system app info</string>
-    <string name="app_detail_open_app_info_summary">Force stop the app here if changes aren\'t taking effect</string>
+    <string name="app_detail_open_app_info_summary">Open Android\'s settings for this app</string>
 
     <string name="settings_updates">Updates</string>
     <string name="updates_check_title">Check for updates</string>
-    <string name="updates_check_summary">Check GitHub Releases for the latest version</string>
+    <string name="updates_check_summary">Look for a newer version on GitHub</string>
     <string name="updates_auto_check_title">Auto-check updates</string>
-    <string name="updates_auto_check_summary">Check for updates when the app opens</string>
+    <string name="updates_auto_check_summary">Check when the app opens</string>
 
     <string name="updates_dialog_up_to_date_title">Up to date</string>
     <string name="updates_dialog_up_to_date_body">v%1$s is the latest version</string>
@@ -236,7 +228,17 @@
     <string name="updates_dialog_retry">Retry</string>
 
     <string name="about_changelog_title">Changelog</string>
-    <string name="about_changelog_summary">Release notes from GitHub</string>
+    <string name="about_changelog_summary">Release notes for every version</string>
+    <string name="about_tagline">Lock any app behind your fingerprint, face or screen lock</string>
+    <string name="about_star_on_github">Star on GitHub</string>
+    <string name="about_donate">Buy me a coffee</string>
+    <string name="about_licenses_title">Open source licenses</string>
+    <string name="about_licenses_summary">Libraries this app uses</string>
+    <string name="about_section_device">This device</string>
+    <string name="about_android_title">Android</string>
+    <string name="about_android_summary">%1$s (API %2$d)</string>
+    <string name="changelog_jump_top">Jump to top</string>
+    <string name="changelog_jump_bottom">Jump to bottom</string>
 
     <string name="changelog_title">Changelog</string>
     <string name="changelog_fetch_failed">Could not load changelog</string>
@@ -275,14 +277,14 @@
     </plurals>
 
     <string name="about_send_logs_title">Export logs</string>
-    <string name="about_send_logs_summary">Saves module logs as a text file. Reproduce the issue first, then attach to a GitHub issue, send via email, or share via Telegram</string>
-    <string name="about_send_logs_no_root">Saves module logs as a text file. Reproduce the issue first, then attach to a GitHub issue, send via email, or share via Telegram. Requires root</string>
+    <string name="about_send_logs_summary">Save module logs to attach to a bug report</string>
+    <string name="about_send_logs_no_root">Needs root access</string>
     <string name="logs_sheet_save">Save logs</string>
     <string name="logs_sheet_send">Send logs</string>
     <string name="logs_saved">Logs saved</string>
     <string name="logs_save_failed">Couldn\'t save logs</string>
     <string name="diagnostics_share_title">Share logs</string>
-    <string name="diagnostics_no_root">Root unavailable. LSPosed logs may be missing.</string>
+    <string name="diagnostics_no_root">Root unavailable. Xposed framework logs may be missing.</string>
     <string name="diagnostics_no_logs">No logs found. Reproduce the issue, then try again.</string>
     <string name="miui_face_scanning">Face Unlock</string>
     <string name="miui_face_success">Done</string>

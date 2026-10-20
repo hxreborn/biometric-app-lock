@@ -34,10 +34,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudOff
-import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -60,6 +60,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -131,12 +132,31 @@ fun WhatsNewSheet(
     val contentHeight = remember { mutableStateOf(0.dp) }
 
     LaunchedEffect(Unit) {
-        haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-        launch { contentAlpha.animateTo(1f, contentAlphaSpec) }
+        contentAlpha.animateTo(1f, contentAlphaSpec)
+    }
+
+    var sawChecking by remember { mutableStateOf(false) }
+    LaunchedEffect(state) {
+        when (state) {
+            UpdateSheetState.Checking -> {
+                sawChecking = true
+            }
+
+            is UpdateSheetState.UpToDate, is UpdateSheetState.Available -> {
+                if (sawChecking) haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                sawChecking = false
+            }
+
+            is UpdateSheetState.Failed, is UpdateSheetState.RateLimited -> {
+                if (sawChecking) haptics.performHapticFeedback(HapticFeedbackType.Reject)
+                sawChecking = false
+            }
+
+            UpdateSheetState.WhatsNew -> {}
+        }
     }
 
     val dismiss: () -> Unit = {
-        haptics.performHapticFeedback(HapticFeedbackType.Confirm)
         scope.launch {
             sheetState.hide()
             onDismiss()
@@ -298,7 +318,7 @@ private fun SheetBody(
                                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Outlined.Download,
+                                            imageVector = Icons.Rounded.Check,
                                             contentDescription = null,
                                             modifier = Modifier.size(Tokens.UpToDateBadgeIconSize),
                                             tint = MaterialTheme.colorScheme.onPrimaryContainer,

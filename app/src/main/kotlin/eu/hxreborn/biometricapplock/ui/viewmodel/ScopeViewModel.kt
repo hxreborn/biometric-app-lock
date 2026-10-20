@@ -14,7 +14,6 @@ import eu.hxreborn.biometricapplock.App
 import eu.hxreborn.biometricapplock.BuildConfig
 import eu.hxreborn.biometricapplock.prefs.Prefs
 import eu.hxreborn.biometricapplock.util.RootShell
-import io.github.libxposed.service.HotReloadResult
 import io.github.libxposed.service.XposedService
 import io.github.libxposed.service.XposedServiceHelper
 import kotlinx.coroutines.Dispatchers
@@ -24,27 +23,18 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class FrameworkInfo(
     val name: String,
     val version: String,
+    val api: Int,
     val supportsHotReload: Boolean,
+    val systemInScope: Boolean,
 )
 
 enum class ModuleStatus { NotEnabled, RebootRequired, Enabled }
-
-sealed interface ServiceLoadEvent {
-    val epochMs: Long
-
-    data class Boot(
-        override val epochMs: Long,
-    ) : ServiceLoadEvent
-
-    data class HotReload(
-        override val epochMs: Long,
-    ) : ServiceLoadEvent
-}
 
 class ScopeViewModel(
     application: Application,
@@ -60,9 +50,6 @@ class ScopeViewModel(
 
     private val _scope = MutableStateFlow<Set<String>>(emptySet())
     val scope: StateFlow<Set<String>> = _scope.asStateFlow()
-
-    private val _serviceLoadEvent = MutableStateFlow<ServiceLoadEvent?>(null)
-    val serviceLoadEvent: StateFlow<ServiceLoadEvent?> = _serviceLoadEvent.asStateFlow()
 
     private val _rootGranted = MutableStateFlow<Boolean?>(null)
     val rootGranted: StateFlow<Boolean?> = _rootGranted.asStateFlow()
@@ -80,7 +67,7 @@ class ScopeViewModel(
 
     private fun deriveStatus(framework: FrameworkInfo?): ModuleStatus =
         when {
-            framework == null -> ModuleStatus.NotEnabled
+            framework == null || !framework.systemInScope -> ModuleStatus.NotEnabled
             apkUpdatedAfterBoot && !framework.supportsHotReload -> ModuleStatus.RebootRequired
             else -> ModuleStatus.Enabled
         }
@@ -115,30 +102,23 @@ class ScopeViewModel(
         _framework.value =
             FrameworkInfo(
                 name = service.frameworkName,
-                version = "v${service.frameworkVersion}",
+                version = service.frameworkVersion,
+                api = service.apiVersion,
                 supportsHotReload = supportsHotReload,
+                systemInScope = readSystemInScope(service),
             )
-        _serviceLoadEvent.value = deriveServiceLoadEvent(supportsHotReload)
     }
 
-    private fun deriveServiceLoadEvent(supportsHotReload: Boolean): ServiceLoadEvent {
-        val bootEpochMs = System.currentTimeMillis() - SystemClock.elapsedRealtime()
-        val updateTime =
-            runCatching {
-                val app = getApplication<Application>()
-                app.packageManager.getPackageInfo(app.packageName, 0).lastUpdateTime
-            }.getOrDefault(0L)
-        return if (supportsHotReload && updateTime > bootEpochMs) {
-            ServiceLoadEvent.HotReload(updateTime)
-        } else {
-            ServiceLoadEvent.Boot(bootEpochMs)
-        }
+    fun refreshFrameworkScope() {
+        val service = mService ?: return
+        _framework.update { it?.copy(systemInScope = readSystemInScope(service)) }
     }
+
+    private fun readSystemInScope(service: XposedService): Boolean = runCatching { SYSTEM_SCOPE in service.scope }.getOrDefault(true)
 
     fun onServiceDied() {
         mService = null
         _framework.value = null
-        _serviceLoadEvent.value = null
     }
 
     fun triggerHotReload() {
@@ -162,9 +142,6 @@ class ScopeViewModel(
                 targets.forEach { target ->
                     service.hotReloadModule(target, null) { reloaded, result ->
                         Log.i(TAG, "hot reload pkg=${reloaded.processName} status=${result.status()} msg=${result.message()}")
-                        if (result.status() == HotReloadResult.Status.SUCCEEDED) {
-                            _serviceLoadEvent.value = ServiceLoadEvent.HotReload(System.currentTimeMillis())
-                        }
                         toast("hot reload ${reloaded.processName}: ${result.status()}")
                     }
                 }
@@ -222,6 +199,7 @@ class ScopeViewModel(
 
     companion object {
         private const val TAG = "BiometricAppLock"
+        private const val SYSTEM_SCOPE = "system"
 
         val Factory =
             viewModelFactory {
