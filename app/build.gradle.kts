@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.serialization)
+    alias(libs.plugins.aboutlibraries)
 }
 
 val cfgModuleId: String = providers.gradleProperty("module.id").get()
@@ -133,6 +134,7 @@ dependencies {
 
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.aboutlibraries.compose.m3)
 }
 
 val ktlintCheck by tasks.registering(JavaExec::class) {

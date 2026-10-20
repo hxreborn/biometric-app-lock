@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.hardware.biometrics.BiometricManager
 import android.hardware.biometrics.BiometricManager.Authenticators
 import android.os.SystemClock
+import android.text.format.DateUtils
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -286,22 +287,10 @@ private fun readLastAuthAgo(bm: BiometricManager?): String? {
         val tracked = Authenticators.BIOMETRIC_STRONG or Authenticators.DEVICE_CREDENTIAL
         val elapsedMs = method.invoke(bm, tracked) as Long
         if (elapsedMs <= 0) return null
+        val now = System.currentTimeMillis()
         val agoMs = SystemClock.elapsedRealtime() - elapsedMs
-        formatDuration(agoMs)
+        DateUtils.getRelativeTimeSpanString(now - agoMs, now, DateUtils.MINUTE_IN_MILLIS).toString()
     } catch (_: Throwable) {
         null
-    }
-}
-
-private fun formatDuration(ms: Long): String {
-    val seconds = ms / 1000
-    val minutes = seconds / 60
-    val hours = minutes / 60
-    val days = hours / 24
-    return when {
-        days > 0 -> "${days}d ${hours % 24}h ago"
-        hours > 0 -> "${hours}h ${minutes % 60}m ago"
-        minutes > 0 -> "${minutes}m ago"
-        else -> "just now"
     }
 }

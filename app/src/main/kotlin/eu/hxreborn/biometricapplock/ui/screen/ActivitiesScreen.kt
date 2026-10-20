@@ -1,5 +1,5 @@
 @file:Suppress("AssignedValueIsNeverRead")
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 
 package eu.hxreborn.biometricapplock.ui.screen
 
@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,15 +29,13 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBarDefaults
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -50,14 +47,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -65,9 +65,10 @@ import eu.hxreborn.biometricapplock.App
 import eu.hxreborn.biometricapplock.R
 import eu.hxreborn.biometricapplock.prefs.AppOverrides
 import eu.hxreborn.biometricapplock.ui.component.BackButton
-import eu.hxreborn.biometricapplock.ui.component.ExpandedTitle
+import eu.hxreborn.biometricapplock.ui.component.ChoiceButtonGroup
 import eu.hxreborn.biometricapplock.ui.component.SectionCard
 import eu.hxreborn.biometricapplock.ui.component.SectionPosition
+import eu.hxreborn.biometricapplock.ui.screen.settings.toggle
 import eu.hxreborn.biometricapplock.ui.theme.Tokens
 import eu.hxreborn.biometricapplock.util.getUserHandle
 import kotlinx.coroutines.Dispatchers
@@ -156,6 +157,7 @@ private fun ActivityToggleRow(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = shortActivityName(className),
+                        modifier = Modifier.weight(1f, fill = false),
                         style = MaterialTheme.typography.bodyLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -207,6 +209,8 @@ private fun LauncherBadge() {
             modifier = Modifier.padding(horizontal = Tokens.SpacingSm, vertical = Tokens.SpacingXs / 2),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSecondaryContainer,
+            maxLines = 1,
+            softWrap = false,
         )
     }
 }
@@ -217,32 +221,15 @@ private fun ActivityModeSelector(
     onSelect: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    SingleChoiceSegmentedButtonRow(
-        modifier = modifier.fillMaxWidth().height(Tokens.ModeSelectorHeight),
-    ) {
-        SegmentedButton(
-            selected = !lockListed,
-            onClick = { onSelect(false) },
-            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-        ) {
-            Text(
-                text = stringResource(R.string.app_detail_activities_mode_allow),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        SegmentedButton(
-            selected = lockListed,
-            onClick = { onSelect(true) },
-            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-        ) {
-            Text(
-                text = stringResource(R.string.app_detail_activities_mode_lock),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
+    ChoiceButtonGroup(
+        options = listOf(false, true),
+        selected = lockListed,
+        onSelect = onSelect,
+        label = {
+            stringResource(if (it) R.string.app_detail_activities_mode_lock else R.string.app_detail_activities_mode_allow)
+        },
+        modifier = modifier,
+    )
 }
 
 @Composable
@@ -293,7 +280,8 @@ fun ActivitiesScreen(
             if (query.isBlank()) ordered else ordered.filter { it.contains(query, ignoreCase = true) }
         }
 
-    var pendingLauncher by remember { mutableStateOf<String?>(null) }
+    var pendingLauncher by rememberSaveable { mutableStateOf<String?>(null) }
+    val haptics = LocalHapticFeedback.current
 
     fun toggle(
         name: String,
@@ -303,6 +291,7 @@ fun ActivitiesScreen(
             pendingLauncher = name
             return
         }
+        haptics.toggle(allow)
         app.appOverridesRepository.setListedActivities(
             packageKey,
             if (allow) allowed + name else allowed - name,
@@ -312,6 +301,7 @@ fun ActivitiesScreen(
     pendingLauncher?.let { name ->
         LauncherAllowConfirmDialog(
             onConfirm = {
+                haptics.toggle(true)
                 app.appOverridesRepository.setListedActivities(packageKey, allowed + name)
                 pendingLauncher = null
             },
@@ -325,9 +315,9 @@ fun ActivitiesScreen(
         modifier = modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            LargeTopAppBar(
+            MediumFlexibleTopAppBar(
                 navigationIcon = { BackButton(onClick = onBack) },
-                title = { ExpandedTitle(stringResource(R.string.app_detail_activities_section)) },
+                title = { Text(stringResource(R.string.app_detail_activities_section)) },
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -344,11 +334,7 @@ fun ActivitiesScreen(
                 ActivityModeSelector(
                     lockListed = lockListed,
                     onSelect = { app.appOverridesRepository.setLockListedActivities(packageKey, it) },
-                    modifier =
-                        Modifier.padding(
-                            horizontal = Tokens.SectionHorizontalMargin,
-                            vertical = Tokens.SpacingSm,
-                        ),
+                    modifier = Modifier.padding(top = Tokens.SpacingSm),
                 )
             }
 

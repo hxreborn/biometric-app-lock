@@ -5,7 +5,6 @@ package eu.hxreborn.biometricapplock.ui.screen
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.ApplicationInfo
-import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.os.UserManager
 import androidx.compose.animation.core.LinearEasing
@@ -51,8 +50,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SnackbarDuration
@@ -78,6 +77,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -100,10 +100,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.hxreborn.biometricapplock.App
 import eu.hxreborn.biometricapplock.R
-import eu.hxreborn.biometricapplock.ui.component.ExpandedTitle
 import eu.hxreborn.biometricapplock.ui.component.LockSwitch
 import eu.hxreborn.biometricapplock.ui.component.SectionCard
 import eu.hxreborn.biometricapplock.ui.component.SectionPosition
+import eu.hxreborn.biometricapplock.ui.screen.settings.toggle
 import eu.hxreborn.biometricapplock.ui.theme.Tokens
 import eu.hxreborn.biometricapplock.ui.util.openAppInfo
 import eu.hxreborn.biometricapplock.ui.util.rememberAppIcon
@@ -322,6 +322,7 @@ private fun AppRow(
     onNavigateToDetail: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
+    val haptics = LocalHapticFeedback.current
     val icon = rememberAppIcon(app.packageName, app.userId)
 
     SectionCard(
@@ -367,7 +368,12 @@ private fun AppRow(
             }
             LockSwitch(
                 checked = isChecked,
-                onCheckedChange = { if (canToggle) onCheckedChange(it) },
+                onCheckedChange = {
+                    if (canToggle) {
+                        haptics.toggle(it)
+                        onCheckedChange(it)
+                    }
+                },
                 enabled = canToggle,
             )
         }
@@ -471,7 +477,7 @@ fun AppListScreen(
 
     val searchTextFieldState = rememberTextFieldState()
     var debouncedQuery by remember { mutableStateOf("") }
-    var showSystemApps by remember { mutableStateOf(true) }
+    var showSystemApps by rememberSaveable { mutableStateOf(true) }
     var refreshKey by remember { mutableIntStateOf(0) }
     var isRefreshing by remember { mutableStateOf(false) }
     val appState = rememberInstalledApps(refreshKey)
@@ -482,9 +488,11 @@ fun AppListScreen(
     }
     val isInitialLoading = appState.isLoading && appState.apps.isEmpty()
 
+    val haptics = LocalHapticFeedback.current
     LaunchedEffect(refreshKey, appState.refreshKey, appState.isLoading) {
         if (isRefreshing && appState.refreshKey == refreshKey && !appState.isLoading) {
             isRefreshing = false
+            haptics.performHapticFeedback(HapticFeedbackType.Confirm)
         }
     }
 
@@ -546,8 +554,8 @@ fun AppListScreen(
         topBar = {
             Surface(color = MaterialTheme.colorScheme.surface) {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    LargeTopAppBar(
-                        title = { ExpandedTitle(stringResource(R.string.tab_apps)) },
+                    MediumFlexibleTopAppBar(
+                        title = { Text(stringResource(R.string.tab_apps)) },
                         scrollBehavior = scrollBehavior,
                         colors =
                             TopAppBarDefaults.topAppBarColors(
@@ -558,11 +566,15 @@ fun AppListScreen(
                     AppSearchBar(
                         textFieldState = searchTextFieldState,
                         showSystemApps = showSystemApps,
-                        onSystemToggle = { showSystemApps = it },
+                        onSystemToggle = {
+                            haptics.toggle(it)
+                            showSystemApps = it
+                        },
                         selectedCount = selectableScope.size,
                         canClear = serviceAvailable && selectableScope.isNotEmpty(),
                         onClear = {
                             val previous = selectableScope
+                            haptics.performHapticFeedback(HapticFeedbackType.Confirm)
                             viewModel.clearScope(selectableScope)
                             coroutineScope.launch {
                                 if (snackbarHostState.showSnackbar(
@@ -586,7 +598,6 @@ fun AppListScreen(
         },
     ) { innerPadding ->
         val pullState = rememberPullToRefreshState()
-        val haptics = LocalHapticFeedback.current
         val currentIsRefreshing by rememberUpdatedState(isRefreshing)
         val refreshReady = pullState.distanceFraction >= 1f
         val refreshIndicatorActive = refreshReady || isRefreshing
