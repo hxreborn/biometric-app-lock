@@ -1,9 +1,7 @@
 package eu.hxreborn.biometricapplock.ui.theme
 
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 
 object Tokens {
     val ScreenHorizontalPadding: Dp = 16.dp
@@ -91,7 +89,4 @@ object Tokens {
 
     val UpToDateBadgeSize: Dp = 128.dp
     val UpToDateBadgeIconSize: Dp = 56.dp
-
-    val ExpandedTitleLineHeight: TextUnit = 36.sp
-    const val EXPANDED_TITLE_MAX_LINES = 2
 }

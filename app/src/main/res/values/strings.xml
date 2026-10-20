@@ -115,8 +115,6 @@
     <string name="settings_self_lock_credential_title">Allow screen lock fallback</string>
     <string name="settings_self_lock_credential_summary">Use your PIN, pattern or password if biometrics fail</string>
     <string name="uninstall_blocked_toast">This app is protected and can\'t be uninstalled</string>
-
-    <string name="settings_app_management">App management</string>
     <string name="settings_app_management_title">App management</string>
     <string name="settings_app_management_summary">Ask before apps are installed, updated or removed</string>
 
@@ -131,7 +129,6 @@
     <string name="biometric_prompt_default_target">app</string>
 
     <string name="settings_diagnostics">Diagnostics</string>
-    <string name="settings_about">About</string>
     <string name="settings_about_entry">About</string>
     <string name="settings_about_entry_summary">Version %1$s</string>
     <string name="settings_lsposed_framework">Xposed framework</string>
@@ -294,6 +291,4 @@
     <string name="miui_face_success">Done</string>
     <string name="miui_face_failed">Try Again</string>
 
-    <string name="settings_theme_summary">Light, dark, or follow system</string>
-    <string name="settings_relock_delay_summary">How long to wait before locking an app again</string>
 </resources>

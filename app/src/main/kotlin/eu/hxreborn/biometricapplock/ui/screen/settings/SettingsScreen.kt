@@ -10,8 +10,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -21,11 +23,10 @@ import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Dialpad
 import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.FormatPaint
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.NewReleases
+import androidx.compose.material.icons.outlined.InstallMobile
 import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.RoundedCorner
@@ -39,8 +40,8 @@ import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -48,16 +49,16 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -65,15 +66,12 @@ import eu.hxreborn.biometricapplock.App
 import eu.hxreborn.biometricapplock.BuildConfig
 import eu.hxreborn.biometricapplock.R
 import eu.hxreborn.biometricapplock.prefs.AppPrefs
+import eu.hxreborn.biometricapplock.prefs.BoolPref
 import eu.hxreborn.biometricapplock.prefs.Prefs
 import eu.hxreborn.biometricapplock.prefs.ThemeMode
-import eu.hxreborn.biometricapplock.ui.component.ExpandedTitle
-import eu.hxreborn.biometricapplock.ui.component.FeatureSheetItem
 import eu.hxreborn.biometricapplock.ui.component.LockSwitch
 import eu.hxreborn.biometricapplock.ui.component.LogActionsSheet
 import eu.hxreborn.biometricapplock.ui.component.SectionPosition
-import eu.hxreborn.biometricapplock.ui.component.WhatsNewSheet
-import eu.hxreborn.biometricapplock.ui.component.changeTypeLabelRes
 import eu.hxreborn.biometricapplock.ui.screen.BiometricChoiceDialog
 import eu.hxreborn.biometricapplock.ui.screen.RelockDelayDialog
 import eu.hxreborn.biometricapplock.ui.screen.biometricChoiceLabel
@@ -81,8 +79,6 @@ import eu.hxreborn.biometricapplock.ui.screen.relockDelaySummary
 import eu.hxreborn.biometricapplock.ui.theme.Tokens
 import eu.hxreborn.biometricapplock.ui.util.LauncherIconHelper
 import eu.hxreborn.biometricapplock.ui.viewmodel.FrameworkInfo
-import eu.hxreborn.biometricapplock.updates.ChangeType
-import eu.hxreborn.biometricapplock.updates.UpdateSheetState
 import eu.hxreborn.biometricapplock.util.DiagnosticsExporter
 import eu.hxreborn.biometricapplock.util.METHOD_BIOMETRIC
 import eu.hxreborn.biometricapplock.util.METHOD_CREDENTIAL
@@ -106,17 +102,17 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val app = App.from(context)
+    val haptics = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
     val prefs by app.prefsRepository.state.collectAsStateWithLifecycle(initialValue = AppPrefs.Defaults)
     val cachedAvailable by app.updateRepository.cachedAvailable.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    var showThemeDialog by remember { mutableStateOf(false) }
-    var showRelockDialog by remember { mutableStateOf(false) }
-    var showWhatsNew by remember { mutableStateOf(false) }
-    var showLogActions by remember { mutableStateOf(false) }
+    var showThemeDialog by rememberSaveable { mutableStateOf(false) }
+    var showRelockDialog by rememberSaveable { mutableStateOf(false) }
+    var showLogActions by rememberSaveable { mutableStateOf(false) }
     var pendingSaveFilePath by rememberSaveable { mutableStateOf<String?>(null) }
     var launcherIconHidden by remember { mutableStateOf(!LauncherIconHelper.isLauncherIconVisible(context)) }
-    var showHideLauncherConfirm by remember { mutableStateOf(false) }
+    var showHideLauncherConfirm by rememberSaveable { mutableStateOf(false) }
 
     val bm = remember { context.getSystemService(BiometricManager::class.java) }
     val unlockMethods = normalizeMethods(prefs.unlockMethods)
@@ -124,8 +120,8 @@ fun SettingsScreen(
     val unlockCredentialToggleable = credentialAvailable && unlockMethods and METHOD_BIOMETRIC != 0
     val selfLockMethods = normalizeMethods(prefs.selfLockMethods)
     val selfLockCredentialToggleable = credentialAvailable && selfLockMethods and METHOD_BIOMETRIC != 0
-    var showBiometricDialog by remember { mutableStateOf(false) }
-    var showSelfLockDialog by remember { mutableStateOf(false) }
+    var showBiometricDialog by rememberSaveable { mutableStateOf(false) }
+    var showSelfLockDialog by rememberSaveable { mutableStateOf(false) }
 
     if (showBiometricDialog) {
         BiometricChoiceDialog(
@@ -159,6 +155,7 @@ fun SettingsScreen(
             val file = File(filePath)
             coroutineScope.launch {
                 val saved = DiagnosticsExporter.saveTo(context, file, uri)
+                haptics.performHapticFeedback(if (saved) HapticFeedbackType.Confirm else HapticFeedbackType.Reject)
                 Toast
                     .makeText(
                         context,
@@ -173,6 +170,7 @@ fun SettingsScreen(
             current = prefs.themeMode,
             onSelect = { mode ->
                 app.prefsRepository.save(Prefs.DARK_THEME_CONFIG, mode.prefValue)
+                mode.applyAsAppNightMode(context)
                 showThemeDialog = false
             },
             onDismiss = { showThemeDialog = false },
@@ -198,12 +196,13 @@ fun SettingsScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
+                        haptics.toggle(true)
                         LauncherIconHelper.setLauncherIconVisible(context, false)
                         launcherIconHidden = true
                         showHideLauncherConfirm = false
                     },
                 ) {
-                    Text(stringResource(android.R.string.ok))
+                    Text(stringResource(R.string.settings_hide_launcher_confirm_action))
                 }
             },
             dismissButton = {
@@ -211,29 +210,6 @@ fun SettingsScreen(
                     Text(stringResource(android.R.string.cancel))
                 }
             },
-        )
-    }
-
-    if (showWhatsNew) {
-        val uriHandler = LocalUriHandler.current
-        val whatsNewItems =
-            app.updateRepository.bundledChangelog.filter { it.version == BuildConfig.VERSION_NAME }.map { entry ->
-                val type = ChangeType.from(entry.type, entry.breaking)
-                FeatureSheetItem(
-                    label = stringResource(changeTypeLabelRes(type)),
-                    scope = entry.scope?.takeIf { it.isNotBlank() },
-                    changeType = type,
-                    title = entry.title,
-                    body = entry.description,
-                    onClick = entry.url?.let { url -> { uriHandler.openUri(url) } },
-                )
-            }
-
-        WhatsNewSheet(
-            state = UpdateSheetState.WhatsNew,
-            items = whatsNewItems,
-            versionLabel = BuildConfig.VERSION_NAME,
-            onDismiss = { showWhatsNew = false },
         )
     }
 
@@ -246,6 +222,7 @@ fun SettingsScreen(
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
+                haptics.performHapticFeedback(HapticFeedbackType.Reject)
                 Toast.makeText(context, R.string.diagnostics_no_logs, Toast.LENGTH_LONG).show()
                 false
             }
@@ -265,13 +242,14 @@ fun SettingsScreen(
     }
 
     val showDotIndicator = cachedAvailable?.latestVersion?.let { it != prefs.lastDismissedAvailableVersion } == true
+    val save: (BoolPref, Boolean) -> Unit = { pref, value -> app.prefsRepository.save(pref, value) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            LargeTopAppBar(
-                title = { ExpandedTitle(stringResource(R.string.tab_settings)) },
+            MediumFlexibleTopAppBar(
+                title = { Text(stringResource(R.string.tab_settings)) },
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -284,313 +262,6 @@ fun SettingsScreen(
                     bottom = contentPadding.calculateBottomPadding() + Tokens.SpacingLg,
                 ),
         ) {
-            item { SettingsSectionHeader(title = stringResource(R.string.settings_lock)) }
-            item {
-                PreferenceRow(
-                    icon = Icons.Outlined.Timer,
-                    title = stringResource(R.string.settings_relock_delay_title),
-                    summary = stringResource(R.string.settings_relock_delay_summary),
-                    position = SectionPosition.Top,
-                    onClick = { showRelockDialog = true },
-                    trailing = { ValueText(relockDelaySummary(prefs.relockDelaySeconds)) },
-                )
-            }
-            item {
-                PreferenceRow(
-                    icon = Icons.Outlined.ScreenLockPortrait,
-                    title = stringResource(R.string.settings_relock_screen_off_title),
-                    summary = stringResource(R.string.settings_relock_screen_off_summary),
-                    position = SectionPosition.Middle,
-                    onClick = {
-                        app.prefsRepository.save(
-                            Prefs.RELOCK_ON_SCREEN_OFF,
-                            !prefs.relockOnScreenOff,
-                        )
-                    },
-                    trailing = {
-                        LockSwitch(checked = prefs.relockOnScreenOff, onCheckedChange = null)
-                    },
-                )
-            }
-            item {
-                PreferenceRow(
-                    icon = Icons.Outlined.DeleteSweep,
-                    title = stringResource(R.string.settings_relock_task_removed_title),
-                    summary = stringResource(R.string.settings_relock_task_removed_summary),
-                    position = SectionPosition.Bottom,
-                    onClick = {
-                        app.prefsRepository.save(
-                            Prefs.RELOCK_ON_TASK_REMOVED,
-                            !prefs.relockOnTaskRemoved,
-                        )
-                    },
-                    trailing = {
-                        LockSwitch(checked = prefs.relockOnTaskRemoved, onCheckedChange = null)
-                    },
-                )
-            }
-
-            item { SettingsSectionHeader(title = stringResource(R.string.settings_unlock_prompt)) }
-            item {
-                PreferenceRow(
-                    icon = Icons.Outlined.TouchApp,
-                    title = stringResource(R.string.settings_unlock_confirmation_title),
-                    summary = stringResource(R.string.settings_unlock_confirmation_summary),
-                    position = SectionPosition.Top,
-                    onClick = {
-                        app.prefsRepository.save(
-                            Prefs.UNLOCK_REQUIRE_CONFIRMATION,
-                            !prefs.unlockRequireConfirmation,
-                        )
-                    },
-                    trailing = {
-                        LockSwitch(checked = prefs.unlockRequireConfirmation, onCheckedChange = null)
-                    },
-                )
-            }
-            item {
-                PreferenceRow(
-                    icon = Icons.Outlined.Fingerprint,
-                    title = stringResource(R.string.unlock_biometrics_title),
-                    summary = biometricChoiceLabel(biometricChoice(unlockMethods)),
-                    position = SectionPosition.Middle,
-                    onClick = { showBiometricDialog = true },
-                )
-            }
-            item {
-                PreferenceRow(
-                    icon = Icons.Outlined.Dialpad,
-                    title = stringResource(R.string.unlock_screen_lock_title),
-                    summary =
-                        stringResource(
-                            if (credentialAvailable) {
-                                R.string.unlock_screen_lock_summary
-                            } else {
-                                R.string.unlock_screen_lock_unset
-                            },
-                        ),
-                    position = SectionPosition.Middle,
-                    onClick =
-                        if (unlockCredentialToggleable) {
-                            {
-                                app.prefsRepository.save(
-                                    Prefs.UNLOCK_METHODS,
-                                    withCredential(unlockMethods, unlockMethods and METHOD_CREDENTIAL == 0),
-                                )
-                            }
-                        } else {
-                            null
-                        },
-                    trailing = {
-                        LockSwitch(
-                            checked = unlockMethods and METHOD_CREDENTIAL != 0,
-                            onCheckedChange = null,
-                            enabled = unlockCredentialToggleable,
-                        )
-                    },
-                )
-            }
-            item {
-                PreferenceRow(
-                    icon = Icons.Outlined.Build,
-                    title = stringResource(R.string.settings_opaque_unlock_prompt_title),
-                    summary = stringResource(R.string.settings_opaque_unlock_prompt_summary),
-                    position = SectionPosition.Bottom,
-                    onClick = {
-                        app.prefsRepository.save(
-                            Prefs.USE_OPAQUE_UNLOCK_PROMPT,
-                            !prefs.useOpaqueUnlockPrompt,
-                        )
-                    },
-                    trailing = {
-                        LockSwitch(checked = prefs.useOpaqueUnlockPrompt, onCheckedChange = null)
-                    },
-                )
-            }
-
-            item { SettingsSectionHeader(title = stringResource(R.string.settings_protection)) }
-            item {
-                PreferenceRow(
-                    icon = Icons.Outlined.Screenshot,
-                    title = stringResource(R.string.settings_block_screenshots_title),
-                    summary = stringResource(R.string.settings_block_screenshots_summary),
-                    position = SectionPosition.Top,
-                    onClick = {
-                        app.prefsRepository.save(
-                            Prefs.BLOCK_SCREENSHOTS,
-                            !prefs.blockScreenshots,
-                        )
-                    },
-                    trailing = {
-                        LockSwitch(checked = prefs.blockScreenshots, onCheckedChange = null)
-                    },
-                )
-            }
-            item {
-                PreferenceRow(
-                    icon = Icons.Outlined.NotificationsOff,
-                    title = stringResource(R.string.settings_hide_notification_content_title),
-                    summary = stringResource(R.string.settings_hide_notification_content_summary),
-                    position = SectionPosition.Middle,
-                    onClick = {
-                        app.prefsRepository.save(
-                            Prefs.HIDE_NOTIFICATION_CONTENT,
-                            !prefs.hideNotificationContent,
-                        )
-                    },
-                    trailing = {
-                        LockSwitch(checked = prefs.hideNotificationContent, onCheckedChange = null)
-                    },
-                )
-            }
-            item {
-                PreferenceRow(
-                    icon = Icons.Outlined.AppBlocking,
-                    title = stringResource(R.string.settings_prevent_uninstall_title),
-                    summary = stringResource(R.string.settings_prevent_uninstall_summary),
-                    position = SectionPosition.Middle,
-                    onClick = {
-                        app.prefsRepository.save(
-                            Prefs.PREVENT_MODULE_UNINSTALL,
-                            !prefs.preventModuleUninstall,
-                        )
-                    },
-                    trailing = {
-                        LockSwitch(checked = prefs.preventModuleUninstall, onCheckedChange = null)
-                    },
-                )
-            }
-            item {
-                PreferenceRow(
-                    icon = Icons.Outlined.VisibilityOff,
-                    title = stringResource(R.string.settings_hide_launcher),
-                    summary = stringResource(R.string.settings_hide_launcher_summary),
-                    position = SectionPosition.Bottom,
-                    onClick = {
-                        if (launcherIconHidden) {
-                            LauncherIconHelper.setLauncherIconVisible(context, true)
-                            launcherIconHidden = false
-                        } else {
-                            showHideLauncherConfirm = true
-                        }
-                    },
-                    trailing = {
-                        LockSwitch(checked = launcherIconHidden, onCheckedChange = null)
-                    },
-                )
-            }
-
-            item { SettingsSectionHeader(title = stringResource(R.string.settings_self_lock_section)) }
-            item {
-                PreferenceRow(
-                    icon = Icons.Outlined.ScreenLockPortrait,
-                    title = stringResource(R.string.settings_self_lock_title),
-                    summary = stringResource(R.string.settings_self_lock_summary),
-                    position = if (prefs.selfLock) SectionPosition.Top else SectionPosition.Single,
-                    onClick = {
-                        app.prefsRepository.save(Prefs.SELF_LOCK, !prefs.selfLock)
-                    },
-                    trailing = {
-                        LockSwitch(checked = prefs.selfLock, onCheckedChange = null)
-                    },
-                )
-            }
-            if (prefs.selfLock) {
-                item {
-                    PreferenceRow(
-                        icon = Icons.Outlined.Fingerprint,
-                        title = stringResource(R.string.settings_self_lock_biometrics_title),
-                        summary = biometricChoiceLabel(biometricChoice(selfLockMethods)),
-                        position = SectionPosition.Middle,
-                        onClick = { showSelfLockDialog = true },
-                    )
-                }
-                item {
-                    PreferenceRow(
-                        icon = Icons.Outlined.Dialpad,
-                        title = stringResource(R.string.settings_self_lock_credential_title),
-                        summary =
-                            stringResource(
-                                if (credentialAvailable) {
-                                    R.string.settings_self_lock_credential_summary
-                                } else {
-                                    R.string.unlock_screen_lock_unset
-                                },
-                            ),
-                        position = SectionPosition.Bottom,
-                        onClick =
-                            if (selfLockCredentialToggleable) {
-                                {
-                                    app.prefsRepository.save(
-                                        Prefs.SELF_LOCK_METHODS,
-                                        withCredential(selfLockMethods, selfLockMethods and METHOD_CREDENTIAL == 0),
-                                    )
-                                }
-                            } else {
-                                null
-                            },
-                        trailing = {
-                            LockSwitch(
-                                checked = selfLockMethods and METHOD_CREDENTIAL != 0,
-                                onCheckedChange = null,
-                                enabled = selfLockCredentialToggleable,
-                            )
-                        },
-                    )
-                }
-            }
-
-            item { SettingsSectionHeader(title = stringResource(R.string.settings_app_management)) }
-            item {
-                PreferenceRow(
-                    icon = Icons.Outlined.Download,
-                    title = stringResource(R.string.settings_app_management_title),
-                    summary = stringResource(R.string.settings_app_management_summary),
-                    position = SectionPosition.Single,
-                    onClick = onNavigateToAppManagement,
-                )
-            }
-
-            item { SettingsSectionHeader(title = stringResource(R.string.settings_appearance)) }
-            item {
-                PreferenceRow(
-                    icon = Icons.Outlined.Palette,
-                    title = stringResource(R.string.settings_theme),
-                    summary = stringResource(R.string.settings_theme_summary),
-                    position = SectionPosition.Top,
-                    onClick = { showThemeDialog = true },
-                    trailing = { ValueText(themeModeLabel(prefs.themeMode)) },
-                )
-            }
-            item {
-                PreferenceRow(
-                    icon = Icons.Outlined.FormatPaint,
-                    title = stringResource(R.string.settings_dynamic_color),
-                    summary = stringResource(R.string.settings_dynamic_color_summary),
-                    position = SectionPosition.Middle,
-                    onClick = {
-                        app.prefsRepository.save(Prefs.USE_DYNAMIC_COLOR, !prefs.useDynamicColor)
-                    },
-                    trailing = {
-                        LockSwitch(checked = prefs.useDynamicColor, onCheckedChange = null)
-                    },
-                )
-            }
-            item {
-                PreferenceRow(
-                    icon = Icons.Outlined.RoundedCorner,
-                    title = stringResource(R.string.settings_floating_nav_bar),
-                    summary = stringResource(R.string.settings_floating_nav_bar_summary),
-                    position = SectionPosition.Bottom,
-                    onClick = {
-                        app.prefsRepository.save(Prefs.FLOATING_NAV_BAR, !prefs.floatingNavBar)
-                    },
-                    trailing = {
-                        LockSwitch(checked = prefs.floatingNavBar, onCheckedChange = null)
-                    },
-                )
-            }
-
             item { SettingsSectionHeader(title = stringResource(R.string.settings_updates)) }
             item {
                 PreferenceRow(
@@ -612,17 +283,223 @@ fun SettingsScreen(
                 )
             }
             item {
-                PreferenceRow(
+                SwitchPreferenceRow(
                     icon = Icons.Outlined.Update,
                     title = stringResource(R.string.updates_auto_check_title),
                     summary = stringResource(R.string.updates_auto_check_summary),
+                    checked = prefs.autoCheckUpdate,
+                    onCheckedChange = { save(Prefs.AUTO_CHECK_UPDATE, it) },
+                    position = SectionPosition.Bottom,
+                )
+            }
+
+            item { SettingsSectionHeader(title = stringResource(R.string.settings_lock)) }
+            item {
+                PreferenceRow(
+                    icon = Icons.Outlined.Timer,
+                    title = stringResource(R.string.settings_relock_delay_title),
+                    summary = relockDelaySummary(prefs.relockDelaySeconds),
+                    position = SectionPosition.Top,
+                    onClick = { showRelockDialog = true },
+                )
+            }
+            item {
+                SwitchPreferenceRow(
+                    icon = Icons.Outlined.ScreenLockPortrait,
+                    title = stringResource(R.string.settings_relock_screen_off_title),
+                    summary = stringResource(R.string.settings_relock_screen_off_summary),
+                    checked = prefs.relockOnScreenOff,
+                    onCheckedChange = { save(Prefs.RELOCK_ON_SCREEN_OFF, it) },
+                    position = SectionPosition.Middle,
+                )
+            }
+            item {
+                SwitchPreferenceRow(
+                    icon = Icons.Outlined.DeleteSweep,
+                    title = stringResource(R.string.settings_relock_task_removed_title),
+                    summary = stringResource(R.string.settings_relock_task_removed_summary),
+                    checked = prefs.relockOnTaskRemoved,
+                    onCheckedChange = { save(Prefs.RELOCK_ON_TASK_REMOVED, it) },
+                    position = SectionPosition.Bottom,
+                )
+            }
+
+            item { SettingsSectionHeader(title = stringResource(R.string.settings_unlock_prompt)) }
+            item {
+                PreferenceRow(
+                    icon = Icons.Outlined.Fingerprint,
+                    title = stringResource(R.string.unlock_biometrics_title),
+                    summary = biometricChoiceLabel(biometricChoice(unlockMethods)),
+                    position = SectionPosition.Top,
+                    onClick = { showBiometricDialog = true },
+                )
+            }
+            item {
+                SwitchPreferenceRow(
+                    icon = Icons.Outlined.Dialpad,
+                    title = stringResource(R.string.unlock_screen_lock_title),
+                    summary =
+                        stringResource(
+                            if (credentialAvailable) R.string.unlock_screen_lock_summary else R.string.unlock_screen_lock_unset,
+                        ),
+                    checked = unlockMethods and METHOD_CREDENTIAL != 0,
+                    onCheckedChange = { app.prefsRepository.save(Prefs.UNLOCK_METHODS, withCredential(unlockMethods, it)) },
+                    position = SectionPosition.Middle,
+                    switchEnabled = unlockCredentialToggleable,
+                )
+            }
+            item {
+                SwitchPreferenceRow(
+                    icon = Icons.Outlined.TouchApp,
+                    title = stringResource(R.string.settings_unlock_confirmation_title),
+                    summary = stringResource(R.string.settings_unlock_confirmation_summary),
+                    checked = prefs.unlockRequireConfirmation,
+                    onCheckedChange = { save(Prefs.UNLOCK_REQUIRE_CONFIRMATION, it) },
+                    position = SectionPosition.Middle,
+                )
+            }
+            item {
+                SwitchPreferenceRow(
+                    icon = Icons.Outlined.Build,
+                    title = stringResource(R.string.settings_opaque_unlock_prompt_title),
+                    summary = stringResource(R.string.settings_opaque_unlock_prompt_summary),
+                    checked = prefs.useOpaqueUnlockPrompt,
+                    onCheckedChange = { save(Prefs.USE_OPAQUE_UNLOCK_PROMPT, it) },
+                    position = SectionPosition.Bottom,
+                )
+            }
+
+            item { SettingsSectionHeader(title = stringResource(R.string.settings_protection)) }
+            item {
+                SwitchPreferenceRow(
+                    icon = Icons.Outlined.Screenshot,
+                    title = stringResource(R.string.settings_block_screenshots_title),
+                    summary = stringResource(R.string.settings_block_screenshots_summary),
+                    checked = prefs.blockScreenshots,
+                    onCheckedChange = { save(Prefs.BLOCK_SCREENSHOTS, it) },
+                    position = SectionPosition.Top,
+                )
+            }
+            item {
+                SwitchPreferenceRow(
+                    icon = Icons.Outlined.NotificationsOff,
+                    title = stringResource(R.string.settings_hide_notification_content_title),
+                    summary = stringResource(R.string.settings_hide_notification_content_summary),
+                    checked = prefs.hideNotificationContent,
+                    onCheckedChange = { save(Prefs.HIDE_NOTIFICATION_CONTENT, it) },
+                    position = SectionPosition.Middle,
+                )
+            }
+            item {
+                SwitchPreferenceRow(
+                    icon = Icons.Outlined.AppBlocking,
+                    title = stringResource(R.string.settings_prevent_uninstall_title),
+                    summary = stringResource(R.string.settings_prevent_uninstall_summary),
+                    checked = prefs.preventModuleUninstall,
+                    onCheckedChange = { save(Prefs.PREVENT_MODULE_UNINSTALL, it) },
+                    position = SectionPosition.Middle,
+                )
+            }
+            item {
+                PreferenceRow(
+                    icon = Icons.Outlined.VisibilityOff,
+                    title = stringResource(R.string.settings_hide_launcher),
+                    summary = stringResource(R.string.settings_hide_launcher_summary),
                     position = SectionPosition.Bottom,
                     onClick = {
-                        app.prefsRepository.save(Prefs.AUTO_CHECK_UPDATE, !prefs.autoCheckUpdate)
+                        if (launcherIconHidden) {
+                            haptics.toggle(false)
+                            LauncherIconHelper.setLauncherIconVisible(context, true)
+                            launcherIconHidden = false
+                        } else {
+                            showHideLauncherConfirm = true
+                        }
                     },
-                    trailing = {
-                        LockSwitch(checked = prefs.autoCheckUpdate, onCheckedChange = null)
-                    },
+                    trailing = { LockSwitch(checked = launcherIconHidden, onCheckedChange = null) },
+                )
+            }
+
+            item { SettingsSectionHeader(title = stringResource(R.string.settings_self_lock_section)) }
+            item {
+                SwitchPreferenceRow(
+                    icon = Icons.Outlined.ScreenLockPortrait,
+                    title = stringResource(R.string.settings_self_lock_title),
+                    summary = stringResource(R.string.settings_self_lock_summary),
+                    checked = prefs.selfLock,
+                    onCheckedChange = { save(Prefs.SELF_LOCK, it) },
+                    position = if (prefs.selfLock) SectionPosition.Top else SectionPosition.Single,
+                )
+            }
+            if (prefs.selfLock) {
+                item {
+                    PreferenceRow(
+                        icon = Icons.Outlined.Fingerprint,
+                        title = stringResource(R.string.settings_self_lock_biometrics_title),
+                        summary = biometricChoiceLabel(biometricChoice(selfLockMethods)),
+                        position = SectionPosition.Middle,
+                        onClick = { showSelfLockDialog = true },
+                    )
+                }
+                item {
+                    SwitchPreferenceRow(
+                        icon = Icons.Outlined.Dialpad,
+                        title = stringResource(R.string.settings_self_lock_credential_title),
+                        summary =
+                            stringResource(
+                                if (credentialAvailable) {
+                                    R.string.settings_self_lock_credential_summary
+                                } else {
+                                    R.string.unlock_screen_lock_unset
+                                },
+                            ),
+                        checked = selfLockMethods and METHOD_CREDENTIAL != 0,
+                        onCheckedChange = { app.prefsRepository.save(Prefs.SELF_LOCK_METHODS, withCredential(selfLockMethods, it)) },
+                        position = SectionPosition.Bottom,
+                        switchEnabled = selfLockCredentialToggleable,
+                    )
+                }
+            }
+
+            item { Spacer(Modifier.height(Tokens.SectionHeaderTopPadding)) }
+            item {
+                PreferenceRow(
+                    icon = Icons.Outlined.InstallMobile,
+                    title = stringResource(R.string.settings_app_management_title),
+                    summary = stringResource(R.string.settings_app_management_summary),
+                    position = SectionPosition.Single,
+                    onClick = onNavigateToAppManagement,
+                    trailing = { Chevron() },
+                )
+            }
+
+            item { SettingsSectionHeader(title = stringResource(R.string.settings_appearance)) }
+            item {
+                PreferenceRow(
+                    icon = Icons.Outlined.Palette,
+                    title = stringResource(R.string.settings_theme),
+                    summary = themeModeLabel(prefs.themeMode),
+                    position = SectionPosition.Top,
+                    onClick = { showThemeDialog = true },
+                )
+            }
+            item {
+                SwitchPreferenceRow(
+                    icon = Icons.Outlined.FormatPaint,
+                    title = stringResource(R.string.settings_dynamic_color),
+                    summary = stringResource(R.string.settings_dynamic_color_summary),
+                    checked = prefs.useDynamicColor,
+                    onCheckedChange = { save(Prefs.USE_DYNAMIC_COLOR, it) },
+                    position = SectionPosition.Middle,
+                )
+            }
+            item {
+                SwitchPreferenceRow(
+                    icon = Icons.Outlined.RoundedCorner,
+                    title = stringResource(R.string.settings_floating_nav_bar),
+                    summary = stringResource(R.string.settings_floating_nav_bar_summary),
+                    checked = prefs.floatingNavBar,
+                    onCheckedChange = { save(Prefs.FLOATING_NAV_BAR, it) },
+                    position = SectionPosition.Bottom,
                 )
             }
 
@@ -633,11 +510,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.about_send_logs_title),
                     summary =
                         stringResource(
-                            if (rootGranted == false) {
-                                R.string.about_send_logs_no_root
-                            } else {
-                                R.string.about_send_logs_summary
-                            },
+                            if (rootGranted == false) R.string.about_send_logs_no_root else R.string.about_send_logs_summary,
                         ),
                     position = SectionPosition.Single,
                     enabled = rootGranted != false,
@@ -645,36 +518,19 @@ fun SettingsScreen(
                 )
             }
 
-            item { SettingsSectionHeader(title = stringResource(R.string.settings_about)) }
-            item {
-                PreferenceRow(
-                    icon = Icons.Outlined.NewReleases,
-                    title = stringResource(R.string.about_whats_new_title),
-                    summary = stringResource(R.string.about_whats_new_summary, BuildConfig.VERSION_NAME),
-                    position = SectionPosition.Top,
-                    onClick = { showWhatsNew = true },
-                )
-            }
+            item { Spacer(Modifier.height(Tokens.SectionHeaderTopPadding)) }
             item {
                 PreferenceRow(
                     icon = Icons.Outlined.Info,
                     title = stringResource(R.string.settings_about_entry),
-                    summary = stringResource(R.string.settings_about_entry_summary),
-                    position = SectionPosition.Bottom,
+                    summary = stringResource(R.string.settings_about_entry_summary, BuildConfig.VERSION_NAME),
+                    position = SectionPosition.Single,
                     onClick = onNavigateToAbout,
+                    trailing = { Chevron() },
                 )
             }
         }
     }
-}
-
-@Composable
-private fun ValueText(value: String) {
-    Text(
-        text = value,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-    )
 }
 
 @Composable
