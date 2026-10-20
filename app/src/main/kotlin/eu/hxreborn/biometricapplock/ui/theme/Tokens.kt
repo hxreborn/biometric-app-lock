@@ -26,6 +26,7 @@ object Tokens {
     val SectionHeaderStartPadding: Dp = 16.dp
     val SectionHeaderTopPadding: Dp = 16.dp
     val SectionHeaderBottomPadding: Dp = 6.dp
+    val GroupedShapeCornerLarge: Dp = 24.dp
     val SettingsIconSize: Dp = 24.dp
     val SmallIconSize: Dp = 20.dp
 

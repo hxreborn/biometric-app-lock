@@ -15,10 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -56,46 +52,10 @@ fun LockedAppsSection(
         modifier = modifier,
     )
     SectionCard {
-        if (scope.isEmpty()) {
-            EmptyContent(onClick = onNavigateToApps)
-        } else {
-            FilledContent(
-                scope = scope,
-                onAllClick = onNavigateToApps,
-                onAppClick = onNavigateToAppDetail,
-            )
-        }
-    }
-}
-
-@Composable
-private fun EmptyContent(onClick: () -> Unit) {
-    Row(
-        modifier =
-            Modifier.fillMaxWidth().clickable(onClick = onClick).padding(
-                horizontal = Tokens.PreferenceRowHorizontalPadding,
-                vertical = Tokens.PreferenceRowVerticalPadding,
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Tokens.PreferenceHorizontalSpacing),
-    ) {
-        Icon(
-            imageVector = Icons.Outlined.Add,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(Tokens.SettingsIconSize),
-        )
-        Text(
-            text = stringResource(R.string.dashboard_locked_apps_empty),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.weight(1f),
-        )
-        Icon(
-            imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(Tokens.SmallIconSize),
+        FilledContent(
+            scope = scope,
+            onAllClick = onNavigateToApps,
+            onAppClick = onNavigateToAppDetail,
         )
     }
 }

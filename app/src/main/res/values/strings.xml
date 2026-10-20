@@ -14,7 +14,8 @@
     <string name="dashboard_locked_apps_more">more</string>
     <string name="env_footer_unbound">Xposed not bound</string>
 
-    <string name="status_active">Module active</string>
+    <string name="status_running">Running in System Framework</string>
+    <string name="status_framework">%1$s %2$s (API %3$d)</string>
     <string name="status_inactive">Module not active</string>
     <string name="status_inactive_action">Enable it in your Xposed manager with System Framework in scope, then reboot</string>
     <string name="status_reboot_required">Reboot needed</string>
@@ -25,12 +26,6 @@
     <string name="status_no_unlock_method">Locked apps can\'t open</string>
     <string name="status_no_unlock_method_action">No unlock method is ready. Set up a screen lock or a fingerprint</string>
     <string name="status_action_security_settings">Open security settings</string>
-    <plurals name="status_locking_count">
-        <item quantity="one">Locking 1 app</item>
-        <item quantity="other">Locking %1$d apps</item>
-    </plurals>
-    <string name="status_loaded_at_boot">Active since boot, %1$s</string>
-    <string name="status_loaded_via_hot_reload">Reloaded after the last update, %1$s</string>
 
     <string name="dashboard_biometric_title">Hardware</string>
     <string name="dashboard_biometric_fingerprint">Fingerprint</string>
@@ -295,17 +290,12 @@
     <string name="logs_saved">Logs saved</string>
     <string name="logs_save_failed">Couldn\'t save logs</string>
     <string name="diagnostics_share_title">Share logs</string>
-    <string name="diagnostics_no_root">Root unavailable. LSPosed logs may be missing.</string>
+    <string name="diagnostics_no_root">Root unavailable. Xposed framework logs may be missing.</string>
     <string name="diagnostics_no_logs">No logs found. Reproduce the issue, then try again.</string>
     <string name="miui_face_scanning">Face Unlock</string>
     <string name="miui_face_success">Done</string>
     <string name="miui_face_failed">Try Again</string>
 
-    <string name="dashboard_locked_apps_empty">Add apps to lock</string>
-    <plurals name="status_locked_count">
-        <item quantity="one">1 app locked</item>
-        <item quantity="other">%1$d apps locked</item>
-    </plurals>
     <string name="settings_theme_summary">Light, dark, or follow system</string>
     <string name="settings_relock_delay_summary">How long to wait before locking an app again</string>
 </resources>
