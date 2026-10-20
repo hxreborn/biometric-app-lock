@@ -1,9 +1,7 @@
 package eu.hxreborn.biometricapplock.ui.theme
 
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 
 object Tokens {
     val ScreenHorizontalPadding: Dp = 16.dp
@@ -15,17 +13,18 @@ object Tokens {
     val PreferencePadding: Dp = 16.dp
     val PreferenceHorizontalSpacing: Dp = 16.dp
 
-    val PreferenceRowMinHeight: Dp = 64.dp
-    val PreferenceRowVerticalPadding: Dp = 12.dp
+    val PreferenceRowMinHeight: Dp = 56.dp
+    val PreferenceRowVerticalPadding: Dp = 16.dp
     val PreferenceRowHorizontalPadding: Dp = 16.dp
     val PreferenceRowIconTextSpacing: Dp = 16.dp
-    val PreferenceRowTrailingSpacing: Dp = 8.dp
+    val PreferenceRowTrailingSpacing: Dp = 16.dp
 
-    val SectionItemSpacing: Dp = 2.dp
-    val SectionHorizontalMargin: Dp = 12.dp
-    val SectionHeaderStartPadding: Dp = 16.dp
-    val SectionHeaderTopPadding: Dp = 16.dp
-    val SectionHeaderBottomPadding: Dp = 6.dp
+    val SectionItemSpacing: Dp = 1.dp
+    val SectionHorizontalMargin: Dp = 16.dp
+    val SectionHeaderStartPadding: Dp = 24.dp
+    val SectionHeaderTopPadding: Dp = 24.dp
+    val SectionHeaderBottomPadding: Dp = 8.dp
+    val GroupedShapeCornerLarge: Dp = 24.dp
     val SettingsIconSize: Dp = 24.dp
     val SmallIconSize: Dp = 20.dp
 
@@ -62,16 +61,6 @@ object Tokens {
 
     val NavSlideDistance: Dp = 96.dp
 
-    val DialogContentPadding: Dp = 24.dp
-    val DialogTitleSpacing: Dp = 16.dp
-    val DialogListItemVerticalPadding: Dp = 12.dp
-
-    val ModeSelectorHeight: Dp = 48.dp
-
-    val RadioSize: Dp = 20.dp
-
-    val RadioTitleTopOffset: Dp = 2.dp
-
     val SheetContentPadding: Dp = 24.dp
     val SheetSectionSpacing: Dp = 20.dp
     val SheetItemSpacing: Dp = 12.dp
@@ -82,11 +71,12 @@ object Tokens {
     val DetailHeaderCardPadding: Dp = 16.dp
     val DetailHeaderIconTextSpacing: Dp = 16.dp
 
-    val StatusIconSize: Dp = 36.dp
+    val StatusIconSize: Dp = 28.dp
+    val StatusBadgeSize: Dp = 56.dp
+
+    val AboutBadgeSize: Dp = 96.dp
+    val ConnectedButtonHeight: Dp = 52.dp
 
     val UpToDateBadgeSize: Dp = 128.dp
     val UpToDateBadgeIconSize: Dp = 56.dp
-
-    val ExpandedTitleLineHeight: TextUnit = 36.sp
-    const val EXPANDED_TITLE_MAX_LINES = 2
 }

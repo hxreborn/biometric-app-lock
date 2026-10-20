@@ -1,9 +1,6 @@
 package eu.hxreborn.biometricapplock.ui.navigation
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -41,7 +38,10 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -58,7 +58,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -72,18 +71,23 @@ import androidx.navigation3.scene.Scene
 import androidx.navigation3.ui.NavDisplay
 import eu.hxreborn.biometricapplock.App
 import eu.hxreborn.biometricapplock.R
+import eu.hxreborn.biometricapplock.ui.component.WhatsNewForCurrentVersion
 import eu.hxreborn.biometricapplock.ui.screen.AboutScreen
 import eu.hxreborn.biometricapplock.ui.screen.ActivitiesScreen
 import eu.hxreborn.biometricapplock.ui.screen.AppDetailScreen
 import eu.hxreborn.biometricapplock.ui.screen.AppListScreen
 import eu.hxreborn.biometricapplock.ui.screen.AppManagementScreen
+import eu.hxreborn.biometricapplock.ui.screen.ChangelogScreen
 import eu.hxreborn.biometricapplock.ui.screen.DashboardScreen
+import eu.hxreborn.biometricapplock.ui.screen.LicensesScreen
 import eu.hxreborn.biometricapplock.ui.screen.settings.SettingsScreen
 import eu.hxreborn.biometricapplock.ui.theme.Tokens
 import eu.hxreborn.biometricapplock.ui.viewmodel.ScopeViewModel
 import kotlinx.serialization.Serializable
 import soup.compose.material.motion.animation.materialSharedAxisXIn
 import soup.compose.material.motion.animation.materialSharedAxisXOut
+
+private const val NAV_LABEL_MAX_FONT_SCALE = 1.5f
 
 sealed interface Screen : NavKey {
     @Serializable
@@ -100,6 +104,12 @@ sealed interface Screen : NavKey {
 
     @Serializable
     data object AppManagement : Screen
+
+    @Serializable
+    data object Changelog : Screen
+
+    @Serializable
+    data object Licenses : Screen
 
     @Serializable
     data class AppDetail(
@@ -255,10 +265,29 @@ fun MainNavDisplay(
                 }
                 entry<Screen.About> {
                     val framework by viewModel.framework.collectAsStateWithLifecycle()
+                    var showWhatsNew by rememberSaveable { mutableStateOf(false) }
+                    if (showWhatsNew) {
+                        WhatsNewForCurrentVersion(onDismiss = { showWhatsNew = false })
+                    }
                     AboutScreen(
                         framework = framework,
                         onBack = dropUnlessResumed { backStack.removeLastOrNull() },
+                        onShowWhatsNew = { showWhatsNew = true },
+                        onNavigateToChangelog = dropUnlessResumed { backStack.add(Screen.Changelog) },
+                        onNavigateToLicenses = dropUnlessResumed { backStack.add(Screen.Licenses) },
                         onTriggerHotReload = viewModel::triggerHotReload,
+                        contentPadding = contentPadding,
+                    )
+                }
+                entry<Screen.Changelog> {
+                    ChangelogScreen(
+                        onBack = dropUnlessResumed { backStack.removeLastOrNull() },
+                        contentPadding = contentPadding,
+                    )
+                }
+                entry<Screen.Licenses> {
+                    LicensesScreen(
+                        onBack = dropUnlessResumed { backStack.removeLastOrNull() },
                         contentPadding = contentPadding,
                     )
                 }
@@ -313,12 +342,13 @@ fun BottomNav(
                     toolbarContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 ),
         ) {
+            val labelScale = (NAV_LABEL_MAX_FONT_SCALE / LocalDensity.current.fontScale).coerceAtMost(1f)
             CompositionLocalProvider(LocalRippleConfiguration provides null) {
                 bottomNavItems.forEachIndexed { index, item ->
                     val selected = currentKey == item.key
                     val onSelectTab =
                         dropUnlessResumed {
-                            haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                            haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
                             backStack.clear()
                             backStack.add(item.key)
                         }
@@ -368,29 +398,23 @@ fun BottomNav(
                                 BadgedBox(badge = { Badge() }) {
                                     Icon(
                                         imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
-                                        contentDescription = stringResource(item.titleRes),
+                                        contentDescription = null,
                                     )
                                 }
                             } else {
                                 Icon(
                                     imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
-                                    contentDescription = stringResource(item.titleRes),
+                                    contentDescription = null,
                                 )
                             }
-                            AnimatedVisibility(
-                                visible = selected,
-                                enter = expandHorizontally(animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec()),
-                                exit = shrinkHorizontally(animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec()),
-                            ) {
-                                Text(
-                                    text = stringResource(item.titleRes),
-                                    modifier = Modifier.padding(start = ButtonDefaults.IconSpacing),
-                                    style =
-                                        MaterialTheme.typography.titleSmall.copy(
-                                            fontWeight = FontWeight.Bold,
-                                        ),
-                                )
-                            }
+                            Text(
+                                text = stringResource(item.titleRes),
+                                modifier = Modifier.padding(start = ButtonDefaults.IconSpacing),
+                                style = MaterialTheme.typography.labelLarge,
+                                fontSize = MaterialTheme.typography.labelLarge.fontSize * labelScale,
+                                maxLines = 1,
+                                softWrap = false,
+                            )
                         }
                     }
                 }

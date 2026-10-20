@@ -58,8 +58,7 @@ fun SectionCard(
 
 @Composable
 private fun sectionShape(position: SectionPosition): Shape {
-    val largeShape = MaterialTheme.shapes.large as? RoundedCornerShape
-    val large = largeShape?.topStart ?: CornerSize(Tokens.AppIconCornerRadius)
+    val large = CornerSize(Tokens.GroupedShapeCornerLarge)
     val small = CornerSize(Tokens.SmallCornerRadius)
     return when (position) {
         SectionPosition.Single -> RoundedCornerShape(large, large, large, large)

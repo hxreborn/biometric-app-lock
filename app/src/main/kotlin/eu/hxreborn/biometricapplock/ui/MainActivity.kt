@@ -50,6 +50,7 @@ class MainActivity :
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ThemeMode.fromPrefValue(App.from(this).prefsRepository.read(Prefs.DARK_THEME_CONFIG)).applyAsAppNightMode(this)
         enableEdgeToEdge()
         App.from(this).addServiceListener(this)
         setContent {
