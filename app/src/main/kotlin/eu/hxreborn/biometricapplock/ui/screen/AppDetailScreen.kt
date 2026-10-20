@@ -60,6 +60,7 @@ import eu.hxreborn.biometricapplock.prefs.Prefs
 import eu.hxreborn.biometricapplock.ui.component.BackButton
 import eu.hxreborn.biometricapplock.ui.component.SectionPosition
 import eu.hxreborn.biometricapplock.ui.screen.settings.Chevron
+import eu.hxreborn.biometricapplock.ui.screen.settings.ChoicePreferenceRow
 import eu.hxreborn.biometricapplock.ui.screen.settings.PreferenceRow
 import eu.hxreborn.biometricapplock.ui.screen.settings.SettingsSectionHeader
 import eu.hxreborn.biometricapplock.ui.screen.settings.SwitchPreferenceRow
@@ -123,23 +124,7 @@ fun AppDetailScreen(
     val credentialAvailable = remember { bm.canAuthenticate(methodAuthenticators(METHOD_CREDENTIAL)) == BiometricManager.BIOMETRIC_SUCCESS }
     val credentialToggleable = credentialAvailable && methods and METHOD_BIOMETRIC != 0
 
-    var showBiometricDialog by rememberSaveable { mutableStateOf(false) }
     var showRelockDialog by rememberSaveable { mutableStateOf(false) }
-
-    if (showBiometricDialog) {
-        BiometricChoiceDialog(
-            current = overrides.authMethods?.let(::biometricChoice),
-            allowDefault = true,
-            onSelect = { choice ->
-                app.appOverridesRepository.setAuthMethods(
-                    packageKey,
-                    choice?.let { withBiometricChoice(methods, it) },
-                )
-                showBiometricDialog = false
-            },
-            onDismiss = { showBiometricDialog = false },
-        )
-    }
 
     if (showRelockDialog) {
         RelockDelayDialog(
@@ -185,20 +170,24 @@ fun AppDetailScreen(
             item { SettingsSectionHeader(title = stringResource(R.string.unlock_section)) }
 
             item {
-                PreferenceRow(
+                val choice = overrides.authMethods?.let(::biometricChoice)
+                ChoicePreferenceRow(
                     icon = Icons.Outlined.Fingerprint,
                     title = stringResource(R.string.unlock_biometrics_title),
                     summary =
-                        if (overrides.authMethods == null) {
+                        if (choice == null) {
                             stringResource(
                                 R.string.unlock_biometrics_default_resolved,
                                 biometricChoiceLabel(biometricChoice(defaultMethods)),
                             )
                         } else {
-                            biometricChoiceLabel(biometricChoice(methods))
+                            biometricChoiceSummary(choice)
                         },
+                    options = listOf(null) + biometricChoices,
+                    selected = choice,
+                    onSelect = { app.appOverridesRepository.setAuthMethods(packageKey, it?.let { c -> withBiometricChoice(methods, c) }) },
+                    label = { biometricChoiceLabel(it) },
                     position = SectionPosition.Top,
-                    onClick = { showBiometricDialog = true },
                 )
             }
 

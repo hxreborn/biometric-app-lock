@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -32,11 +33,13 @@ import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import eu.hxreborn.biometricapplock.ui.component.ChoiceButtonGroup
 import eu.hxreborn.biometricapplock.ui.component.LockSwitch
 import eu.hxreborn.biometricapplock.ui.component.SectionCard
 import eu.hxreborn.biometricapplock.ui.component.SectionPosition
 import eu.hxreborn.biometricapplock.ui.theme.Tokens
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SettingsSectionHeader(
     title: String,
@@ -51,7 +54,7 @@ fun SettingsSectionHeader(
                     top = Tokens.SectionHeaderTopPadding,
                     bottom = Tokens.SectionHeaderBottomPadding,
                 ).semantics { heading() },
-        style = MaterialTheme.typography.titleSmall,
+        style = MaterialTheme.typography.labelLargeEmphasized,
         color = MaterialTheme.colorScheme.primary,
     )
 }
@@ -100,6 +103,26 @@ fun PreferenceRow(
             onClick = onClick,
             trailing = trailing,
         )
+    }
+}
+
+@Composable
+fun <T> ChoicePreferenceRow(
+    icon: ImageVector,
+    title: String,
+    summary: String?,
+    options: List<T>,
+    selected: T,
+    onSelect: (T) -> Unit,
+    label: @Composable (T) -> String,
+    modifier: Modifier = Modifier,
+    position: SectionPosition = SectionPosition.Single,
+) {
+    SectionCard(modifier = modifier, position = position) {
+        Column {
+            PreferenceRowContent(icon = rememberVectorPainter(icon), title = title, summary = summary)
+            ChoiceButtonGroup(options = options, selected = selected, onSelect = onSelect, label = label)
+        }
     }
 }
 

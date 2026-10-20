@@ -7,7 +7,6 @@ import android.content.Context
 import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.text.format.DateUtils
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -16,12 +15,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.clearText
@@ -30,7 +27,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -45,7 +41,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -57,14 +52,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -72,6 +65,7 @@ import eu.hxreborn.biometricapplock.App
 import eu.hxreborn.biometricapplock.R
 import eu.hxreborn.biometricapplock.prefs.AppOverrides
 import eu.hxreborn.biometricapplock.ui.component.BackButton
+import eu.hxreborn.biometricapplock.ui.component.ChoiceButtonGroup
 import eu.hxreborn.biometricapplock.ui.component.SectionCard
 import eu.hxreborn.biometricapplock.ui.component.SectionPosition
 import eu.hxreborn.biometricapplock.ui.screen.settings.toggle
@@ -163,6 +157,7 @@ private fun ActivityToggleRow(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = shortActivityName(className),
+                        modifier = Modifier.weight(1f, fill = false),
                         style = MaterialTheme.typography.bodyLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -214,6 +209,8 @@ private fun LauncherBadge() {
             modifier = Modifier.padding(horizontal = Tokens.SpacingSm, vertical = Tokens.SpacingXs / 2),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSecondaryContainer,
+            maxLines = 1,
+            softWrap = false,
         )
     }
 }
@@ -224,41 +221,15 @@ private fun ActivityModeSelector(
     onSelect: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val haptics = LocalHapticFeedback.current
-    val options =
-        listOf(
-            false to stringResource(R.string.app_detail_activities_mode_allow),
-            true to stringResource(R.string.app_detail_activities_mode_lock),
-        )
-    Row(
-        modifier = modifier.fillMaxWidth().selectableGroup(),
-        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-    ) {
-        options.forEachIndexed { index, (value, label) ->
-            ToggleButton(
-                checked = lockListed == value,
-                onCheckedChange = {
-                    if (lockListed != value) {
-                        haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
-                        onSelect(value)
-                    }
-                },
-                shapes =
-                    if (index == 0) {
-                        ButtonGroupDefaults.connectedLeadingButtonShapes()
-                    } else {
-                        ButtonGroupDefaults.connectedTrailingButtonShapes()
-                    },
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .heightIn(min = Tokens.ModeSelectorHeight)
-                        .semantics { role = Role.RadioButton },
-            ) {
-                Text(text = label, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
-    }
+    ChoiceButtonGroup(
+        options = listOf(false, true),
+        selected = lockListed,
+        onSelect = onSelect,
+        label = {
+            stringResource(if (it) R.string.app_detail_activities_mode_lock else R.string.app_detail_activities_mode_allow)
+        },
+        modifier = modifier,
+    )
 }
 
 @Composable
@@ -363,11 +334,7 @@ fun ActivitiesScreen(
                 ActivityModeSelector(
                     lockListed = lockListed,
                     onSelect = { app.appOverridesRepository.setLockListedActivities(packageKey, it) },
-                    modifier =
-                        Modifier.padding(
-                            horizontal = Tokens.SectionHorizontalMargin,
-                            vertical = Tokens.SpacingSm,
-                        ),
+                    modifier = Modifier.padding(top = Tokens.SpacingSm),
                 )
             }
 

@@ -58,7 +58,7 @@
 
     <string name="settings_appearance">Appearance</string>
     <string name="settings_theme">Theme</string>
-    <string name="settings_theme_system">Follow system</string>
+    <string name="settings_theme_system">System</string>
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_dynamic_color">Dynamic color</string>
@@ -90,9 +90,8 @@
     <string name="unlock_section">Unlock</string>
     <string name="unlock_biometrics_title">Biometrics</string>
     <string name="unlock_biometrics_default">Default</string>
-    <string name="unlock_biometrics_default_summary">Follow the global setting</string>
-    <string name="unlock_biometrics_any">Any enrolled</string>
-    <string name="unlock_biometrics_strongest">Strongest only</string>
+    <string name="unlock_biometrics_any">Any</string>
+    <string name="unlock_biometrics_strongest">Strong</string>
     <string name="unlock_biometrics_none">None</string>
     <string name="unlock_biometrics_any_summary">Class 2 (Weak) and above</string>
     <string name="unlock_biometrics_any_summary_face">Class 2 (Weak) and above, includes face unlock</string>

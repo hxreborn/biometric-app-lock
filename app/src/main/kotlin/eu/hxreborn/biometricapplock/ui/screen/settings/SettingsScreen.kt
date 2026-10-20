@@ -72,9 +72,10 @@ import eu.hxreborn.biometricapplock.prefs.ThemeMode
 import eu.hxreborn.biometricapplock.ui.component.LockSwitch
 import eu.hxreborn.biometricapplock.ui.component.LogActionsSheet
 import eu.hxreborn.biometricapplock.ui.component.SectionPosition
-import eu.hxreborn.biometricapplock.ui.screen.BiometricChoiceDialog
 import eu.hxreborn.biometricapplock.ui.screen.RelockDelayDialog
 import eu.hxreborn.biometricapplock.ui.screen.biometricChoiceLabel
+import eu.hxreborn.biometricapplock.ui.screen.biometricChoiceSummary
+import eu.hxreborn.biometricapplock.ui.screen.biometricChoices
 import eu.hxreborn.biometricapplock.ui.screen.relockDelaySummary
 import eu.hxreborn.biometricapplock.ui.theme.Tokens
 import eu.hxreborn.biometricapplock.ui.util.LauncherIconHelper
@@ -107,7 +108,6 @@ fun SettingsScreen(
     val prefs by app.prefsRepository.state.collectAsStateWithLifecycle(initialValue = AppPrefs.Defaults)
     val cachedAvailable by app.updateRepository.cachedAvailable.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    var showThemeDialog by rememberSaveable { mutableStateOf(false) }
     var showRelockDialog by rememberSaveable { mutableStateOf(false) }
     var showLogActions by rememberSaveable { mutableStateOf(false) }
     var pendingSaveFilePath by rememberSaveable { mutableStateOf<String?>(null) }
@@ -120,33 +120,6 @@ fun SettingsScreen(
     val unlockCredentialToggleable = credentialAvailable && unlockMethods and METHOD_BIOMETRIC != 0
     val selfLockMethods = normalizeMethods(prefs.selfLockMethods)
     val selfLockCredentialToggleable = credentialAvailable && selfLockMethods and METHOD_BIOMETRIC != 0
-    var showBiometricDialog by rememberSaveable { mutableStateOf(false) }
-    var showSelfLockDialog by rememberSaveable { mutableStateOf(false) }
-
-    if (showBiometricDialog) {
-        BiometricChoiceDialog(
-            current = biometricChoice(unlockMethods),
-            allowDefault = false,
-            onSelect = { choice ->
-                choice?.let { app.prefsRepository.save(Prefs.UNLOCK_METHODS, withBiometricChoice(unlockMethods, it)) }
-                showBiometricDialog = false
-            },
-            onDismiss = { showBiometricDialog = false },
-        )
-    }
-
-    if (showSelfLockDialog) {
-        BiometricChoiceDialog(
-            current = biometricChoice(selfLockMethods),
-            allowDefault = false,
-            onSelect = { choice ->
-                choice?.let { app.prefsRepository.save(Prefs.SELF_LOCK_METHODS, withBiometricChoice(selfLockMethods, it)) }
-                showSelfLockDialog = false
-            },
-            onDismiss = { showSelfLockDialog = false },
-        )
-    }
-
     val saveLogsLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
             val filePath = pendingSaveFilePath
@@ -164,18 +137,6 @@ fun SettingsScreen(
                     ).show()
             }
         }
-
-    if (showThemeDialog) {
-        ThemeDialog(
-            current = prefs.themeMode,
-            onSelect = { mode ->
-                app.prefsRepository.save(Prefs.DARK_THEME_CONFIG, mode.prefValue)
-                mode.applyAsAppNightMode(context)
-                showThemeDialog = false
-            },
-            onDismiss = { showThemeDialog = false },
-        )
-    }
 
     if (showRelockDialog) {
         RelockDelayDialog(
@@ -326,12 +287,16 @@ fun SettingsScreen(
 
             item { SettingsSectionHeader(title = stringResource(R.string.settings_unlock_prompt)) }
             item {
-                PreferenceRow(
+                val choice = biometricChoice(unlockMethods)
+                ChoicePreferenceRow(
                     icon = Icons.Outlined.Fingerprint,
                     title = stringResource(R.string.unlock_biometrics_title),
-                    summary = biometricChoiceLabel(biometricChoice(unlockMethods)),
+                    summary = biometricChoiceSummary(choice),
+                    options = biometricChoices,
+                    selected = choice,
+                    onSelect = { app.prefsRepository.save(Prefs.UNLOCK_METHODS, withBiometricChoice(unlockMethods, it)) },
+                    label = { biometricChoiceLabel(it) },
                     position = SectionPosition.Top,
-                    onClick = { showBiometricDialog = true },
                 )
             }
             item {
@@ -432,12 +397,16 @@ fun SettingsScreen(
             }
             if (prefs.selfLock) {
                 item {
-                    PreferenceRow(
+                    val choice = biometricChoice(selfLockMethods)
+                    ChoicePreferenceRow(
                         icon = Icons.Outlined.Fingerprint,
                         title = stringResource(R.string.settings_self_lock_biometrics_title),
-                        summary = biometricChoiceLabel(biometricChoice(selfLockMethods)),
+                        summary = biometricChoiceSummary(choice),
+                        options = biometricChoices,
+                        selected = choice,
+                        onSelect = { app.prefsRepository.save(Prefs.SELF_LOCK_METHODS, withBiometricChoice(selfLockMethods, it)) },
+                        label = { biometricChoiceLabel(it) },
                         position = SectionPosition.Middle,
-                        onClick = { showSelfLockDialog = true },
                     )
                 }
                 item {
@@ -474,12 +443,18 @@ fun SettingsScreen(
 
             item { SettingsSectionHeader(title = stringResource(R.string.settings_appearance)) }
             item {
-                PreferenceRow(
+                ChoicePreferenceRow(
                     icon = Icons.Outlined.Palette,
                     title = stringResource(R.string.settings_theme),
-                    summary = themeModeLabel(prefs.themeMode),
+                    summary = null,
+                    options = ThemeMode.entries,
+                    selected = prefs.themeMode,
+                    onSelect = { mode ->
+                        app.prefsRepository.save(Prefs.DARK_THEME_CONFIG, mode.prefValue)
+                        mode.applyAsAppNightMode(context)
+                    },
+                    label = { themeModeLabel(it) },
                     position = SectionPosition.Top,
-                    onClick = { showThemeDialog = true },
                 )
             }
             item {
