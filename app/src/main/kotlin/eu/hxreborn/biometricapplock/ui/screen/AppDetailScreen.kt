@@ -24,7 +24,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.Dialpad
-import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.Screenshot
 import androidx.compose.material.icons.outlined.Timer
@@ -32,8 +31,8 @@ import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -43,13 +42,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -60,11 +58,11 @@ import eu.hxreborn.biometricapplock.R
 import eu.hxreborn.biometricapplock.prefs.AppOverrides
 import eu.hxreborn.biometricapplock.prefs.Prefs
 import eu.hxreborn.biometricapplock.ui.component.BackButton
-import eu.hxreborn.biometricapplock.ui.component.ExpandedTitle
-import eu.hxreborn.biometricapplock.ui.component.LockSwitch
 import eu.hxreborn.biometricapplock.ui.component.SectionPosition
+import eu.hxreborn.biometricapplock.ui.screen.settings.Chevron
 import eu.hxreborn.biometricapplock.ui.screen.settings.PreferenceRow
 import eu.hxreborn.biometricapplock.ui.screen.settings.SettingsSectionHeader
+import eu.hxreborn.biometricapplock.ui.screen.settings.SwitchPreferenceRow
 import eu.hxreborn.biometricapplock.ui.theme.Tokens
 import eu.hxreborn.biometricapplock.ui.util.openAppInfo
 import eu.hxreborn.biometricapplock.ui.util.rememberAppIcon
@@ -118,7 +116,6 @@ fun AppDetailScreen(
     val overrides by app.appOverridesRepository.observe(packageKey).collectAsStateWithLifecycle(initialValue = AppOverrides(null, null))
 
     val hasOverrides = overrides.relockDelaySeconds != null || overrides.blockScreenshots != null
-    val disabledModifier = if (hasOverrides) Modifier else Modifier.alpha(Tokens.DISABLED_ALPHA)
 
     val bm = remember { context.getSystemService(BiometricManager::class.java) }
     val defaultMethods = remember { normalizeMethods(app.prefsRepository.read(Prefs.UNLOCK_METHODS)) }
@@ -126,8 +123,8 @@ fun AppDetailScreen(
     val credentialAvailable = remember { bm.canAuthenticate(methodAuthenticators(METHOD_CREDENTIAL)) == BiometricManager.BIOMETRIC_SUCCESS }
     val credentialToggleable = credentialAvailable && methods and METHOD_BIOMETRIC != 0
 
-    var showBiometricDialog by remember { mutableStateOf(false) }
-    var showRelockDialog by remember { mutableStateOf(false) }
+    var showBiometricDialog by rememberSaveable { mutableStateOf(false) }
+    var showRelockDialog by rememberSaveable { mutableStateOf(false) }
 
     if (showBiometricDialog) {
         BiometricChoiceDialog(
@@ -161,9 +158,9 @@ fun AppDetailScreen(
         modifier = modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            LargeTopAppBar(
+            MediumFlexibleTopAppBar(
                 navigationIcon = { BackButton(onClick = onBack) },
-                title = { ExpandedTitle(stringResource(R.string.app_detail_title)) },
+                title = { Text(stringResource(R.string.app_detail_title)) },
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -206,65 +203,36 @@ fun AppDetailScreen(
             }
 
             item {
-                PreferenceRow(
+                SwitchPreferenceRow(
                     icon = Icons.Outlined.Dialpad,
                     title = stringResource(R.string.unlock_screen_lock_title),
                     summary =
                         stringResource(
-                            if (credentialAvailable) {
-                                R.string.unlock_screen_lock_summary
-                            } else {
-                                R.string.unlock_screen_lock_unset
-                            },
+                            if (credentialAvailable) R.string.unlock_screen_lock_summary else R.string.unlock_screen_lock_unset,
                         ),
+                    checked = methods and METHOD_CREDENTIAL != 0,
+                    onCheckedChange = { app.appOverridesRepository.setAuthMethods(packageKey, withCredential(methods, it)) },
                     position = SectionPosition.Bottom,
-                    onClick =
-                        if (credentialToggleable) {
-                            {
-                                app.appOverridesRepository.setAuthMethods(
-                                    packageKey,
-                                    withCredential(methods, methods and METHOD_CREDENTIAL == 0),
-                                )
-                            }
-                        } else {
-                            null
-                        },
-                    trailing = {
-                        LockSwitch(
-                            checked = methods and METHOD_CREDENTIAL != 0,
-                            onCheckedChange = null,
-                            enabled = credentialToggleable,
-                        )
-                    },
+                    switchEnabled = credentialToggleable,
                 )
             }
 
             item { SettingsSectionHeader(title = stringResource(R.string.settings_lock)) }
 
             item {
-                PreferenceRow(
+                SwitchPreferenceRow(
                     icon = Icons.Outlined.Tune,
                     title = stringResource(R.string.app_detail_override_title),
-                    summary = null,
-                    onClick = {
-                        if (hasOverrides) {
-                            app.appOverridesRepository.reset(packageKey)
-                        } else {
+                    summary = stringResource(R.string.app_detail_override_summary),
+                    checked = hasOverrides,
+                    onCheckedChange = { enabled ->
+                        if (enabled) {
                             app.appOverridesRepository.setRelockDelaySeconds(packageKey, 0)
+                        } else {
+                            app.appOverridesRepository.reset(packageKey)
                         }
                     },
-                    trailing = {
-                        LockSwitch(
-                            checked = hasOverrides,
-                            onCheckedChange = { enabled ->
-                                if (enabled) {
-                                    app.appOverridesRepository.setRelockDelaySeconds(packageKey, 0)
-                                } else {
-                                    app.appOverridesRepository.reset(packageKey)
-                                }
-                            },
-                        )
-                    },
+                    position = SectionPosition.Top,
                 )
             }
 
@@ -273,35 +241,21 @@ fun AppDetailScreen(
                     icon = Icons.Outlined.Timer,
                     title = stringResource(R.string.app_detail_relock_delay_title),
                     summary = relockDelaySummary(overrides.relockDelaySeconds ?: 0),
-                    onClick = if (hasOverrides) ({ showRelockDialog = true }) else null,
-                    modifier = disabledModifier,
+                    position = SectionPosition.Middle,
+                    enabled = hasOverrides,
+                    onClick = { showRelockDialog = true },
                 )
             }
 
             item {
-                PreferenceRow(
+                SwitchPreferenceRow(
                     icon = Icons.Outlined.Screenshot,
                     title = stringResource(R.string.app_detail_block_screenshots_title),
                     summary = stringResource(R.string.app_detail_block_screenshots_summary),
-                    onClick =
-                        if (hasOverrides) {
-                            {
-                                app.appOverridesRepository.setBlockScreenshots(
-                                    packageKey,
-                                    overrides.blockScreenshots != true,
-                                )
-                            }
-                        } else {
-                            null
-                        },
-                    trailing = {
-                        LockSwitch(
-                            checked = overrides.blockScreenshots == true,
-                            onCheckedChange = null,
-                            enabled = hasOverrides,
-                        )
-                    },
-                    modifier = disabledModifier,
+                    checked = overrides.blockScreenshots == true,
+                    onCheckedChange = { app.appOverridesRepository.setBlockScreenshots(packageKey, it) },
+                    position = SectionPosition.Middle,
+                    enabled = hasOverrides,
                 )
             }
 
@@ -335,7 +289,9 @@ fun AppDetailScreen(
                                 )
                             }
                         },
+                    position = SectionPosition.Bottom,
                     onClick = { onNavigateToActivities(packageKey) },
+                    trailing = { Chevron() },
                 )
             }
 

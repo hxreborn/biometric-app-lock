@@ -30,7 +30,7 @@ fun SectionCard(
         )
     val colors =
         CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
         )
     val shape = sectionShape(position)
     when {

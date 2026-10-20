@@ -1,5 +1,5 @@
 @file:Suppress("AssignedValueIsNeverRead")
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 
 package eu.hxreborn.biometricapplock.ui.screen
 
@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.text.format.DateUtils
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -15,11 +16,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.clearText
@@ -28,36 +30,41 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBarDefaults
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -65,9 +72,9 @@ import eu.hxreborn.biometricapplock.App
 import eu.hxreborn.biometricapplock.R
 import eu.hxreborn.biometricapplock.prefs.AppOverrides
 import eu.hxreborn.biometricapplock.ui.component.BackButton
-import eu.hxreborn.biometricapplock.ui.component.ExpandedTitle
 import eu.hxreborn.biometricapplock.ui.component.SectionCard
 import eu.hxreborn.biometricapplock.ui.component.SectionPosition
+import eu.hxreborn.biometricapplock.ui.screen.settings.toggle
 import eu.hxreborn.biometricapplock.ui.theme.Tokens
 import eu.hxreborn.biometricapplock.util.getUserHandle
 import kotlinx.coroutines.Dispatchers
@@ -217,30 +224,39 @@ private fun ActivityModeSelector(
     onSelect: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    SingleChoiceSegmentedButtonRow(
-        modifier = modifier.fillMaxWidth().height(Tokens.ModeSelectorHeight),
+    val haptics = LocalHapticFeedback.current
+    val options =
+        listOf(
+            false to stringResource(R.string.app_detail_activities_mode_allow),
+            true to stringResource(R.string.app_detail_activities_mode_lock),
+        )
+    Row(
+        modifier = modifier.fillMaxWidth().selectableGroup(),
+        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
     ) {
-        SegmentedButton(
-            selected = !lockListed,
-            onClick = { onSelect(false) },
-            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-        ) {
-            Text(
-                text = stringResource(R.string.app_detail_activities_mode_allow),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        SegmentedButton(
-            selected = lockListed,
-            onClick = { onSelect(true) },
-            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-        ) {
-            Text(
-                text = stringResource(R.string.app_detail_activities_mode_lock),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+        options.forEachIndexed { index, (value, label) ->
+            ToggleButton(
+                checked = lockListed == value,
+                onCheckedChange = {
+                    if (lockListed != value) {
+                        haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                        onSelect(value)
+                    }
+                },
+                shapes =
+                    if (index == 0) {
+                        ButtonGroupDefaults.connectedLeadingButtonShapes()
+                    } else {
+                        ButtonGroupDefaults.connectedTrailingButtonShapes()
+                    },
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .heightIn(min = Tokens.ModeSelectorHeight)
+                        .semantics { role = Role.RadioButton },
+            ) {
+                Text(text = label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
     }
 }
@@ -293,7 +309,8 @@ fun ActivitiesScreen(
             if (query.isBlank()) ordered else ordered.filter { it.contains(query, ignoreCase = true) }
         }
 
-    var pendingLauncher by remember { mutableStateOf<String?>(null) }
+    var pendingLauncher by rememberSaveable { mutableStateOf<String?>(null) }
+    val haptics = LocalHapticFeedback.current
 
     fun toggle(
         name: String,
@@ -303,6 +320,7 @@ fun ActivitiesScreen(
             pendingLauncher = name
             return
         }
+        haptics.toggle(allow)
         app.appOverridesRepository.setListedActivities(
             packageKey,
             if (allow) allowed + name else allowed - name,
@@ -312,6 +330,7 @@ fun ActivitiesScreen(
     pendingLauncher?.let { name ->
         LauncherAllowConfirmDialog(
             onConfirm = {
+                haptics.toggle(true)
                 app.appOverridesRepository.setListedActivities(packageKey, allowed + name)
                 pendingLauncher = null
             },
@@ -325,9 +344,9 @@ fun ActivitiesScreen(
         modifier = modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            LargeTopAppBar(
+            MediumFlexibleTopAppBar(
                 navigationIcon = { BackButton(onClick = onBack) },
-                title = { ExpandedTitle(stringResource(R.string.app_detail_activities_section)) },
+                title = { Text(stringResource(R.string.app_detail_activities_section)) },
                 scrollBehavior = scrollBehavior,
             )
         },

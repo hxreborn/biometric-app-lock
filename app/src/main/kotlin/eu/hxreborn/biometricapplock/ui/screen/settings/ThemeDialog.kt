@@ -16,6 +16,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -30,6 +32,7 @@ fun ThemeDialog(
     onDismiss: () -> Unit,
 ) {
     val options = ThemeMode.entries
+    val haptics = LocalHapticFeedback.current
     val labelFor: @Composable (ThemeMode) -> String = { mode ->
         when (mode) {
             ThemeMode.FOLLOW_SYSTEM -> stringResource(R.string.settings_theme_system)
@@ -50,7 +53,10 @@ fun ThemeDialog(
                                 .fillMaxWidth()
                                 .selectable(
                                     selected = option == current,
-                                    onClick = { onSelect(option) },
+                                    onClick = {
+                                        if (option != current) haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                                        onSelect(option)
+                                    },
                                     role = Role.RadioButton,
                                 ).padding(vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,

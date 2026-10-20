@@ -19,10 +19,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -57,8 +59,13 @@ fun RelockDelayDialog(
     onDismiss: () -> Unit,
 ) {
     val isPreset = relockDelayPresets.any { it.first == currentSeconds }
-    var customPicked by remember { mutableStateOf(!isPreset) }
-    var customMinutes by remember {
+    val haptics = LocalHapticFeedback.current
+    val select: (Int) -> Unit = { seconds ->
+        if (seconds != currentSeconds) haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+        onSelect(seconds)
+    }
+    var customPicked by rememberSaveable { mutableStateOf(!isPreset) }
+    var customMinutes by rememberSaveable {
         mutableStateOf(if (isPreset) "" else (currentSeconds / 60).coerceAtLeast(1).toString())
     }
     val customSeconds = customMinutes.toIntOrNull()?.takeIf { it > 0 }?.times(60)
@@ -70,12 +77,12 @@ fun RelockDelayDialog(
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 relockDelayPresets.forEach { (seconds, labelRes) ->
                     Row(
-                        modifier = Modifier.fillMaxWidth().clickable { onSelect(seconds) },
+                        modifier = Modifier.fillMaxWidth().clickable { select(seconds) },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         RadioButton(
                             selected = !customPicked && currentSeconds == seconds,
-                            onClick = { onSelect(seconds) },
+                            onClick = { select(seconds) },
                         )
                         Spacer(Modifier.width(Tokens.SpacingSm))
                         Text(stringResource(labelRes))
@@ -99,7 +106,7 @@ fun RelockDelayDialog(
                                 keyboardType = KeyboardType.Number,
                                 imeAction = ImeAction.Done,
                             ),
-                        keyboardActions = KeyboardActions(onDone = { customSeconds?.let(onSelect) }),
+                        keyboardActions = KeyboardActions(onDone = { customSeconds?.let(select) }),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth().padding(top = Tokens.SpacingSm),
                     )
@@ -109,7 +116,7 @@ fun RelockDelayDialog(
         confirmButton = {
             if (customPicked) {
                 TextButton(
-                    onClick = { customSeconds?.let(onSelect) },
+                    onClick = { customSeconds?.let(select) },
                     enabled = customSeconds != null,
                 ) {
                     Text(stringResource(android.R.string.ok))
