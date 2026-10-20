@@ -87,6 +87,8 @@ import kotlinx.serialization.Serializable
 import soup.compose.material.motion.animation.materialSharedAxisXIn
 import soup.compose.material.motion.animation.materialSharedAxisXOut
 
+private const val NAV_LABEL_MAX_FONT_SCALE = 1.5f
+
 sealed interface Screen : NavKey {
     @Serializable
     data object Dashboard : Screen
@@ -340,6 +342,7 @@ fun BottomNav(
                     toolbarContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 ),
         ) {
+            val labelScale = (NAV_LABEL_MAX_FONT_SCALE / LocalDensity.current.fontScale).coerceAtMost(1f)
             CompositionLocalProvider(LocalRippleConfiguration provides null) {
                 bottomNavItems.forEachIndexed { index, item ->
                     val selected = currentKey == item.key
@@ -408,6 +411,9 @@ fun BottomNav(
                                 text = stringResource(item.titleRes),
                                 modifier = Modifier.padding(start = ButtonDefaults.IconSpacing),
                                 style = MaterialTheme.typography.labelLarge,
+                                fontSize = MaterialTheme.typography.labelLarge.fontSize * labelScale,
+                                maxLines = 1,
+                                softWrap = false,
                             )
                         }
                     }
