@@ -82,7 +82,11 @@ object Tokens {
     val DetailHeaderCardPadding: Dp = 16.dp
     val DetailHeaderIconTextSpacing: Dp = 16.dp
 
-    val StatusIconSize: Dp = 36.dp
+    val StatusIconSize: Dp = 28.dp
+    val StatusBadgeSize: Dp = 56.dp
+
+    val AboutBadgeSize: Dp = 96.dp
+    val ConnectedButtonHeight: Dp = 52.dp
 
     val UpToDateBadgeSize: Dp = 128.dp
     val UpToDateBadgeIconSize: Dp = 56.dp
