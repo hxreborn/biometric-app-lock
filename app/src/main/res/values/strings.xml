@@ -151,7 +151,6 @@
     <string name="about_source_summary">View the project on GitHub</string>
     <string name="about_report_issue_title">Suggest a feature or report a bug</string>
     <string name="about_report_issue_summary">Open an issue on GitHub</string>
-    <string name="about_app_version_title">App version</string>
     <string name="about_libxposed_api_title">libxposed API</string>
     <string name="about_framework_title">Xposed framework</string>
     <string name="about_whats_new_title">What\'s new</string>
@@ -161,7 +160,6 @@
     <string name="whats_new_title">What\'s New</string>
     <string name="whats_new_got_it">Got it</string>
     <string name="about_section_links">Links</string>
-    <string name="about_section_versions">Versions</string>
     <string name="about_section_release">Release</string>
     <string name="about_section_debug">Debug</string>
     <string name="about_debug_hot_reload_title">Trigger hot reload</string>
