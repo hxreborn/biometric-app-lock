@@ -267,7 +267,13 @@ fun MainNavDisplay(
                     val framework by viewModel.framework.collectAsStateWithLifecycle()
                     var showWhatsNew by rememberSaveable { mutableStateOf(false) }
                     if (showWhatsNew) {
-                        WhatsNewForCurrentVersion(onDismiss = { showWhatsNew = false })
+                        WhatsNewForCurrentVersion(
+                            onDismiss = { showWhatsNew = false },
+                            onFullChangelog = {
+                                showWhatsNew = false
+                                backStack.add(Screen.Changelog)
+                            },
+                        )
                     }
                     AboutScreen(
                         framework = framework,

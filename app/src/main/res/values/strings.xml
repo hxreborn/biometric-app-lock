@@ -153,7 +153,8 @@
     <string name="about_whats_new_summary">Changes in v%1$s</string>
 
     <string name="whats_new_version_badge">v%1$s</string>
-    <string name="whats_new_title">What\'s New</string>
+    <string name="whats_new_title">What\'s new in %1$s</string>
+    <string name="whats_new_released">Released %1$s</string>
     <string name="whats_new_got_it">Got it</string>
     <string name="about_section_links">Links</string>
     <string name="about_section_release">Release</string>
@@ -244,9 +245,17 @@
     <string name="changelog_fetch_failed">Could not load changelog</string>
     <string name="changelog_retry">Retry</string>
     <string name="changelog_got_it">Done</string>
+    <string name="changelog_see_full">See full changelog</string>
+    <string name="changelog_open_link">Open on GitHub</string>
+    <string name="changelog_area_auth">Unlock</string>
+    <string name="changelog_area_hooks">Hooks</string>
+    <string name="changelog_area_scope">Locked apps</string>
+    <string name="changelog_area_ui">Interface</string>
+    <string name="changelog_area_deps">Dependencies</string>
+    <string name="changelog_area_other">Other</string>
 
-    <string name="change_type_feat">Features</string>
-    <string name="change_type_fix">Bug Fixes</string>
+    <string name="change_type_feat">New</string>
+    <string name="change_type_fix">Fixed</string>
     <string name="change_type_refactor">Refactor</string>
     <string name="change_type_perf">Performance</string>
     <string name="change_type_security">Security</string>
@@ -256,7 +265,7 @@
     <string name="change_type_misc">Miscellaneous</string>
     <string name="change_type_docs">Documentation</string>
     <string name="change_type_chore">Maintenance</string>
-    <string name="change_type_breaking">Breaking Changes</string>
+    <string name="change_type_breaking">Breaking</string>
 
     <string name="updates_sheet_title_checking">Checking…</string>
     <string name="updates_sheet_title_up_to_date">Check for Updates</string>

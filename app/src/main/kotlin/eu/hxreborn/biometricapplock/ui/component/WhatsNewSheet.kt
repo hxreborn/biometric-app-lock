@@ -17,7 +17,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -29,12 +28,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.rounded.Check
@@ -42,18 +44,17 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
-import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberBottomSheetState
-import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -64,7 +65,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -78,36 +78,25 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import eu.hxreborn.biometricapplock.R
 import eu.hxreborn.biometricapplock.ui.theme.Tokens
-import eu.hxreborn.biometricapplock.updates.ChangeType
+import eu.hxreborn.biometricapplock.updates.ChangelogEntry
 import eu.hxreborn.biometricapplock.updates.FailureCause
 import eu.hxreborn.biometricapplock.updates.UpdateSheetState
 import eu.hxreborn.biometricapplock.updates.titleRes
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-data class FeatureSheetItem(
-    val label: String? = null,
-    val scope: String? = null,
-    val changeType: ChangeType? = null,
-    val title: String,
-    val body: String? = null,
-    val onClick: (() -> Unit)? = null,
-)
 
 @Composable
 fun WhatsNewSheet(
     state: UpdateSheetState,
-    items: List<FeatureSheetItem>,
+    entries: List<ChangelogEntry>,
     versionLabel: String,
     onDismiss: () -> Unit,
+    onFullChangelog: () -> Unit = {},
     onDownload: (String) -> Unit = {},
     onRetry: () -> Unit = {},
     onLater: (String) -> Unit = {},
@@ -163,6 +152,13 @@ fun WhatsNewSheet(
         }
     }
 
+    val openFullChangelog: () -> Unit = {
+        scope.launch {
+            sheetState.hide()
+            onFullChangelog()
+        }
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -178,15 +174,14 @@ fun WhatsNewSheet(
             val itemCount =
                 when (state) {
                     UpdateSheetState.Checking,
+                    UpdateSheetState.WhatsNew,
                     is UpdateSheetState.UpToDate,
                     is UpdateSheetState.RateLimited,
                     -> null
 
-                    is UpdateSheetState.Available -> items.size.takeIf { state.notesAvailable && it > 0 }
+                    is UpdateSheetState.Available -> entries.size.takeIf { state.notesAvailable && it > 0 }
 
-                    is UpdateSheetState.Failed -> items.size.takeIf { state.cachedFallback != null && it > 0 }
-
-                    UpdateSheetState.WhatsNew -> items.size.takeIf { it > 0 }
+                    is UpdateSheetState.Failed -> entries.size.takeIf { state.cachedFallback != null && it > 0 }
                 }
 
             Column(
@@ -196,8 +191,12 @@ fun WhatsNewSheet(
                     },
                 verticalArrangement = Arrangement.spacedBy(Tokens.SheetSectionSpacing),
             ) {
-                SheetHeader(versionLabel = versionLabel, title = title, itemCount = itemCount)
-                SheetBody(state = state, items = items, sheetTitle = title)
+                if (state == UpdateSheetState.WhatsNew) {
+                    WhatsNewHeader(versionLabel = versionLabel, releasedOn = releaseDate(entries))
+                } else {
+                    SheetHeader(versionLabel = versionLabel, title = title, itemCount = itemCount)
+                }
+                SheetBody(state = state, entries = entries, sheetTitle = title)
                 Spacer(Modifier.height(Tokens.SheetSectionSpacing))
             }
 
@@ -208,6 +207,7 @@ fun WhatsNewSheet(
                 SheetActions(
                     state = state,
                     onDismiss = dismiss,
+                    onFullChangelog = openFullChangelog,
                     onDownload = onDownload,
                     onLater = onLater,
                     onRetry = onRetry,
@@ -268,9 +268,30 @@ private fun SheetHeader(
 }
 
 @Composable
+private fun WhatsNewHeader(
+    versionLabel: String,
+    releasedOn: String?,
+) {
+    Column(modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) { heading() }) {
+        Text(
+            text = stringResource(R.string.whats_new_title, versionLabel),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+        )
+        if (releasedOn != null) {
+            Text(
+                text = stringResource(R.string.whats_new_released, releasedOn),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
 private fun SheetBody(
     state: UpdateSheetState,
-    items: List<FeatureSheetItem>,
+    entries: List<ChangelogEntry>,
     sheetTitle: String,
 ) {
     Column(
@@ -449,9 +470,9 @@ private fun SheetBody(
                         }
                     }
                 }
-                if (state is UpdateSheetState.Failed && state.cachedFallback != null && items.isNotEmpty()) {
+                if (state is UpdateSheetState.Failed && state.cachedFallback != null && entries.isNotEmpty()) {
                     CachedCaption()
-                    ItemList(items)
+                    ReleaseNotes(entries)
                 }
             }
 
@@ -471,211 +492,14 @@ private fun SheetBody(
                         contentColor = MaterialTheme.colorScheme.onSurface,
                     )
                 }
-                ItemList(items)
+                ReleaseNotes(entries)
             }
 
             UpdateSheetState.WhatsNew -> {
-                ItemList(items)
+                ReleaseNotes(entries)
             }
         }
     }
-}
-
-private val CHANGE_TYPE_ORDER =
-    listOf(
-        ChangeType.Breaking,
-        ChangeType.Feat,
-        ChangeType.Fix,
-        ChangeType.Perf,
-        ChangeType.Security,
-        ChangeType.Refactor,
-        ChangeType.Revert,
-        ChangeType.Ci,
-        ChangeType.Test,
-        ChangeType.Misc,
-    )
-
-@Composable
-private fun ItemList(items: List<FeatureSheetItem>) {
-    if (items.isEmpty()) return
-    val grouped = items.groupBy { it.changeType ?: ChangeType.Misc }
-    val sections =
-        CHANGE_TYPE_ORDER.mapNotNull { type ->
-            val group = grouped[type] ?: return@mapNotNull null
-            val label = group.first().label ?: return@mapNotNull null
-            Triple(type, label, group)
-        }
-    val shuffledShapes = remember { sectionBadgeShapes.shuffled() }
-    Column(verticalArrangement = Arrangement.spacedBy(Tokens.SheetItemSpacing)) {
-        sections.forEachIndexed { index, (type, label, group) ->
-            TypeSection(
-                type = type,
-                label = label,
-                items = group,
-                index = index,
-                badgeShape = shuffledShapes[index].toShape(),
-            )
-        }
-    }
-}
-
-private val sectionBadgeShapes =
-    listOf(
-        MaterialShapes.Cookie4Sided,
-        MaterialShapes.Clover4Leaf,
-        MaterialShapes.PuffyDiamond,
-        MaterialShapes.Flower,
-        MaterialShapes.Ghostish,
-        MaterialShapes.Cookie9Sided,
-        MaterialShapes.Gem,
-        MaterialShapes.Pill,
-        MaterialShapes.Puffy,
-        MaterialShapes.ClamShell,
-    )
-
-@Composable
-private fun TypeSection(
-    type: ChangeType,
-    label: String,
-    items: List<FeatureSheetItem>,
-    index: Int = 0,
-    badgeShape: Shape = MaterialShapes.Cookie9Sided.toShape(),
-) {
-    val cs = MaterialTheme.colorScheme
-    val cardAlpha = remember { Animatable(0f) }
-    val cardOffsetY = remember { Animatable(16f) }
-    val iconScale = remember { Animatable(0f) }
-
-    LaunchedEffect(Unit) {
-        delay(index * 60L)
-        launch { cardAlpha.animateTo(1f, spring(stiffness = Spring.StiffnessMediumLow)) }
-        launch { cardOffsetY.animateTo(0f, spring(stiffness = Spring.StiffnessMediumLow)) }
-        delay(80L)
-        iconScale.animateTo(
-            1f,
-            spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioMediumBouncy),
-        )
-    }
-
-    val labelColor =
-        when (type) {
-            ChangeType.Breaking, ChangeType.Security -> cs.error
-            ChangeType.Fix -> cs.secondary
-            else -> cs.primary
-        }
-    val iconContainerColor =
-        when (type) {
-            ChangeType.Breaking, ChangeType.Security -> cs.errorContainer
-            ChangeType.Feat -> cs.primaryContainer
-            ChangeType.Fix -> cs.secondaryContainer
-            ChangeType.Perf -> cs.tertiaryContainer
-            else -> cs.surfaceContainerLowest
-        }
-    val iconContentColor =
-        when (type) {
-            ChangeType.Breaking, ChangeType.Security -> cs.onErrorContainer
-            ChangeType.Feat -> cs.onPrimaryContainer
-            ChangeType.Fix -> cs.onSecondaryContainer
-            ChangeType.Perf -> cs.onTertiaryContainer
-            else -> cs.onSurface
-        }
-
-    Surface(
-        modifier =
-            Modifier.fillMaxWidth().graphicsLayer {
-                alpha = cardAlpha.value
-                translationY = cardOffsetY.value
-            },
-        shape = MaterialTheme.shapes.large,
-        color = cs.surfaceContainerHigh,
-    ) {
-        Column(modifier = Modifier.padding(Tokens.SpacingSm)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Tokens.SpacingXs),
-            ) {
-                SoftBlobBadge(
-                    size = 36.dp,
-                    shape = badgeShape,
-                    containerColor = iconContainerColor,
-                    modifier =
-                        Modifier.graphicsLayer {
-                            scaleX = iconScale.value
-                            scaleY = iconScale.value
-                        },
-                ) {
-                    Icon(
-                        imageVector = changeTypeIcon(type),
-                        contentDescription = null,
-                        tint = iconContentColor,
-                        modifier = Modifier.size(Tokens.SmallIconSize),
-                    )
-                }
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = labelColor,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-            Spacer(Modifier.height(Tokens.SpacingXs))
-            Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpacingSm)) {
-                items.forEachIndexed { i, item ->
-                    if (i > 0) EntryDivider()
-                    ChangelogEntryRow(item)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ChangelogEntryRow(item: FeatureSheetItem) {
-    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
-    val titleText =
-        buildAnnotatedString {
-            append(item.title)
-            if (!item.scope.isNullOrBlank()) {
-                withStyle(SpanStyle(color = onSurfaceVariant)) {
-                    append(" (${item.scope})")
-                }
-            }
-        }
-    val haptics = LocalHapticFeedback.current
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = Tokens.SpacingXs),
-        verticalArrangement = Arrangement.spacedBy(Tokens.SpacingXs),
-    ) {
-        Text(
-            text = titleText,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-            modifier =
-                if (item.onClick != null) {
-                    Modifier.combinedClickable(
-                        onClick = {},
-                        onLongClick = {
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            item.onClick.invoke()
-                        },
-                    )
-                } else {
-                    Modifier
-                },
-        )
-        if (!item.body.isNullOrBlank()) {
-            Text(
-                text = item.body,
-                style = MaterialTheme.typography.bodySmall,
-                color = onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
-private fun EntryDivider() {
-    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 }
 
 @Composable
@@ -724,6 +548,7 @@ private fun Callout(
 private fun SheetActions(
     state: UpdateSheetState,
     onDismiss: () -> Unit,
+    onFullChangelog: () -> Unit,
     onDownload: (String) -> Unit,
     onLater: (String) -> Unit,
     onRetry: () -> Unit,
@@ -772,13 +597,37 @@ private fun SheetActions(
             )
         }
 
-        is UpdateSheetState.UpToDate,
-        UpdateSheetState.WhatsNew,
-        -> {
+        is UpdateSheetState.UpToDate -> {
             PrimaryAction(
                 label = stringResource(R.string.whats_new_got_it),
                 onClick = onDismiss,
             )
+        }
+
+        UpdateSheetState.WhatsNew -> {
+            val close = stringResource(R.string.updates_dialog_close)
+            val seeFull = stringResource(R.string.changelog_see_full)
+            AdaptiveButtonRow(
+                labels = listOf(close, seeFull),
+                labelStyle = MaterialTheme.typography.labelLarge,
+                nonLabelWidth =
+                    ButtonDefaults.ContentPadding.calculateLeftPadding(LayoutDirection.Ltr) +
+                        ButtonDefaults.ContentPadding.calculateRightPadding(LayoutDirection.Ltr) +
+                        ButtonDefaults.IconSize +
+                        ButtonDefaults.IconSpacing,
+                fillRow = false,
+            ) { _, itemModifier ->
+                TextButton(onClick = onDismiss, shapes = ButtonDefaults.shapes(), modifier = itemModifier) {
+                    Icon(Icons.Outlined.Close, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    Text(close)
+                }
+                FilledTonalButton(onClick = onFullChangelog, shapes = ButtonDefaults.shapes(), modifier = itemModifier) {
+                    Icon(Icons.Outlined.History, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    Text(seeFull)
+                }
+            }
         }
     }
 }

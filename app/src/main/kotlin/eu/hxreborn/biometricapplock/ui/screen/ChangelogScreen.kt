@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -41,7 +40,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -49,9 +47,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.hxreborn.biometricapplock.App
 import eu.hxreborn.biometricapplock.R
 import eu.hxreborn.biometricapplock.ui.component.BackButton
-import eu.hxreborn.biometricapplock.ui.component.changeTypeLabelRes
+import eu.hxreborn.biometricapplock.ui.component.ReleaseNotes
+import eu.hxreborn.biometricapplock.ui.component.releaseDate
 import eu.hxreborn.biometricapplock.ui.theme.Tokens
-import eu.hxreborn.biometricapplock.updates.ChangeType
 import eu.hxreborn.biometricapplock.updates.ChangelogEntry
 import kotlinx.coroutines.launch
 
@@ -134,54 +132,22 @@ private fun ReleaseCard(
     version: String,
     changes: List<ChangelogEntry>,
 ) {
-    val uriHandler = LocalUriHandler.current
-    val byType = remember(changes) { changes.groupBy { ChangeType.from(it.type, it.breaking) } }
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
-        Column(
-            modifier = Modifier.padding(Tokens.SpacingLg),
-            verticalArrangement = Arrangement.spacedBy(Tokens.SpacingSm),
-        ) {
+        Column(modifier = Modifier.padding(Tokens.SpacingLg)) {
             Row(
                 modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) { heading() },
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(text = "v$version", style = MaterialTheme.typography.titleMedium)
-                changes.firstNotNullOfOrNull { it.date }?.let { date ->
+                releaseDate(changes)?.let { date ->
                     Text(text = date, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            byType.forEach { (type, group) ->
-                Text(
-                    text = stringResource(changeTypeLabelRes(type)),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = Tokens.SpacingXs),
-                )
-                group.forEach { change ->
-                    Column(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .then(change.url?.let { url -> Modifier.clickable { uriHandler.openUri(url) } } ?: Modifier),
-                    ) {
-                        Text(
-                            text = change.title.replaceFirstChar { it.uppercase() },
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                        change.description?.takeIf { it.isNotBlank() }?.let { body ->
-                            Text(
-                                text = body,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-            }
+            ReleaseNotes(changes)
         }
     }
 }

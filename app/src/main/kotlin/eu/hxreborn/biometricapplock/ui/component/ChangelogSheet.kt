@@ -2,9 +2,9 @@ package eu.hxreborn.biometricapplock.ui.component
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Undo
-import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Bolt
-import androidx.compose.material.icons.outlined.BugReport
+import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.PriorityHigh
@@ -21,7 +21,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.hxreborn.biometricapplock.App
 import eu.hxreborn.biometricapplock.BuildConfig
@@ -75,22 +74,11 @@ fun ChangelogSheet(
             else -> BuildConfig.VERSION_NAME
         }
 
-    val items =
-        cachedEntries?.filter { it.version == latestVersionForMatch }?.map { entry ->
-            val type = ChangeType.from(entry.type, entry.breaking)
-            FeatureSheetItem(
-                label = stringResource(changeTypeLabelRes(type)),
-                scope = entry.scope?.takeIf { it.isNotBlank() },
-                changeType = type,
-                title = entry.title,
-                body = entry.description,
-                onClick = entry.url?.let { url -> { uriHandler.openUri(url) } },
-            )
-        } ?: emptyList()
+    val entries = cachedEntries?.filter { it.version == latestVersionForMatch }.orEmpty()
 
     WhatsNewSheet(
         state = sheetState,
-        items = items,
+        entries = entries,
         versionLabel = versionLabel,
         onDismiss = onDismiss,
         onDownload = { url -> uriHandler.openUri(url) },
@@ -104,33 +92,24 @@ fun ChangelogSheet(
 }
 
 @Composable
-fun WhatsNewForCurrentVersion(onDismiss: () -> Unit) {
+fun WhatsNewForCurrentVersion(
+    onDismiss: () -> Unit,
+    onFullChangelog: () -> Unit,
+) {
     val app = App.from(LocalContext.current)
-    val uriHandler = LocalUriHandler.current
-    val items =
-        app.updateRepository.bundledChangelog.filter { it.version == BuildConfig.VERSION_NAME }.map { entry ->
-            val type = ChangeType.from(entry.type, entry.breaking)
-            FeatureSheetItem(
-                label = stringResource(changeTypeLabelRes(type)),
-                scope = entry.scope?.takeIf { it.isNotBlank() },
-                changeType = type,
-                title = entry.title,
-                body = entry.description,
-                onClick = entry.url?.let { url -> { uriHandler.openUri(url) } },
-            )
-        }
     WhatsNewSheet(
         state = UpdateSheetState.WhatsNew,
-        items = items,
+        entries = app.updateRepository.bundledChangelog.filter { it.version == BuildConfig.VERSION_NAME },
         versionLabel = BuildConfig.VERSION_NAME,
         onDismiss = onDismiss,
+        onFullChangelog = onFullChangelog,
     )
 }
 
 internal fun changeTypeIcon(type: ChangeType): ImageVector =
     when (type) {
-        ChangeType.Feat -> Icons.Filled.AutoAwesome
-        ChangeType.Fix -> Icons.Outlined.BugReport
+        ChangeType.Feat -> Icons.Outlined.AutoAwesome
+        ChangeType.Fix -> Icons.Outlined.Build
         ChangeType.Perf -> Icons.Outlined.Bolt
         ChangeType.Security -> Icons.Outlined.Shield
         ChangeType.Refactor -> Icons.Outlined.Tune

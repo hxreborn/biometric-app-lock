@@ -92,7 +92,7 @@ val UpdateSheetState.titleRes: Int
             }
 
             UpdateSheetState.WhatsNew -> {
-                R.string.whats_new_title
+                R.string.about_whats_new_title
             }
         }
 
