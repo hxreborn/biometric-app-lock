@@ -37,12 +37,12 @@ No additional setup is needed — the module detects the device manufacturer and
 ## Requirements
 
 - Android 13+ with an enrolled biometric
-- Xposed manager with libxposed API 101 or newer (102 enables hot reload)
+- An Xposed manager with libxposed API 101 support, such as Vector 2.1 or newer (API 102, from Vector 2.2, adds hot reload)
 
 ## Install
 
-1. Install APK from [Releases](../../releases)
-2. Enable module in your Xposed manager with System Framework scope
+1. Download the APK from [Releases](../../releases)
+2. Install and enable the module in your Xposed manager with System Framework scope
 3. Reboot
 4. Select apps to lock in the Apps tab
 
@@ -65,7 +65,7 @@ After you turn the block off, that app's recents card can stay blank since the s
 
 Settings → About → Export logs saves the module's log lines to a text file and opens a share sheet, so you can attach them to a [GitHub issue](https://github.com/hxreborn/biometric-app-lock/issues/new), send them by [email](mailto:hxreborn@duck.com), or share via [Telegram](https://t.me/hxreb0rn). Reproduce the issue first, then export.
 
-Reading the LSPosed logs needs root. Only this module's own log lines are exported, so they're safe to attach to a public issue. Debug builds help me most.
+Reading the Xposed manager's logs needs root. Only this module's own log lines are exported, so they're safe to attach to a public issue. Debug builds help me most.
 
 ## License
 
