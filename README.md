@@ -48,7 +48,7 @@ No additional setup is needed — the module detects the device manufacturer and
 
 ## Prevent uninstall
 
-Toggle in Settings → Privacy & stealth. While on, the module blocks every attempt to uninstall itself, including `adb uninstall` and `pm uninstall`, since it's enforced in the system framework.
+Toggle in Settings → Privacy. While on, the module blocks every attempt to uninstall itself, including `adb uninstall` and `pm uninstall`, since it's enforced in the system framework.
 
 > [!IMPORTANT]
 > To remove the module with the toggle on:
