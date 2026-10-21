@@ -63,6 +63,24 @@ private val ChangeTypeOrder =
         ChangeType.Misc,
     )
 
+private val BadgeVerbs =
+    mapOf(
+        ChangeType.Feat to setOf("add", "adds", "added"),
+        ChangeType.Fix to setOf("fix", "fixes", "fixed"),
+        ChangeType.Revert to setOf("revert", "reverts", "reverted"),
+        ChangeType.Refactor to setOf("refactor", "refactors", "refactored"),
+    )
+
+private val NoteBullet = Regex("""^[-*•]\s+""")
+
+private fun noteTitle(entry: ChangelogEntry): String {
+    val title = entry.title.trim().replace(NoteBullet, "")
+    val verb = title.substringBefore(' ')
+    val rest = title.substringAfter(' ', "")
+    val verbs = BadgeVerbs[ChangeType.from(entry.type, entry.breaking)].orEmpty()
+    return (if (verb.lowercase() in verbs && rest.isNotBlank()) rest else title).replaceFirstChar(Char::uppercase)
+}
+
 private enum class NoteArea(
     val scopes: Set<String?>,
     @param:StringRes val title: Int,
@@ -142,7 +160,7 @@ private fun NoteRow(entry: ChangelogEntry) {
     ) {
         KindBadge(ChangeType.from(entry.type, entry.breaking))
         Column(Modifier.weight(1f)) {
-            Text(entry.title.replaceFirstChar(Char::uppercase), style = MaterialTheme.typography.bodyMedium)
+            Text(noteTitle(entry), style = MaterialTheme.typography.bodyMedium)
             entry.description?.takeIf { it.isNotBlank() }?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
