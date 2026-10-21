@@ -27,10 +27,11 @@ GROUP_TO_TYPE = {
     "Security": "security",
     "Refactor": "refactor",
     "Reverts": "revert",
-    "CI/CD": "ci",
     "Tests": "test",
     "Miscellaneous": "misc",
 }
+
+SKIPPED_GROUPS = {"CI/CD"}
 
 GROUP_PREFIX_RE = re.compile(r"^<!--\s*\d+\s*-->")
 
@@ -118,6 +119,8 @@ def main(argv: list[str]) -> int:
         if rel_version.startswith("v"):
             rel_version = rel_version[1:]
         for c in release.get("commits") or []:
+            if clean_group(c.get("group")) in SKIPPED_GROUPS:
+                continue
             entries.append(transform_commit(c, rel_version, owner, repo))
 
     payload = {"version": version, "entries": entries}

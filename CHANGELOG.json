@@ -12,26 +12,6 @@
       "breaking": false
     },
     {
-      "type": "ci",
-      "title": "bump the compose group across 1 directory with 2 updates",
-      "description": "Bumps the compose group with 2 updates in the / directory: androidx.compose:compose-bom and androidx.compose.material3:material3.",
-      "version": "1.12.3",
-      "date": "2026-09-21",
-      "url": "https://github.com/hxreborn/biometric-app-lock/pull/57",
-      "scope": "deps",
-      "breaking": false
-    },
-    {
-      "type": "ci",
-      "title": "bump com.android.application in the agp group",
-      "description": "Bumps the agp group with 1 update: com.android.application.",
-      "version": "1.12.3",
-      "date": "2026-09-21",
-      "url": "https://github.com/hxreborn/biometric-app-lock/pull/62",
-      "scope": "deps",
-      "breaking": false
-    },
-    {
       "type": "fix",
       "title": "fix apps remaining locked after removal due to unkeyed package entries",
       "description": null,
@@ -79,46 +59,6 @@
       "date": "2026-09-15",
       "url": "https://github.com/hxreborn/biometric-app-lock/commit/1f9f29aabf594f9ca4e3dabd82cbefb544f8d417",
       "scope": "hook",
-      "breaking": false
-    },
-    {
-      "type": "ci",
-      "title": "bump the compose group across 1 directory with 2 updates",
-      "description": null,
-      "version": "1.12.1",
-      "date": "2026-09-07",
-      "url": "https://github.com/hxreborn/biometric-app-lock/pull/48",
-      "scope": "deps",
-      "breaking": false
-    },
-    {
-      "type": "ci",
-      "title": "bump actions/setup-java from 5 to 6 in the actions group",
-      "description": null,
-      "version": "1.12.1",
-      "date": "2026-09-07",
-      "url": "https://github.com/hxreborn/biometric-app-lock/pull/51",
-      "scope": "deps",
-      "breaking": false
-    },
-    {
-      "type": "ci",
-      "title": "bump gradle-wrapper from 9.7.0 to 9.7.1",
-      "description": null,
-      "version": "1.12.1",
-      "date": "2026-09-07",
-      "url": "https://github.com/hxreborn/biometric-app-lock/pull/49",
-      "scope": "deps",
-      "breaking": false
-    },
-    {
-      "type": "ci",
-      "title": "bump com.android.application from 9.3.1 to 9.3.2 in the agp group across 1 directory",
-      "description": null,
-      "version": "1.12.1",
-      "date": "2026-09-07",
-      "url": "https://github.com/hxreborn/biometric-app-lock/pull/47",
-      "scope": "deps",
       "breaking": false
     },
     {
