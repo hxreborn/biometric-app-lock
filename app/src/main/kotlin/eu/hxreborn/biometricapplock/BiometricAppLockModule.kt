@@ -7,6 +7,7 @@ import eu.hxreborn.biometricapplock.hook.lockedPackages
 import eu.hxreborn.biometricapplock.hook.parseLockedPackages
 import eu.hxreborn.biometricapplock.hook.refreshSecureSurfaces
 import eu.hxreborn.biometricapplock.hook.registerSystemServerHooks
+import eu.hxreborn.biometricapplock.hook.runCatchingHook
 import eu.hxreborn.biometricapplock.hook.unregisterPackageEvents
 import eu.hxreborn.biometricapplock.prefs.Prefs
 import eu.hxreborn.biometricapplock.util.Logger
@@ -77,7 +78,7 @@ class BiometricAppLockModule : XposedModule() {
     override fun onHotReloaded(param: HotReloadedParam) {
         module = this
         Logger.info("hot reload unhooking old=${param.oldHookHandles.size}")
-        param.oldHookHandles.forEach { runCatching { it.unhook() } }
+        param.oldHookHandles.forEach { runCatchingHook { it.unhook() } }
         val classLoader = param.savedInstanceState as? ClassLoader
         if (classLoader == null) {
             Logger.error("hot reload aborted, system_server classLoader unavailable")

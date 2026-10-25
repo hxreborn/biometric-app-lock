@@ -23,6 +23,15 @@ internal var atmsRef: Any? = null
 
 private val packageEventsRegistered = AtomicBoolean(false)
 
+internal inline fun <T> runCatchingHook(block: () -> T): Result<T> =
+    try {
+        Result.success(block())
+    } catch (e: Exception) {
+        Result.failure(e)
+    } catch (e: LinkageError) {
+        Result.failure(e)
+    }
+
 private fun captureAtms(interceptor: Any): Any? =
     runCatching {
         val r = reflection ?: return null
@@ -196,7 +205,7 @@ private fun interceptLockedLaunch(
 
 // launcher path: swaps the launch for the prompt and replays the original once auth passes
 private fun XposedModule.hookLaunchIntercept(classLoader: ClassLoader): Boolean =
-    runCatching {
+    runCatchingHook {
         val method =
             classLoader.findMethod(
                 "com.android.server.wm.ActivityStartInterceptor",
@@ -248,7 +257,7 @@ private fun XposedModule.hookLaunchIntercept(classLoader: ClassLoader): Boolean 
 
 // bookkeeping: taskId -> package so the recents and task-removed hooks can find it
 private fun XposedModule.hookActivityLaunched(classLoader: ClassLoader): Boolean =
-    runCatching {
+    runCatchingHook {
         val method =
             classLoader.findMethod(
                 "com.android.server.wm.ActivityStartInterceptor",
@@ -316,7 +325,7 @@ private fun resolveTaskEntryFromAtms(
  * - opaque: keep the task off-screen, return START_SUCCESS, let auth own the screen
  */
 private fun XposedModule.hookRecentsLaunch(classLoader: ClassLoader): Boolean =
-    runCatching {
+    runCatchingHook {
         val method =
             classLoader.findMethod(
                 "com.android.server.wm.ActivityTaskSupervisor",
@@ -380,7 +389,7 @@ private fun XposedModule.hookRecentsLaunch(classLoader: ClassLoader): Boolean =
 // screen pinning fronts the task through startSystemLockTaskMode and skips both launch hooks.
 // swallowing the call keeps a still-locked app off-screen under the prompt recents already posted
 private fun XposedModule.hookScreenPinning(classLoader: ClassLoader): Boolean =
-    runCatching {
+    runCatchingHook {
         val method =
             classLoader.findMethod(
                 "com.android.server.wm.ActivityTaskManagerService",
@@ -408,7 +417,7 @@ private fun XposedModule.hookScreenPinning(classLoader: ClassLoader): Boolean =
 
 // drops the unlock when a locked task gets swiped off recents
 private fun XposedModule.hookTaskRemoved(classLoader: ClassLoader): Boolean =
-    runCatching {
+    runCatchingHook {
         val supervisorClass =
             classLoader.anyClassFromNames(
                 "com.android.server.wm.ActivityTaskSupervisor",
@@ -475,7 +484,7 @@ private fun occludesParent(record: Any): Boolean =
 
 // foreground changes that never reach ActivityStarter, most visibly the home gesture
 private fun XposedModule.hookTopResumedActivity(classLoader: ClassLoader): Boolean =
-    runCatching {
+    runCatchingHook {
         val method =
             classLoader.findMethod(
                 "com.android.server.wm.ActivityTaskManagerService",
@@ -509,7 +518,7 @@ private fun XposedModule.hookTopResumedActivity(classLoader: ClassLoader): Boole
 
 // screen off wipes unlock state and screen on relocks whatever's past its delay
 private fun XposedModule.hookScreenAwake(classLoader: ClassLoader): Boolean =
-    runCatching {
+    runCatchingHook {
         val method =
             classLoader.findMethod(
                 "com.android.server.wm.ActivityTaskManagerService",
@@ -545,7 +554,7 @@ private fun XposedModule.hookScreenAwake(classLoader: ClassLoader): Boolean =
 
 // force-blocks screenshots in unlocked locked apps when BLOCK_SCREENSHOTS is on
 private fun XposedModule.hookFlagSecure(classLoader: ClassLoader): Boolean =
-    runCatching {
+    runCatchingHook {
         val method =
             classLoader.findMethod(
                 "com.android.server.wm.WindowState",
@@ -575,7 +584,7 @@ private val VERSIONED_LIBRARY_PACKAGE = Regex(""".+_\d+""")
 
 // every user uninstall (launcher, Settings, Play Store, adb) ends up here at deletePackageX
 private fun XposedModule.hookUninstall(classLoader: ClassLoader): Boolean =
-    runCatching {
+    runCatchingHook {
         val method =
             classLoader.findMethod(
                 "com.android.server.pm.DeletePackageHelper",
@@ -647,7 +656,7 @@ private val STYLE_EXTRAS =
     )
 
 private fun XposedModule.hookNotificationEnqueue(classLoader: ClassLoader): Boolean =
-    runCatching {
+    runCatchingHook {
         val nms =
             classLoader.loadClass("com.android.server.notification.NotificationManagerService")
         val methods = nms.declaredMethods.filter { it.name == "enqueueNotificationInternal" }
