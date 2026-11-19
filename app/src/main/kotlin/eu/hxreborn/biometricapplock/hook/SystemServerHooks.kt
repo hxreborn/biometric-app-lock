@@ -226,7 +226,7 @@ private fun XposedModule.hookLaunchIntercept(classLoader: ClassLoader): Boolean 
                             true ||
                             packageName == BiometricAuthActivity.MODULE_PACKAGE
                     if (isResumeSignal) {
-                        return@intercept true
+                        return@intercept blockLaunch(chain.thisObject, auth.packageName)
                     }
                     return@intercept chain.proceed()
                 }
@@ -291,14 +291,16 @@ private fun taskEntryFromTask(
     val pkg = lookup.packageOf(task) ?: return null
     val userId = runCatching { lookup.userIdField?.getInt(task) }.getOrNull() ?: 0
     if ("$pkg:$userId" !in lockedPackages) return null
+    val cached = taskId?.let { taskCache[it] }
     val realActivity = lookup.realActivityOf(task)
+    val topComponent = lookup.topActivityOf(task)
     val taskIntent = lookup.intentOf(task)
     return TaskEntry(
         packageName = pkg,
         userId = userId,
-        topActivity = realActivity?.className,
-        intent = taskIntent,
-        taskId = taskId,
+        topActivity = topComponent?.className ?: cached?.topActivity ?: realActivity?.className,
+        intent = taskIntent ?: cached?.intent,
+        taskId = taskId ?: cached?.taskId,
     )
 }
 
@@ -323,12 +325,12 @@ private fun resolveTaskEntryFromAtms(
     val cached = taskCache[taskId]
     if (cached != null && cached.intent != null) return cached
     return runCatching {
-        val r = reflection ?: return null
-        val lookup = r.taskLookup ?: return null
-        val anyTaskForId = lookup.anyTaskForId ?: return null
-        val matchMode = lookup.matchAttachedOrRecents ?: return null
-        val rwc = r.rootWindowContainerField.get(atms) ?: return null
-        val task = anyTaskForId.invoke(rwc, taskId, matchMode) ?: return null
+        val r = reflection ?: return@runCatching null
+        val lookup = r.taskLookup ?: return@runCatching null
+        val anyTaskForId = lookup.anyTaskForId ?: return@runCatching null
+        val matchMode = lookup.matchAttachedOrRecents ?: return@runCatching null
+        val rwc = r.rootWindowContainerField.get(atms) ?: return@runCatching null
+        val task = anyTaskForId.invoke(rwc, taskId, matchMode) ?: return@runCatching null
         taskEntryFromTask(task, taskId)?.also { taskCache[taskId] = it }
     }.getOrNull() ?: cached
 }
@@ -582,19 +584,19 @@ private fun gateTopResumedIfLocked(
     activityTaskManagerService: Any,
     source: String,
 ) {
-    val topKey =
+    val top =
         runCatching {
-            reflection?.findTopResumedPackageKey(activityTaskManagerService)
+            reflection?.findTopResumedActivity(activityTaskManagerService)
         }.getOrNull() ?: return
-    if (topKey !in lockedPackages) return
-    val parts = topKey.split(":")
-    val pkg = parts[0]
-    val userId = parts.getOrNull(1)?.toIntOrNull() ?: 0
-    if (!isUnlocked(pkg, userId) && !isActivityExempt(pkg, userId, null, null)) {
-        Logger.info("gating top resumed on $source pkg=$pkg user=$userId")
+    val key = "${top.packageName}:${top.userId}"
+    if (key !in lockedPackages) return
+    val pkg = top.packageName
+    val userId = top.userId
+    if (!isUnlocked(pkg, userId) && !isActivityExempt(pkg, userId, top.className, null)) {
+        Logger.info("gating top resumed on $source pkg=$pkg user=$userId class=${top.className}")
         postAuthLaunch(
             activityTaskManagerService,
-            TaskEntry(pkg, userId),
+            TaskEntry(pkg, userId, topActivity = top.className),
             forceOpaque = true,
         )
     }

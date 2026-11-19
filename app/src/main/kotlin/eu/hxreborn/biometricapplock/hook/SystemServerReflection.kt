@@ -204,14 +204,34 @@ internal class SystemServerReflection(
         rootWindowContainerField.type.requiredMethod("refreshSecureSurfaceState")
     }
 
-    fun findTopResumedPackageKey(activityTaskManagerService: Any): String? {
+    private val activityComponentField: Field? by lazy {
+        getTopResumedActivity.returnType.optionalField("mActivityComponent")
+    }
+
+    data class TopActivityInfo(
+        val packageName: String,
+        val userId: Int,
+        val className: String?,
+    )
+
+    fun findTopResumedActivity(activityTaskManagerService: Any): TopActivityInfo? {
         val rootWindowContainer =
             rootWindowContainerField.get(activityTaskManagerService) ?: return null
         val topResumedActivityRecord =
             getTopResumedActivity.invoke(rootWindowContainer) ?: return null
-        val pkg = packageNameField.get(topResumedActivityRecord) as? String ?: return null
+        val component = activityComponentField?.get(topResumedActivityRecord) as? ComponentName
+        val pkg =
+            component?.packageName
+                ?: (packageNameField.get(topResumedActivityRecord) as? String)
+                ?: return null
         val userId = userIdFieldTop.get(topResumedActivityRecord) as? Int ?: 0
-        return "$pkg:$userId"
+        val className = component?.className
+        return TopActivityInfo(pkg, userId, className)
+    }
+
+    fun findTopResumedPackageKey(activityTaskManagerService: Any): String? {
+        val info = findTopResumedActivity(activityTaskManagerService) ?: return null
+        return "${info.packageName}:${info.userId}"
     }
 }
 
@@ -250,6 +270,34 @@ internal class TaskLookup(
     }
 
     fun realActivityOf(task: Any): ComponentName? = realActivityField?.get(task) as? ComponentName
+
+    private val getTopActivityMethod: Method? =
+        taskClass.declaredMethods
+            .filter { it.name == "getTopMostActivity" || it.name == "getTopActivity" }
+            .minByOrNull { it.parameterCount }
+            ?.apply { isAccessible = true }
+
+    private val activityRecordComponentField: Field? =
+        runCatching {
+            cl.loadClass("com.android.server.wm.ActivityRecord").optionalField("mActivityComponent")
+        }.getOrNull()
+
+    fun topActivityOf(task: Any): ComponentName? {
+        val record =
+            runCatching {
+                val m = getTopActivityMethod ?: return@runCatching null
+                if (m.parameterCount == 0) {
+                    m.invoke(task)
+                } else if (m.parameterCount == 1 &&
+                    m.parameterTypes[0] == Boolean::class.javaPrimitiveType
+                ) {
+                    m.invoke(task, true)
+                } else {
+                    null
+                }
+            }.getOrNull() ?: return null
+        return activityRecordComponentField?.get(record) as? ComponentName
+    }
 
     fun intentOf(task: Any): Intent? {
         (intentField?.get(task) as? Intent)?.let { return it }

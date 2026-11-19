@@ -311,7 +311,15 @@ open class BiometricAuthActivity : Activity() {
         packageManager.getLaunchIntentForPackage(pkg)?.let { return it }
         val targetActivity = intent.getStringExtra(EXTRA_TARGET_ACTIVITY)
         if (!targetActivity.isNullOrEmpty()) {
-            return Intent().apply { component = ComponentName(pkg, targetActivity) }
+            val component = ComponentName(pkg, targetActivity)
+            val isAccessible =
+                runCatching {
+                    val info = packageManager.getActivityInfo(component, 0)
+                    info.exported && info.enabled && info.permission.isNullOrEmpty()
+                }.getOrDefault(false)
+            if (isAccessible) {
+                return Intent().apply { this.component = component }
+            }
         }
         val implicit =
             Intent(Intent.ACTION_MAIN).apply {

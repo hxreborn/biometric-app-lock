@@ -303,8 +303,8 @@ internal fun shouldForceSecure(
     userId: Int,
 ): Boolean {
     if (packageKey(pkg, userId) !in lockedPackages) return false
-    // When the app is locked, force secure (black screen) so neither recents,
-    // screen recordings, screenshots, swipe-up transitions nor lockscreen dismissal leak private app contents.
+    // When the app is locked, force secure so recents thumbnails, screen recordings,
+    // and screenshots do not leak private app contents.
     if (!isUnlocked(pkg, userId)) return true
     // When unlocked, adhere to user preference / app override for screenshot blocking.
     return shouldBlockScreenshots(pkg, userId)
