@@ -312,6 +312,7 @@ internal fun postAuthLaunch(
             entry.userId,
             token,
             forceOpaque || shouldUseOpaqueUnlockPrompt(),
+            className = entry.topActivity,
         )
 
     handler.post {
@@ -331,7 +332,7 @@ internal fun postAuthLaunch(
             val launcherIntent =
                 userContext.packageManager.getLaunchIntentForPackage(
                     entry.packageName,
-                )
+                ) ?: entry.intent
             if (launcherIntent != null) {
                 stashLaunch(token, launcherIntent)
             }

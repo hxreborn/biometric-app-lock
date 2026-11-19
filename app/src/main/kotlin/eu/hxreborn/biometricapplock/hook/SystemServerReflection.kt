@@ -249,6 +249,17 @@ internal class TaskLookup(
         return null
     }
 
+    fun realActivityOf(task: Any): ComponentName? = realActivityField?.get(task) as? ComponentName
+
+    fun intentOf(task: Any): Intent? {
+        (intentField?.get(task) as? Intent)?.let { return it }
+        (getBaseIntent?.invoke(task) as? Intent)?.let { return it }
+        (realActivityField?.get(task) as? ComponentName)?.let {
+            return Intent().apply { component = it }
+        }
+        return null
+    }
+
     // one line naming what this ROM can and can't do, read once at boot
     fun capability(): String {
         val canReadPkg = realActivityField != null || intentField != null || getBaseIntent != null
