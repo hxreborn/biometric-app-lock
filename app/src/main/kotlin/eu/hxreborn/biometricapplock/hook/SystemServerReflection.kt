@@ -78,6 +78,21 @@ internal fun Class<*>.optionalMethod(
     return null
 }
 
+internal fun Class<*>.findMethodInHierarchy(
+    names: List<String>,
+    filter: (Method) -> Boolean = { true },
+): Method? {
+    var curr: Class<*>? = this
+    while (curr != null && curr != Any::class.java) {
+        val matches = curr.declaredMethods.filter { it.name in names && filter(it) }
+        matches.minByOrNull { it.parameterCount }?.let {
+            return it.apply { isAccessible = true }
+        }
+        curr = curr.superclass
+    }
+    return null
+}
+
 internal fun Class<*>.optionalIntConst(name: String): Int? {
     runCatching { getDeclaredField(name).apply { isAccessible = true }.getInt(null) }
         .getOrNull()
@@ -272,10 +287,10 @@ internal class TaskLookup(
     fun realActivityOf(task: Any): ComponentName? = realActivityField?.get(task) as? ComponentName
 
     private val getTopActivityMethod: Method? =
-        taskClass.declaredMethods
-            .filter { it.name == "getTopMostActivity" || it.name == "getTopActivity" }
-            .minByOrNull { it.parameterCount }
-            ?.apply { isAccessible = true }
+        taskClass.findMethodInHierarchy(listOf("getTopMostActivity", "getTopActivity")) {
+            it.parameterCount == 0 ||
+                (it.parameterCount == 1 && it.parameterTypes[0] == Boolean::class.javaPrimitiveType)
+        }
 
     private val activityRecordComponentField: Field? =
         runCatching {
