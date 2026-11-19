@@ -78,6 +78,21 @@ internal fun Class<*>.optionalMethod(
     return null
 }
 
+internal fun Class<*>.findMethodInHierarchy(
+    names: List<String>,
+    filter: (Method) -> Boolean = { true },
+): Method? {
+    var curr: Class<*>? = this
+    while (curr != null && curr != Any::class.java) {
+        val matches = curr.declaredMethods.filter { it.name in names && filter(it) }
+        matches.minByOrNull { it.parameterCount }?.let {
+            return it.apply { isAccessible = true }
+        }
+        curr = curr.superclass
+    }
+    return null
+}
+
 internal fun Class<*>.optionalIntConst(name: String): Int? {
     runCatching { getDeclaredField(name).apply { isAccessible = true }.getInt(null) }
         .getOrNull()
@@ -204,14 +219,34 @@ internal class SystemServerReflection(
         rootWindowContainerField.type.requiredMethod("refreshSecureSurfaceState")
     }
 
-    fun findTopResumedPackageKey(activityTaskManagerService: Any): String? {
+    private val activityComponentField: Field? by lazy {
+        getTopResumedActivity.returnType.optionalField("mActivityComponent")
+    }
+
+    data class TopActivityInfo(
+        val packageName: String,
+        val userId: Int,
+        val className: String?,
+    )
+
+    fun findTopResumedActivity(activityTaskManagerService: Any): TopActivityInfo? {
         val rootWindowContainer =
             rootWindowContainerField.get(activityTaskManagerService) ?: return null
         val topResumedActivityRecord =
             getTopResumedActivity.invoke(rootWindowContainer) ?: return null
-        val pkg = packageNameField.get(topResumedActivityRecord) as? String ?: return null
+        val component = activityComponentField?.get(topResumedActivityRecord) as? ComponentName
+        val pkg =
+            component?.packageName
+                ?: (packageNameField.get(topResumedActivityRecord) as? String)
+                ?: return null
         val userId = userIdFieldTop.get(topResumedActivityRecord) as? Int ?: 0
-        return "$pkg:$userId"
+        val className = component?.className
+        return TopActivityInfo(pkg, userId, className)
+    }
+
+    fun findTopResumedPackageKey(activityTaskManagerService: Any): String? {
+        val info = findTopResumedActivity(activityTaskManagerService) ?: return null
+        return "${info.packageName}:${info.userId}"
     }
 }
 
@@ -246,6 +281,45 @@ internal class TaskLookup(
         (realActivityField?.get(task) as? ComponentName)?.packageName?.let { return it }
         (intentField?.get(task) as? Intent)?.component?.packageName?.let { return it }
         (getBaseIntent?.invoke(task) as? Intent)?.component?.packageName?.let { return it }
+        return null
+    }
+
+    fun realActivityOf(task: Any): ComponentName? = realActivityField?.get(task) as? ComponentName
+
+    private val getTopActivityMethod: Method? =
+        taskClass.findMethodInHierarchy(listOf("getTopMostActivity", "getTopActivity")) {
+            it.parameterCount == 0 ||
+                (it.parameterCount == 1 && it.parameterTypes[0] == Boolean::class.javaPrimitiveType)
+        }
+
+    private val activityRecordComponentField: Field? =
+        runCatching {
+            cl.loadClass("com.android.server.wm.ActivityRecord").optionalField("mActivityComponent")
+        }.getOrNull()
+
+    fun topActivityOf(task: Any): ComponentName? {
+        val record =
+            runCatching {
+                val m = getTopActivityMethod ?: return@runCatching null
+                if (m.parameterCount == 0) {
+                    m.invoke(task)
+                } else if (m.parameterCount == 1 &&
+                    m.parameterTypes[0] == Boolean::class.javaPrimitiveType
+                ) {
+                    m.invoke(task, true)
+                } else {
+                    null
+                }
+            }.getOrNull() ?: return null
+        return activityRecordComponentField?.get(record) as? ComponentName
+    }
+
+    fun intentOf(task: Any): Intent? {
+        (intentField?.get(task) as? Intent)?.let { return it }
+        (getBaseIntent?.invoke(task) as? Intent)?.let { return it }
+        (realActivityField?.get(task) as? ComponentName)?.let {
+            return Intent().apply { component = it }
+        }
         return null
     }
 

@@ -56,6 +56,7 @@ open class BiometricAuthActivity : Activity() {
 
         if (targetPkg.isNullOrEmpty() || authToken.isNullOrEmpty()) {
             Log.w(TAG, "missing extras, finishing")
+            replied = true
             finish()
             return
         }
@@ -308,6 +309,18 @@ open class BiometricAuthActivity : Activity() {
     // exported unguarded activity. it never actually runs, the hook consumes the token and aborts
     private fun buildSignalIntent(pkg: String): Intent {
         packageManager.getLaunchIntentForPackage(pkg)?.let { return it }
+        val targetActivity = intent.getStringExtra(EXTRA_TARGET_ACTIVITY)
+        if (!targetActivity.isNullOrEmpty()) {
+            val component = ComponentName(pkg, targetActivity)
+            val isAccessible =
+                runCatching {
+                    val info = packageManager.getActivityInfo(component, 0)
+                    info.exported && info.enabled && info.permission.isNullOrEmpty()
+                }.getOrDefault(false)
+            if (isAccessible) {
+                return Intent().apply { this.component = component }
+            }
+        }
         val implicit =
             Intent(Intent.ACTION_MAIN).apply {
                 addCategory(Intent.CATEGORY_LAUNCHER)

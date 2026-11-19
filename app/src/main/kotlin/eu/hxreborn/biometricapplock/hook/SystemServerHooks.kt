@@ -128,6 +128,7 @@ internal fun XposedModule.registerSystemServerHooks(
             "cleanUpRemovedTask" to hookTaskRemoved(classLoader),
             "setLastResumedActivity" to hookTopResumedActivity(classLoader),
             "onScreenAwakeChanged" to hookScreenAwake(classLoader),
+            "keyguardGoingAway" to hookKeyguardGoingAway(classLoader),
             "isSecureLocked" to hookFlagSecure(classLoader),
             "deletePackageX" to hookUninstall(classLoader),
             "enqueueNotificationInternal" to hookNotificationEnqueue(classLoader),
@@ -219,7 +220,16 @@ private fun XposedModule.hookLaunchIntercept(classLoader: ClassLoader): Boolean 
 
             val auth = resolveAuthToken(intent, packageName, userId)
             if (auth != null) {
-                if (auth.launch == null) return@intercept chain.proceed()
+                if (auth.launch == null) {
+                    val isResumeSignal =
+                        intent?.getBooleanExtra(BiometricAuthActivity.EXTRA_RESUME_SIGNAL, false) ==
+                            true ||
+                            packageName == BiometricAuthActivity.MODULE_PACKAGE
+                    if (isResumeSignal) {
+                        return@intercept blockLaunch(chain.thisObject, auth.packageName)
+                    }
+                    return@intercept chain.proceed()
+                }
                 Logger.debug { "resume original pkg=${auth.packageName} user=${auth.userId}" }
                 if (isSystemHandler(auth.packageName) &&
                     resumeInPlace(chain.thisObject, auth)
@@ -273,12 +283,25 @@ private fun XposedModule.hookActivityLaunched(classLoader: ClassLoader): Boolean
     }.onFailure { Logger.error("hookActivityLaunched failed: ${it.message}", it) }.isSuccess
 
 // reads the task itself, only locked packages produce an entry
-private fun taskEntryFromTask(task: Any): TaskEntry? {
+private fun taskEntryFromTask(
+    task: Any,
+    taskId: Int? = null,
+): TaskEntry? {
     val lookup = reflection?.taskLookup ?: return null
     val pkg = lookup.packageOf(task) ?: return null
     val userId = runCatching { lookup.userIdField?.getInt(task) }.getOrNull() ?: 0
     if ("$pkg:$userId" !in lockedPackages) return null
-    return TaskEntry(pkg, userId)
+    val cached = taskId?.let { taskCache[it] }
+    val realActivity = lookup.realActivityOf(task)
+    val topComponent = lookup.topActivityOf(task)
+    val taskIntent = lookup.intentOf(task)
+    return TaskEntry(
+        packageName = pkg,
+        userId = userId,
+        topActivity = topComponent?.className ?: cached?.topActivity ?: realActivity?.className,
+        intent = taskIntent ?: cached?.intent,
+        taskId = taskId ?: cached?.taskId,
+    )
 }
 
 private fun atmsOf(supervisor: Any): Any? =
@@ -289,25 +312,27 @@ private fun resolveTaskEntry(
     supervisor: Any,
     taskId: Int,
 ): TaskEntry? {
-    taskCache[taskId]?.let { return it }
-    val atms = atmsOf(supervisor) ?: return null
-    return resolveTaskEntryFromAtms(atms, taskId)
+    val cached = taskCache[taskId]
+    if (cached != null && cached.intent != null) return cached
+    val atms = atmsOf(supervisor) ?: return cached
+    return resolveTaskEntryFromAtms(atms, taskId) ?: cached
 }
 
 private fun resolveTaskEntryFromAtms(
     atms: Any,
     taskId: Int,
 ): TaskEntry? {
-    taskCache[taskId]?.let { return it }
+    val cached = taskCache[taskId]
+    if (cached != null && cached.intent != null) return cached
     return runCatching {
-        val r = reflection ?: return null
-        val lookup = r.taskLookup ?: return null
-        val anyTaskForId = lookup.anyTaskForId ?: return null
-        val matchMode = lookup.matchAttachedOrRecents ?: return null
-        val rwc = r.rootWindowContainerField.get(atms) ?: return null
-        val task = anyTaskForId.invoke(rwc, taskId, matchMode) ?: return null
-        taskEntryFromTask(task)?.also { taskCache[taskId] = it }
-    }.getOrNull()
+        val r = reflection ?: return@runCatching null
+        val lookup = r.taskLookup ?: return@runCatching null
+        val anyTaskForId = lookup.anyTaskForId ?: return@runCatching null
+        val matchMode = lookup.matchAttachedOrRecents ?: return@runCatching null
+        val rwc = r.rootWindowContainerField.get(atms) ?: return@runCatching null
+        val task = anyTaskForId.invoke(rwc, taskId, matchMode) ?: return@runCatching null
+        taskEntryFromTask(task, taskId)?.also { taskCache[taskId] = it }
+    }.getOrNull() ?: cached
 }
 
 /**
@@ -527,21 +552,55 @@ private fun XposedModule.hookScreenAwake(classLoader: ClassLoader): Boolean =
                 }
                 return@intercept chain.proceed()
             }
-            if (awake == true && unlockedPackages.isNotEmpty()) {
-                // relocks only the ones past their delay
-                val relocked = relockElapsedUnlocks()
-                Logger.debug {
-                    val topPkg =
-                        runCatching {
-                            reflection?.findTopResumedPackageKey(chain.thisObject)
-                        }.getOrNull()
-                    "screen on relocked=$relocked topPkg=$topPkg"
+            if (awake == true) {
+                if (unlockedPackages.isNotEmpty()) {
+                    val relocked = relockElapsedUnlocks()
+                    Logger.debug { "screen on relocked=$relocked" }
                 }
+                gateTopResumedIfLocked(chain.thisObject, "screen awake")
             }
             chain.proceed()
         }
         Logger.info("hooked onScreenAwakeChanged args=${method.parameterCount}")
     }.onFailure { Logger.error("hookScreenAwake failed: ${it.message}", it) }.isSuccess
+
+// keyguard going away (e.g. user swipes up on lockscreen to unlock)
+private fun XposedModule.hookKeyguardGoingAway(classLoader: ClassLoader): Boolean =
+    runCatching {
+        val method =
+            classLoader.findMethod(
+                "com.android.server.wm.ActivityTaskManagerService",
+                "keyguardGoingAway",
+                1,
+            )
+        hook(method).intercept { chain ->
+            gateTopResumedIfLocked(chain.thisObject, "keyguard going away")
+            chain.proceed()
+        }
+        Logger.info("hooked keyguardGoingAway args=${method.parameterCount}")
+    }.onFailure { Logger.warn("hookKeyguardGoingAway unavailable: ${it.message}") }.isSuccess
+
+private fun gateTopResumedIfLocked(
+    activityTaskManagerService: Any,
+    source: String,
+) {
+    val top =
+        runCatching {
+            reflection?.findTopResumedActivity(activityTaskManagerService)
+        }.getOrNull() ?: return
+    val key = "${top.packageName}:${top.userId}"
+    if (key !in lockedPackages) return
+    val pkg = top.packageName
+    val userId = top.userId
+    if (!isUnlocked(pkg, userId) && !isActivityExempt(pkg, userId, top.className, null)) {
+        Logger.info("gating top resumed on $source pkg=$pkg user=$userId class=${top.className}")
+        postAuthLaunch(
+            activityTaskManagerService,
+            TaskEntry(pkg, userId, topActivity = top.className),
+            forceOpaque = true,
+        )
+    }
+}
 
 // force-blocks screenshots in unlocked locked apps when BLOCK_SCREENSHOTS is on
 private fun XposedModule.hookFlagSecure(classLoader: ClassLoader): Boolean =

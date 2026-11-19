@@ -17,6 +17,8 @@ internal data class TaskEntry(
     val packageName: String,
     val userId: Int,
     val topActivity: String? = null,
+    val intent: Intent? = null,
+    val taskId: Int? = null,
 )
 
 @Volatile
@@ -130,6 +132,7 @@ internal fun addUnlocked(
     val key = packageKey(pkg, userId)
     unlockedMap[key] = SystemClock.elapsedRealtime()
     awaitingForeground += key
+    refreshSecureSurfaces()
 }
 
 // the unlocked app reached the foreground, so the next transition away from it relocks normally
@@ -148,15 +151,19 @@ internal fun refreshUnlock(
 }
 
 internal fun clearUnlocked() {
+    val hadUnlocked = unlockedMap.isNotEmpty()
     unlockedMap.clear()
     awaitingForeground.clear()
+    if (hadUnlocked) refreshSecureSurfaces()
 }
 
 internal fun removeFromUnlocked(keys: Set<String>) {
+    var changed = false
     keys.forEach {
-        unlockedMap.remove(it)
+        if (unlockedMap.remove(it) != null) changed = true
         awaitingForeground.remove(it)
     }
+    if (changed) refreshSecureSurfaces()
 }
 
 internal val taskCache = ConcurrentHashMap<Int, TaskEntry>()
@@ -294,10 +301,14 @@ internal fun shouldHideNotificationContent(): Boolean = globalHideNotificationCo
 internal fun shouldForceSecure(
     pkg: String,
     userId: Int,
-): Boolean =
-    packageKey(pkg, userId) in lockedPackages &&
-        isUnlocked(pkg, userId) &&
-        shouldBlockScreenshots(pkg, userId)
+): Boolean {
+    if (packageKey(pkg, userId) !in lockedPackages) return false
+    // When the app is locked, force secure so recents thumbnails, screen recordings,
+    // and screenshots do not leak private app contents.
+    if (!isUnlocked(pkg, userId)) return true
+    // When unlocked, adhere to user preference / app override for screenshot blocking.
+    return shouldBlockScreenshots(pkg, userId)
+}
 
 internal fun isActivityExempt(
     pkg: String,

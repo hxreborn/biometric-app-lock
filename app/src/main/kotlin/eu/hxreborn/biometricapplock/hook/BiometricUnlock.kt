@@ -169,7 +169,7 @@ internal fun rewriteLaunch(
  * PackageManager can see the module. Sending the launch home keeps the locked app shut, since
  * ActivityStarter has no way to cancel a start and letting it run would open the app unauthenticated.
  */
-private fun blockLaunch(
+internal fun blockLaunch(
     interceptor: Any,
     packageName: String,
 ): Boolean {
@@ -312,6 +312,7 @@ internal fun postAuthLaunch(
             entry.userId,
             token,
             forceOpaque || shouldUseOpaqueUnlockPrompt(),
+            className = entry.topActivity,
         )
 
     handler.post {
@@ -331,7 +332,7 @@ internal fun postAuthLaunch(
             val launcherIntent =
                 userContext.packageManager.getLaunchIntentForPackage(
                     entry.packageName,
-                )
+                ) ?: entry.intent
             if (launcherIntent != null) {
                 stashLaunch(token, launcherIntent)
             }
